@@ -1,0 +1,76 @@
+/* ─── Tab navigation ──────────────────────────────────────────────────────── */
+
+.tabs {
+  display: flex;
+  border-bottom: 2px solid var(--color-border);
+  margin-bottom: 24px;
+  gap: 0;
+}
+
+.tab {
+  padding: 10px 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border: none;
+  background: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+  font-family: 'Poppins', sans-serif;
+}
+
+.tab:hover {
+  color: var(--color-text-primary);
+}
+
+.tabActive {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* ─── Filter row ──────────────────────────────────────────────────────────── */
+
+.filterCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  padding-bottom: 1px;
+}
+
+.filterCheckbox input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+/* ─── Actions column ──────────────────────────────────────────────────────── */
+
+.actionsCell {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* ─── Plate display ───────────────────────────────────────────────────────── */
+
+.plate {
+  font-family: 'Poppins', monospace;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  font-size: 0.85rem;
+}
+
+/* ─── Inline toggle ───────────────────────────────────────────────────────── */
+
+.toggleBtn {
+  font-size: 0.78rem;
+  padding: 3px 8px;
+}

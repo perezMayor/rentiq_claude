@@ -1,0 +1,412 @@
+/* ─── Planning module styles ─────────────────────────────────────────────── */
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  margin-bottom: 20px;
+}
+
+.periodGroup {
+  display: flex;
+  gap: 4px;
+}
+
+.periodBtn {
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-strong);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.periodBtn:hover {
+  background: var(--color-surface);
+}
+
+.periodBtnActive {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.dateInput {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-strong);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+
+.filterSelect {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-strong);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  min-width: 140px;
+}
+
+.searchInput {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-strong);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  min-width: 140px;
+}
+
+/* ─── Grid wrapper ────────────────────────────────────────────────────────── */
+
+.gridWrapper {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.grid {
+  display: grid;
+  /* First column is vehicle info, rest are day columns — set via inline style */
+  min-width: max-content;
+}
+
+/* ─── Header row ──────────────────────────────────────────────────────────── */
+
+.headerRow {
+  display: contents;
+}
+
+.vehicleHeaderCell {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: var(--color-surface-strong);
+  border-bottom: 2px solid var(--color-border);
+  border-right: 2px solid var(--color-border);
+  padding: 8px 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.dayHeader {
+  background: var(--color-surface-strong);
+  border-bottom: 2px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  padding: 6px 2px;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.dayHeaderNum {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.2;
+}
+
+.dayHeaderName {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.todayHeader {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.todayHeader .dayHeaderNum,
+.todayHeader .dayHeaderName {
+  color: #fff;
+}
+
+/* ─── Vehicle rows ────────────────────────────────────────────────────────── */
+
+.vehicleRow {
+  display: contents;
+}
+
+.vehicleCell {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  border-right: 2px solid var(--color-border);
+  padding: 8px 12px;
+  min-width: 180px;
+  max-width: 180px;
+}
+
+.vehiclePlate {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: 0.03em;
+}
+
+.vehicleModel {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.vehicleCategoryBadge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(43, 108, 189, 0.12);
+  color: var(--color-primary);
+  border: 1px solid rgba(43, 108, 189, 0.25);
+}
+
+/* ─── Day cells ───────────────────────────────────────────────────────────── */
+
+.dayCell {
+  border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  height: 52px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.dayCell:hover {
+  background: rgba(43, 108, 189, 0.06);
+}
+
+.weekendCell {
+  background: rgba(0, 0, 0, 0.025);
+}
+
+.todayCell {
+  background: rgba(43, 108, 189, 0.05);
+}
+
+/* ─── Cell bars ───────────────────────────────────────────────────────────── */
+
+.cellBar {
+  position: absolute;
+  inset: 6px 2px;
+  border-radius: 3px;
+  opacity: 0.9;
+  transition: opacity 0.1s;
+}
+
+.cellBar:hover {
+  opacity: 1;
+}
+
+.barPeticion {
+  background: var(--color-status-peticion);
+}
+
+.barConfirmada {
+  background: var(--color-status-confirmada);
+}
+
+.barContratado {
+  background: var(--color-status-contratado);
+}
+
+.barBloqueado {
+  background: var(--color-status-bloqueado);
+}
+
+/* Left cap for first cell in a span */
+.barStart {
+  border-radius: 3px 0 0 3px;
+  left: 4px;
+}
+
+/* Right cap for last cell in a span */
+.barEnd {
+  border-radius: 0 3px 3px 0;
+  right: 4px;
+}
+
+/* Both caps for single-day spans */
+.barStartEnd {
+  border-radius: 3px;
+  left: 4px;
+  right: 4px;
+}
+
+/* Middle cells — no caps */
+.barMiddle {
+  border-radius: 0;
+  left: 0;
+  right: 0;
+}
+
+/* ─── Tooltip ─────────────────────────────────────────────────────────────── */
+
+.tooltip {
+  position: fixed;
+  z-index: 200;
+  background: var(--color-surface-strong);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 10px 14px;
+  font-size: 0.8rem;
+  min-width: 180px;
+  max-width: 260px;
+  pointer-events: none;
+}
+
+.tooltipTitle {
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+}
+
+.tooltipRow {
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+
+.tooltipStatus {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* ─── Info panel (click detail) ───────────────────────────────────────────── */
+
+.infoPanel {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 100;
+  background: var(--color-surface-strong);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 16px 20px;
+  min-width: 240px;
+  max-width: 320px;
+}
+
+.infoPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.infoPanelTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.infoPanelClose {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 2px;
+  line-height: 1;
+}
+
+.infoPanelRow {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+.infoPanelRowLabel {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.infoPanelActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ─── Legend ──────────────────────────────────────────────────────────────── */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.legendDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ─── Loading / empty ─────────────────────────────────────────────────────── */
+
+.loadingText {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.emptyText {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+/* ─── Block button on vehicle cell ───────────────────────────────────────── */
+
+.blockBtn {
+  margin-top: 6px;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+}

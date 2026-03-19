@@ -1,0 +1,213 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(43, 108, 189, 0.35) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(31, 138, 143, 0.30) 0%, transparent 55%),
+    radial-gradient(ellipse at 60% 80%, rgba(43, 108, 189, 0.20) 0%, transparent 50%),
+    #0f172a;
+  padding: 20px;
+}
+
+[data-theme="dark"] .page {
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(43, 108, 189, 0.25) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(31, 138, 143, 0.22) 0%, transparent 55%),
+    #060d1a;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 40px 36px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.logoWrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.logo {
+  height: 52px;
+  width: auto;
+  object-fit: contain;
+}
+
+.logoFallback {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -1px;
+  pointer-events: none;
+}
+
+/* Hide fallback when image loads */
+.logo + .logoFallback {
+  display: none;
+}
+
+.subtitle {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.85rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 28px;
+}
+
+.error {
+  background: rgba(180, 35, 24, 0.15);
+  border: 1px solid rgba(180, 35, 24, 0.35);
+  color: #fca5a5;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+/* ─── Demo mode ──────────────────────────────────────────────────────────── */
+
+.demoSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.demoHint {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.demoRoles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.demoBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: 14px 18px;
+  background: rgba(43, 108, 189, 0.18);
+  border: 1px solid rgba(43, 108, 189, 0.35);
+  border-radius: 10px;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  font-family: 'Poppins', sans-serif;
+  text-align: left;
+}
+
+.demoBtn:hover:not(:disabled) {
+  background: rgba(43, 108, 189, 0.32);
+  border-color: rgba(43, 108, 189, 0.6);
+  transform: translateY(-1px);
+}
+
+.demoBtn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.demoBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.demoBtnTitle {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.demoBtnDesc {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 2px;
+}
+
+/* ─── Password form ──────────────────────────────────────────────────────── */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.input {
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.9rem;
+  font-family: 'Poppins', sans-serif;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.input:focus {
+  outline: none;
+  border-color: rgba(43, 108, 189, 0.7);
+  box-shadow: 0 0 0 3px rgba(43, 108, 189, 0.2);
+}
+
+.submitBtn {
+  margin-top: 4px;
+  padding: 12px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: #235da8;
+}
+
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

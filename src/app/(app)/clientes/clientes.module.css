@@ -1,0 +1,137 @@
+/* ─── Clientes module styles ─────────────────────────────────────────────── */
+
+.actionsCell {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.clientName {
+  font-weight: 500;
+}
+
+.clientSub {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  margin-top: 1px;
+}
+
+.filterCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filterCheckbox input[type='checkbox'] {
+  cursor: pointer;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--color-primary);
+}
+
+.disabledAction {
+  position: relative;
+  display: inline-block;
+}
+
+.disabledAction button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-text-primary);
+  color: var(--color-surface-strong);
+  font-size: 0.72rem;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 10;
+}
+
+.disabledAction:hover .tooltip {
+  opacity: 1;
+}
+
+/* ─── History modal ──────────────────────────────────────────────────────── */
+
+.historyHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.historyClientType {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.statsRow {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 20px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.statValue {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1;
+}
+
+/* ─── Type selector (create only) ───────────────────────────────────────── */
+
+.typeNote {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* ─── Section divider inside form ───────────────────────────────────────── */
+
+.sectionDivider {
+  grid-column: span 2;
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 4px 0;
+}
+
+.sectionTitle {
+  grid-column: span 2;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: -4px;
+}

@@ -1,0 +1,19 @@
+.number {
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.loadingRow {
+  padding: 40px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
