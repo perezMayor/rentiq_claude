@@ -31,7 +31,7 @@ export function middleware(req: NextRequest) {
 
   // LECTOR role restriction
   if (session.role === 'LECTOR') {
-    const restricted = ['/tarifas', '/gestor'];
+    const restricted = ['/tarifas', '/gestor', '/auditoria'];
     if (restricted.some((r) => pathname.startsWith(r))) {
       // Redirect through /api/rbac-denied so the audit event is written
       // by a Node.js route handler (middleware runs on Edge — no fs access).

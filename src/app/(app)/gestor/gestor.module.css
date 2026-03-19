@@ -1,0 +1,86 @@
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--color-border);
+  margin-bottom: 24px;
+}
+
+.tab {
+  padding: 10px 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab:hover {
+  color: var(--color-text-primary);
+}
+
+.tabActive {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}
+
+.loadingRow {
+  padding: 40px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Inline status dots */
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.dotActive { background: var(--color-status-contratado); }
+.dotInactive { background: var(--color-status-no-disponible); }
+
+/* Settings form */
+.settingsForm {
+  max-width: 560px;
+}
+
+.settingsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.roleTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.roleSuperAdmin { background: rgba(124, 58, 237, 0.12); color: #5b21b6; border: 1px solid rgba(124, 58, 237, 0.3); }
+.roleAdmin { background: rgba(43, 108, 189, 0.12); color: var(--color-primary); border: 1px solid rgba(43, 108, 189, 0.3); }
+.roleLector { background: rgba(100, 116, 139, 0.12); color: var(--color-text-muted); border: 1px solid rgba(100, 116, 139, 0.3); }
+
+@media (max-width: 600px) {
+  .settingsGrid {
+    grid-template-columns: 1fr;
+  }
+}

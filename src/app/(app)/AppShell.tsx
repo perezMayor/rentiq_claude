@@ -29,6 +29,7 @@ const NAV_ITEMS = [
 const ADMIN_ITEMS = [
   { href: '/tarifas', label: 'Tarifas', icon: '💲' },
   { href: '/gestor', label: 'Gestor', icon: '⚙️' },
+  { href: '/auditoria', label: 'Auditoría', icon: '🔍' },
 ];
 
 const ROLE_LABELS: Record<UserRole, string> = {

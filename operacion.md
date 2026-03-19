@@ -12,12 +12,12 @@
 3. Ejecutar:
    - `npm run dev`
 4. Abrir:
-   - `http://localhost:3203/login`
+   - `http://localhost:4000/login`
 
 ## Scripts
-- `npm run dev`: desarrollo en puerto `3203`.
+- `npm run dev`: desarrollo en puerto `4000`.
 - `npm run build`: build de producción.
-- `npm run start`: servidor producción en puerto `3203`.
+- `npm run start`: servidor producción en puerto `4000`.
 - `npm run lint`: lint del proyecto.
 - `npm run seed:demo`: carga dataset demo en store.
 - `npm run healthcheck`: verificación operativa contra servidor activo.

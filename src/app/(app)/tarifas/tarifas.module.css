@@ -1,0 +1,157 @@
+.layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.planList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.planCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.planCard:hover {
+  border-color: var(--color-primary);
+}
+
+.planCardActive {
+  border-color: var(--color-primary);
+  background: rgba(43, 108, 189, 0.06);
+}
+
+.planName {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+}
+
+.planMeta {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+/* Plan detail */
+.detailCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-strong);
+}
+
+.detailTitle {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.detailActions {
+  display: flex;
+  gap: 8px;
+}
+
+.detailBody {
+  padding: 20px;
+}
+
+/* Price grid */
+.priceGrid {
+  overflow-x: auto;
+}
+
+table.priceTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+table.priceTable th {
+  padding: 8px 12px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-strong);
+}
+
+table.priceTable th:first-child {
+  text-align: left;
+}
+
+table.priceTable td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: center;
+  vertical-align: middle;
+}
+
+table.priceTable td:first-child {
+  text-align: left;
+  font-weight: 500;
+  white-space: nowrap;
+  padding-left: 12px;
+}
+
+table.priceTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.priceInput {
+  width: 80px;
+  padding: 4px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-strong);
+  color: var(--color-text-primary);
+  font-size: 0.85rem;
+  font-family: inherit;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.priceInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(43, 108, 189, 0.15);
+}
+
+.bracketActions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.loadingRow {
+  padding: 40px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}

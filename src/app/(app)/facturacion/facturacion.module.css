@@ -1,0 +1,115 @@
+.loadingRow {
+  padding: 40px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.number {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-primary);
+  font-size: 0.9rem;
+}
+
+.amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Invoice detail modal */
+.invoiceDetail {
+  display: grid;
+  gap: 20px;
+}
+
+.detailSection {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.detailSectionTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  padding: 10px 16px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.detailField {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.detailField:last-child,
+.detailField:nth-last-child(2):nth-child(odd) {
+  border-bottom: none;
+}
+
+.detailLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+
+.detailValue {
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+}
+
+/* Breakdown table inside modal */
+.breakdownTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.breakdownTable td {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.875rem;
+}
+
+.breakdownTable td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.breakdownTable tr:last-child td {
+  border-bottom: none;
+}
+
+.breakdownTotal td {
+  font-weight: 700;
+  font-size: 1rem;
+  background: var(--color-surface);
+}
+
+.breakdownIva td {
+  color: var(--color-text-muted);
+  font-size: 0.825rem;
+}
+
+@media (max-width: 600px) {
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+}
