@@ -1,0 +1,414 @@
+/* ─── Wrapper ─────────────────────────────────────────────────────────────── */
+
+.gestion {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ─── Top bar ─────────────────────────────────────────────────────────────── */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.topbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.numInput {
+  width: 160px;
+  padding: 5px 10px;
+  font-size: 0.82rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface-strong);
+  color: var(--color-text-muted);
+  font-family: 'Poppins', sans-serif;
+  text-align: right;
+}
+
+/* ─── Help accordion ──────────────────────────────────────────────────────── */
+
+.helpBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ─── Body: 2 cols ────────────────────────────────────────────────────────── */
+
+.body {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.mainCol {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ─── Cards ───────────────────────────────────────────────────────────────── */
+
+.card {
+  background: var(--color-surface-strong);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardHeader {
+  padding: 8px 16px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cardBody {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ─── Form grids inside cards ─────────────────────────────────────────────── */
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.grid3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.grid4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.full { grid-column: 1 / -1; }
+
+/* ─── Client search ───────────────────────────────────────────────────────── */
+
+.searchWrap {
+  position: relative;
+}
+
+.searchResults {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--color-surface-strong);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  z-index: 50;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.searchItem {
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.1s;
+}
+
+.searchItem:last-child { border-bottom: none; }
+
+.searchItem:hover { background: var(--color-surface); }
+
+.searchItemMain {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.searchItemSub {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+/* ─── Bloquear matr toggle row ────────────────────────────────────────────── */
+
+.vehiculoTop {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toggleLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  padding-bottom: 2px;
+}
+
+/* ─── Inner sub-tabs (Seguros / Extras) ───────────────────────────────────── */
+
+.innerTabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 10px;
+}
+
+.innerTab {
+  padding: 5px 14px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.innerTabActive {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}
+
+.seguroRow {
+  display: grid;
+  grid-template-columns: 2fr 80px 100px 100px auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.franquiciaToggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ─── Liquidación sidebar ─────────────────────────────────────────────────── */
+
+.liquidacion {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.liqRow {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--color-border);
+  gap: 8px;
+  min-height: 0;
+}
+
+.liqRow:last-child { border-bottom: none; }
+
+.liqLabel {
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.liqInput {
+  width: 84px;
+  padding: 3px 6px;
+  font-size: 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: 'Poppins', sans-serif;
+  text-align: right;
+}
+
+.liqInput:focus { outline: none; border-color: var(--color-primary); }
+
+.liqSelect {
+  flex: 1;
+  padding: 3px 6px;
+  font-size: 0.76rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: 'Poppins', sans-serif;
+  min-width: 0;
+}
+
+.liqTotal {
+  flex: 0 0 auto;
+  padding: 10px 12px;
+  background: var(--color-surface);
+  border-top: 2px solid var(--color-border);
+}
+
+.liqTotalLabel {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+
+.liqTotalValue {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1;
+}
+
+.liqPagado {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+/* ─── Notes section ───────────────────────────────────────────────────────── */
+
+.notesCard {
+  background: var(--color-surface-strong);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.notesTabs {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.notesTab {
+  padding: 5px 14px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  transition: background 0.1s, color 0.1s;
+}
+
+.notesTabActive {
+  background: var(--color-surface-strong);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.notesBody {
+  padding: 10px 14px;
+}
+
+.notesTextarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: 'Poppins', sans-serif;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.notesTextarea:focus { outline: none; border-color: var(--color-primary); }
+
+/* ─── Action bar ──────────────────────────────────────────────────────────── */
+
+.actionBar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.actionBarRight {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+/* ─── Remove number input spinners ───────────────────────────────────────── */
+
+.liqInput::-webkit-inner-spin-button,
+.liqInput::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.liqInput { -moz-appearance: textfield; }
+
+/* Apply globally within the gestion form */
+.gestion input[type='number']::-webkit-inner-spin-button,
+.gestion input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.gestion input[type='number'] { -moz-appearance: textfield; }
+
+/* ─── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .body {
+    grid-template-columns: 1fr;
+  }
+
+  .grid4 { grid-template-columns: 1fr 1fr; }
+  .seguroRow { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 600px) {
+  .grid2, .grid3, .grid4 { grid-template-columns: 1fr; }
+}

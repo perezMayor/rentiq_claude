@@ -7,7 +7,7 @@ Léelo completo antes de hacer cualquier acción.
 
 ## 1. Qué es este sistema
 
-`RentIQ Gestión V3` es un SaaS operativo para la gestión diaria de una empresa de alquiler de vehículos.
+`RentIQ Gestión V3` es un SaaS operativo para la gestión diaria de una empresa de alquiler de vehículos. Es un SaaS que debe ser 100% profesional ya que ha de venderse
 
 Cubre:
 

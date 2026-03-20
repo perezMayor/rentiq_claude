@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import type { UserRole, CompanyBranch, CompanySettings } from '@/src/lib/types';
 import styles from './gestor.module.css';
 
@@ -28,7 +29,7 @@ const ROLE_CLASS: Record<UserRole, string> = {
 
 type Tab = 'usuarios' | 'sucursales' | 'empresa';
 
-export default function GestorPage() {
+function GestorContent() {
   const [tab, setTab] = useState<Tab>('usuarios');
   const [myRole, setMyRole] = useState<UserRole>('LECTOR');
   const [myUserId, setMyUserId] = useState('');
@@ -684,5 +685,62 @@ export default function GestorPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Sub-tab wrapper ──────────────────────────────────────────────────────────
+
+const GESTOR_TABS = [
+  { key: 'gestion',    label: 'Usuarios y Sucursales' },
+  { key: 'tarifas',    label: 'Tarifas' },
+  { key: 'plantillas', label: 'Plantillas' },
+  { key: 'backups',    label: 'Backups' },
+];
+
+function GestorTabNav({ active }: { active: string }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  function go(key: string) {
+    const p = new URLSearchParams(searchParams.toString());
+    p.set('tab', key);
+    router.push(`${pathname}?${p.toString()}`);
+  }
+
+  return (
+    <nav style={{ display: 'flex', flexWrap: 'wrap', gap: 2, padding: 4, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, marginBottom: 24 }}>
+      {GESTOR_TABS.map((t) => (
+        <button key={t.key} type="button" onClick={() => go(t.key)} style={{ flex: 1, textAlign: 'center', padding: '7px 8px', fontSize: '0.82rem', fontWeight: active === t.key ? 600 : 500, color: active === t.key ? 'var(--color-primary)' : 'var(--color-text-muted)', background: active === t.key ? 'var(--color-surface-strong)' : 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: 'Poppins, sans-serif', whiteSpace: 'nowrap' }}>
+          {t.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+function GestorInner() {
+  const searchParams = useSearchParams();
+  const tab = searchParams.get('tab') ?? 'gestion';
+
+  return (
+    <div>
+      <GestorTabNav active={tab} />
+      {tab === 'gestion' && <GestorContent />}
+      {tab !== 'gestion' && (
+        <div className="empty-state" style={{ marginTop: 32 }}>
+          <div className="empty-state__icon">🚧</div>
+          <div className="empty-state__text">{GESTOR_TABS.find((t) => t.key === tab)?.label ?? tab} — Próximamente</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function GestorPage() {
+  return (
+    <Suspense>
+      <GestorInner />
+    </Suspense>
   );
 }

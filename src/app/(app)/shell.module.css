@@ -24,27 +24,22 @@
 /* ─── Logo ────────────────────────────────────────────────────────────────── */
 
 .sidebarLogo {
-  padding: 20px 18px 16px;
+  padding: 16px 12px 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .sidebarLogo a {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
 }
 
 .logoImg {
-  height: 36px;
-  width: auto;
+  width: 100%;
+  max-width: 180px;
+  height: auto;
   object-fit: contain;
-}
-
-.logoText {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: -0.5px;
+  display: block;
 }
 
 /* ─── Navigation ──────────────────────────────────────────────────────────── */
@@ -64,7 +59,7 @@
   gap: 10px;
   padding: 8px 12px;
   border-radius: 6px;
-  font-size: 0.85rem;
+  font-size: 1.05rem;
   font-weight: 400;
   color: rgba(243, 244, 246, 0.7);
   transition: background 0.12s, color 0.12s;

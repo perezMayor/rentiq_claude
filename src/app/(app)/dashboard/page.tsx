@@ -1,175 +1,419 @@
-import { cookies } from 'next/headers';
-import { parseSession } from '@/src/lib/auth';
-import { readStore } from '@/src/lib/store';
-import { getEvents } from '@/src/lib/audit';
-import type { AuditEvent } from '@/src/lib/types';
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import styles from './dashboard.module.css';
 
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return iso;
-  }
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface CategoriaData {
+  id: string;
+  code: string;
+  name: string;
+  total: number;
+  ocupados: number;
+  saldo: number;
 }
 
-const ACTION_LABELS: Record<string, string> = {
-  AUTH_LOGIN: 'Inicio de sesión',
-  AUTH_LOGOUT: 'Cierre de sesión',
-  UI_OPEN_MODULE: 'Módulo abierto',
-  RBAC_DENIED: 'Acceso denegado',
-  OVERRIDE_CONFIRMATION: 'Override confirmado',
-  SYSTEM: 'Evento del sistema',
-  AUDIT_SUPPRESS: 'Supresión de auditoría',
-};
+interface EntregaDetalle {
+  lugar: string;
+  fecha: string;
+  hora: string;
+  nombre: string;
+  coche: string;
+}
 
-export default async function DashboardPage() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('rq_v3_session')?.value ?? '';
-  const session = parseSession(token);
+interface DashboardData {
+  entregasHoy: number;
+  entregasDetalle: EntregaDetalle[];
+  recogidasHoy: number;
+  tareasPendientes: number;
+  facturasBorrador: number;
+  facturasBorradorDetalle: string[];
+  recogidaVencidaCount: number;
+  recogidaVencidaDetalle: string[];
+  reservasHoy: number;
+  contratosAbiertos: number;
+  reservasSinConfirmar: number;
+  reservasHuerfanas: number;
+  contratosSinMatricula: number;
+  entregasHoySinContrato: number;
+  ocupacionFlota: number;
+  ratioConfirmacion: number;
+  movimientosPr24h: number;
+  gruposDeficit: number;
+  flotaActiva: number;
+  monthly: { entregas: number[]; reservas: number[] };
+  categorias: CategoriaData[];
+  saldoGlobal: number;
+}
 
-  const store = readStore();
-  const user = session ? store.users.find((u) => u.id === session.userId) : null;
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-  // KPIs
-  const activeReservations = store.reservations.filter(
-    (r) => r.status === 'PETICION' || r.status === 'CONFIRMADA'
-  ).length;
+const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
-  const openContracts = store.contracts.filter((c) => c.status === 'ABIERTO').length;
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
 
-  const activeVehicles = store.vehicles.filter((v) => v.active).length;
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
-  const pendingInvoices = store.invoices.filter((i) => i.status === 'BORRADOR').length;
+function KpiStrip({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className={styles.kpiStrip}>
+      <div className={styles.kpiStripLabel}>{label}</div>
+      <div className={styles.kpiStripValue}>{value}</div>
+    </div>
+  );
+}
 
-  // Recent audit events
-  let recentEvents: AuditEvent[] = [];
-  try {
-    recentEvents = await getEvents(10);
-  } catch {
-    // audit log may not exist yet
+function MiniKpi({ label, value, highlight }: { label: string; value: number | string; highlight?: boolean }) {
+  return (
+    <div className={`${styles.miniKpi} ${highlight ? styles.miniKpiHL : ''}`}>
+      <div className={styles.miniKpiLabel}>{label}</div>
+      <div className={styles.miniKpiValue}>{value}</div>
+    </div>
+  );
+}
+
+interface AlertRow {
+  label: string;
+  count: number;
+  detail?: string;
+  items?: string[];
+}
+
+function AlertSection({ row }: { row: AlertRow }) {
+  const [open, setOpen] = useState(false);
+  const hasContent = row.detail || (row.items && row.items.length > 0);
+  return (
+    <div className={styles.alertRow}>
+      <button
+        type="button"
+        className={styles.alertRowBtn}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className={styles.alertRowLabel}>{row.label}</span>
+        <span className={styles.alertRowArrow}>{open ? '▴' : '▾'}</span>
+        <span className={styles.alertRowCount}>{row.count}</span>
+      </button>
+      {open && hasContent && (
+        <div className={styles.alertRowDetail}>
+          {row.detail && <div>{row.detail}</div>}
+          {row.items && row.items.length > 0 && (
+            <ul className={styles.alertRowItems}>
+              {row.items.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HBar({ value, max, positive }: { value: number; max: number; positive?: boolean }) {
+  const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
+  return (
+    <div className={styles.hbarTrack}>
+      <div
+        className={`${styles.hbarFill} ${positive === false ? styles.hbarNeg : ''}`}
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
+export default function DashboardPage() {
+  const router = useRouter();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [mensualTab, setMensualTab] = useState<'entregas' | 'reservas'>('entregas');
+  const [mensualYear, setMensualYear] = useState(new Date().getFullYear());
+  const [pendingYear, setPendingYear] = useState(new Date().getFullYear());
+  const [prevFrom, setPrevFrom] = useState(todayStr());
+  const [prevTo, setPrevTo] = useState(todayStr());
+  const [prevData, setPrevData] = useState<CategoriaData[] | null>(null);
+  const [prevSaldo, setPrevSaldo] = useState<number>(0);
+
+  async function loadData(year: number) {
+    try {
+      const res = await fetch(`/api/store-summary?year=${year}`);
+      if (!res.ok) return;
+      const d: DashboardData = await res.json();
+      setData(d);
+      setPrevData(d.categorias);
+      setPrevSaldo(d.saldoGlobal);
+    } catch { /* silent */ }
   }
 
+  useEffect(() => { loadData(mensualYear); }, [mensualYear]);
+
+  async function applyPrevision() {
+    if (!data) return;
+    // Re-fetch with date range for previsión
+    try {
+      const res = await fetch(`/api/store-summary?year=${mensualYear}&from=${prevFrom}&to=${prevTo}`);
+      if (!res.ok) return;
+      const d: DashboardData = await res.json();
+      setPrevData(d.categorias);
+      setPrevSaldo(d.saldoGlobal);
+    } catch { /* silent */ }
+  }
+
+  const monthlyValues = data
+    ? (mensualTab === 'entregas' ? data.monthly.entregas : data.monthly.reservas)
+    : Array(12).fill(0);
+  const monthlyMax = Math.max(...monthlyValues, 1);
+
+  const prevCats = prevData ?? data?.categorias ?? [];
+  const prevMax = Math.max(...prevCats.map((c) => Math.abs(c.saldo)), 1);
+
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Dashboard</h1>
-          <p className="page-subtitle">
-            Bienvenido/a, {user?.name ?? 'Usuario'} — {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
-        </div>
+    <div className={styles.dashboard}>
+
+      {/* ── Top KPI strip ── */}
+      <div className={styles.topStrip}>
+        <KpiStrip label="Entregas hoy" value={data?.entregasHoy ?? '—'} />
+        <KpiStrip label="Recogidas hoy" value={data?.recogidasHoy ?? '—'} />
+        <KpiStrip label="Tareas pendientes" value={data?.tareasPendientes ?? '—'} />
       </div>
 
-      {/* KPI Cards */}
-      <div className="kpi-grid">
-        <div className="kpi-card">
-          <div className="kpi-card__label">Reservas activas</div>
-          <div className="kpi-card__value">{activeReservations}</div>
-          <div className="kpi-card__sub">petición + confirmadas</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-card__label">Contratos abiertos</div>
-          <div className="kpi-card__value" style={{ color: 'var(--color-accent)' }}>
-            {openContracts}
-          </div>
-          <div className="kpi-card__sub">en curso</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-card__label">Vehículos activos</div>
-          <div className="kpi-card__value" style={{ color: 'var(--color-status-contratado)' }}>
-            {activeVehicles}
-          </div>
-          <div className="kpi-card__sub">en flota</div>
-        </div>
-        <div className="kpi-card">
-          <div className="kpi-card__label">Facturas pendientes</div>
-          <div
-            className="kpi-card__value"
-            style={{ color: pendingInvoices > 0 ? 'var(--color-status-peticion)' : 'var(--color-text-muted)' }}
-          >
-            {pendingInvoices}
-          </div>
-          <div className="kpi-card__sub">en borrador</div>
-        </div>
-      </div>
+      {/* ── Agenda + Alertas ── */}
+      <div className={styles.mainRow}>
 
-      {/* Quick links */}
-      <div className={styles.quickLinks}>
-        <a href="/reservas" className={styles.quickLink}>
-          <span className={styles.quickLinkIcon}>📋</span>
-          <span>Nueva Reserva</span>
-        </a>
-        <a href="/contratos" className={styles.quickLink}>
-          <span className={styles.quickLinkIcon}>📄</span>
-          <span>Ver Contratos</span>
-        </a>
-        <a href="/planning" className={styles.quickLink}>
-          <span className={styles.quickLinkIcon}>📅</span>
-          <span>Planning</span>
-        </a>
-        <a href="/vehiculos" className={styles.quickLink}>
-          <span className={styles.quickLinkIcon}>🚙</span>
-          <span>Flota</span>
-        </a>
-      </div>
-
-      {/* Recent audit events */}
-      <div className="card" style={{ marginTop: 28 }}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Actividad reciente</h2>
-          <a href="/gestor" className="btn btn-ghost btn-sm">Ver auditoría completa</a>
-        </div>
-
-        {recentEvents.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state__icon">📋</div>
-            <div className="empty-state__text">No hay eventos registrados aún</div>
+        {/* Agenda */}
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <span className={styles.cardTitle}>Agenda</span>
           </div>
-        ) : (
-          <div className="table-wrapper" style={{ marginTop: 16 }}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Acción</th>
-                  <th>Actor</th>
-                  <th>Entidad</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentEvents.map((ev) => (
-                  <tr key={ev.id}>
-                    <td style={{ color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
-                      {formatDate(ev.at)}
-                    </td>
-                    <td>{ACTION_LABELS[ev.action] ?? ev.action}</td>
-                    <td style={{ color: 'var(--color-text-muted)' }}>{ev.actorId}</td>
-                    <td style={{ color: 'var(--color-text-muted)' }}>
-                      {ev.entity ? `${ev.entity}${ev.entityId ? ` #${ev.entityId}` : ''}` : '—'}
-                    </td>
-                    <td>
-                      {ev.suppressedAt ? (
-                        <span className="badge badge-cancelada">Suprimido</span>
-                      ) : ev.action === 'RBAC_DENIED' ? (
-                        <span className="badge badge-cancelada">Denegado</span>
-                      ) : (
-                        <span className="badge badge-confirmada">OK</span>
-                      )}
-                    </td>
-                  </tr>
+          <div className={styles.agendaGrid}>
+            <MiniKpi label="Reservas hoy"             value={data?.reservasHoy ?? '—'} />
+            <MiniKpi label="Contratos abiertos"       value={data?.contratosAbiertos ?? '—'} />
+            <MiniKpi label="Reservas sin confirmar"   value={data?.reservasSinConfirmar ?? '—'}  highlight={(data?.reservasSinConfirmar ?? 0) > 0} />
+            <MiniKpi label="Reservas huérfanas"       value={data?.reservasHuerfanas ?? '—'}     highlight={(data?.reservasHuerfanas ?? 0) > 0} />
+            <MiniKpi label="Contratos sin matrícula"  value={data?.contratosSinMatricula ?? '—'} highlight={(data?.contratosSinMatricula ?? 0) > 0} />
+            <MiniKpi label="Sin contrato hoy"         value={data?.entregasHoySinContrato ?? '—'} highlight={(data?.entregasHoySinContrato ?? 0) > 0} />
+            <MiniKpi label="Ocupación flota"          value={data ? `${data.ocupacionFlota}%` : '—'} />
+            <MiniKpi label="Confirmación / petición"  value={data ? `${data.ratioConfirmacion}%` : '—'} />
+            <MiniKpi label="Movimientos próximas 24h" value={data?.movimientosPr24h ?? '—'} />
+          </div>
+
+          {/* DEMO — borrar cuando se confirme el diseño */}
+          {(data?.entregasDetalle?.length ?? 0) === 0 && data && (
+            <div className={styles.entregasRow}>
+              <div className={styles.entregasRowTitle}>Entregas hoy <span style={{ fontWeight: 400, color: 'var(--color-status-peticion)', marginLeft: 6 }}>(demo)</span></div>
+              <div className={styles.entregasTable}>
+                <div className={styles.entregasThead}>
+                  <span>Hora</span><span>Cliente</span><span>Vehículo</span><span>Lugar</span>
+                </div>
+                {[
+                  { hora: '09:00', nombre: 'Carlos Martínez López', coche: '1234 ABC', lugar: 'Aeropuerto T2' },
+                  { hora: '11:30', nombre: 'Ana Gómez Ruiz',        coche: '5678 DEF', lugar: 'Oficina central' },
+                  { hora: '14:00', nombre: 'Roberto Sánchez',       coche: '9012 GHI', lugar: 'Puerto de Cartagena' },
+                ].map((e, i) => (
+                  <div key={i} className={styles.entregasTrow}>
+                    <span className={styles.entregasHora}>{e.hora}</span>
+                    <span>{e.nombre}</span>
+                    <span className={styles.entregasCoche}>{e.coche}</span>
+                    <span className={styles.entregasLugar}>{e.lugar}</span>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
+          )}
+
+          {/* Fila entregas del día — solo si hay */}
+          {(data?.entregasDetalle?.length ?? 0) > 0 && (
+            <div className={styles.entregasRow}>
+              <div className={styles.entregasRowTitle}>Entregas hoy</div>
+              <div className={styles.entregasTable}>
+                <div className={styles.entregasThead}>
+                  <span>Hora</span>
+                  <span>Cliente</span>
+                  <span>Vehículo</span>
+                  <span>Lugar</span>
+                </div>
+                {data!.entregasDetalle.map((e, i) => (
+                  <div key={i} className={styles.entregasTrow}>
+                    <span className={styles.entregasHora}>{e.hora}</span>
+                    <span>{e.nombre}</span>
+                    <span className={styles.entregasCoche}>{e.coche}</span>
+                    <span className={styles.entregasLugar}>{e.lugar}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Alertas */}
+        <div className={`${styles.card} ${styles.alertasCard}`}>
+          <div className={styles.cardHeader}>
+            <span className={styles.cardTitle}>Alertas</span>
           </div>
-        )}
+          <div className={styles.alertList}>
+            <AlertSection row={{
+              label: 'Automáticas',
+              count: 0,
+              detail: 'Sin alertas automáticas en los próximos 2 días.',
+            }} />
+            <AlertSection row={{
+              label: 'Operaciones',
+              count: (data?.reservasHuerfanas ?? 0) + (data?.contratosSinMatricula ?? 0) + (data?.facturasBorrador ?? 0),
+              detail: (data?.reservasHuerfanas ?? 0) + (data?.contratosSinMatricula ?? 0) + (data?.facturasBorrador ?? 0) === 0 ? 'Sin incidencias operativas.' : undefined,
+              items: data?.facturasBorradorDetalle,
+            }} />
+            <AlertSection row={{
+              label: 'Riesgos operativos',
+              count: data?.gruposDeficit ?? 0,
+              detail: (data?.gruposDeficit ?? 0) === 0 ? 'Sin grupos en déficit.' : undefined,
+            }} />
+            <AlertSection row={{
+              label: 'Recogidas vencidas',
+              count: data?.recogidaVencidaCount ?? 0,
+              items: data?.recogidaVencidaDetalle,
+              detail: (data?.recogidaVencidaCount ?? 0) === 0 ? 'Sin recogidas vencidas.' : undefined,
+            }} />
+            <AlertSection row={{
+              label: 'Tareas de flota',
+              count: 0,
+              detail: 'Sin tareas de flota pendientes.',
+            }} />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Resumen mensual + Previsión ── */}
+      <div className={styles.mainRow}>
+
+        {/* Resumen mensual */}
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <span className={styles.cardTitle}>Resumen mensual</span>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div className={styles.tabPills}>
+                <button
+                  type="button"
+                  className={`${styles.pill} ${mensualTab === 'entregas' ? styles.pillActive : ''}`}
+                  onClick={() => setMensualTab('entregas')}
+                >Entregas</button>
+                <button
+                  type="button"
+                  className={`${styles.pill} ${mensualTab === 'reservas' ? styles.pillActive : ''}`}
+                  onClick={() => setMensualTab('reservas')}
+                >Reservas</button>
+              </div>
+              <span className={styles.yearLabel}>Año</span>
+              <input
+                type="number"
+                className={styles.yearInput}
+                value={pendingYear}
+                onChange={(e) => setPendingYear(Number(e.target.value))}
+                min={2020}
+                max={2099}
+              />
+              <button
+                type="button"
+                className={styles.applyBtn}
+                onClick={() => setMensualYear(pendingYear)}
+              >Aplicar</button>
+            </div>
+          </div>
+
+          <div className={styles.barChart}>
+            {MESES.map((mes, i) => (
+              <div key={mes} className={styles.barRow}>
+                <span className={styles.barLabel}>{mes}</span>
+                <HBar value={monthlyValues[i]} max={monthlyMax} />
+                <span className={styles.barValue}>{monthlyValues[i]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Previsión */}
+        <div className={`${styles.card} ${styles.previsionCard}`}>
+          <div className={styles.cardHeader}>
+            <span className={styles.cardTitle}>Previsión</span>
+          </div>
+
+          <div className={styles.previsionRange}>
+            <div className={styles.previsionField}>
+              <span className={styles.previsionFieldLabel}>Desde</span>
+              <input
+                type="date"
+                className={styles.dateInput}
+                value={prevFrom}
+                onChange={(e) => setPrevFrom(e.target.value)}
+              />
+            </div>
+            <div className={styles.previsionField}>
+              <span className={styles.previsionFieldLabel}>Hasta</span>
+              <input
+                type="date"
+                className={styles.dateInput}
+                value={prevTo}
+                onChange={(e) => setPrevTo(e.target.value)}
+              />
+            </div>
+            <button type="button" className={styles.applyBtn} onClick={applyPrevision}>
+              Aplicar
+            </button>
+          </div>
+
+          <div className={styles.saldoGlobal}>
+            <span>Saldo global</span>
+            <span className={prevSaldo >= 0 ? styles.saldoPos : styles.saldoNeg}>
+              {prevSaldo >= 0 ? `+${prevSaldo}` : prevSaldo}
+            </span>
+          </div>
+
+          <div className={styles.previsionList}>
+            {prevCats.length === 0 ? (
+              <div style={{ color: 'var(--color-text-muted)', fontSize: '0.82rem', padding: '16px 0' }}>
+                Sin categorías activas
+              </div>
+            ) : (
+              prevCats.map((cat) => (
+                <div key={cat.id} className={styles.previsionRow}>
+                  <span className={styles.previsionCode}>{cat.code}</span>
+                  <HBar value={Math.abs(cat.saldo)} max={prevMax} positive={cat.saldo >= 0} />
+                  <span className={`${styles.previsionSaldo} ${cat.saldo > 0 ? styles.saldoPos : cat.saldo < 0 ? styles.saldoNeg : styles.saldoZero}`}>
+                    {cat.saldo > 0 ? `+${cat.saldo}` : cat.saldo}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Accesos rápidos ── */}
+      <div className={styles.quickBar}>
+        {[
+          { label: 'Nueva reserva',  href: '/reservas?tab=nueva' },
+          { label: 'Nuevo contrato', href: '/contratos?tab=nueva' },
+          { label: 'Presupuesto',    href: '/reservas?tab=presupuesto' },
+          { label: 'Planning',       href: '/planning' },
+          { label: 'Gastos',         href: '/facturacion?tab=gastos' },
+        ].map((a) => (
+          <button
+            key={a.label}
+            type="button"
+            className={styles.quickBtn}
+            onClick={() => router.push(a.href)}
+          >
+            {a.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Footer ── */}
+      <div className={styles.footer}>
+        RentIQ: Software de gestión para Rent a Car
       </div>
     </div>
   );

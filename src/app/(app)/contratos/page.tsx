@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams, usePathname, useRouter as useNextRouter } from 'next/navigation';
 import type {
   Contract,
   ContractStatus,
@@ -9,6 +10,7 @@ import type {
   CompanyBranch,
 } from '@/src/lib/types';
 import ContratoDetail from './ContratoDetail';
+import GestionContratoTab from './GestionContratoTab';
 import styles from './contratos.module.css';
 
 type StoreData = {
@@ -46,7 +48,8 @@ const STATUS_BADGE: Record<ContractStatus, string> = {
   CANCELADO: 'badge-cancelada',
 };
 
-export default function ContratosPage() {
+function ContratosContent() {
+  const router = useNextRouter();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [storeData, setStoreData] = useState<StoreData>({
     clients: [],
@@ -142,6 +145,11 @@ export default function ContratosPage() {
             {contracts.length} contrato{contracts.length !== 1 ? 's' : ''} encontrado{contracts.length !== 1 ? 's' : ''}
           </p>
         </div>
+        {storeData.userRole !== 'LECTOR' && (
+          <button className="btn btn-primary" onClick={() => router.push('/contratos?tab=gestion')}>
+            + Nuevo contrato
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -285,5 +293,66 @@ export default function ContratosPage() {
         />
       )}
     </div>
+  );
+}
+
+// ─── Sub-tab wrapper ──────────────────────────────────────────────────────────
+
+const CONTRATOS_TABS = [
+  { key: 'gestion',   label: 'Gestión de contrato' },
+  { key: 'listado',   label: 'Localizar contrato' },
+  { key: 'matricula', label: 'Asignación matrícula' },
+  { key: 'cambio',    label: 'Cambio de vehículo' },
+  { key: 'renumerar', label: 'Renumerar' },
+  { key: 'historico', label: 'Histórico' },
+  { key: 'informes',  label: 'Informes' },
+];
+
+function ContratosTabNav({ active }: { active: string }) {
+  const router = useNextRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  function go(key: string) {
+    const p = new URLSearchParams(searchParams.toString());
+    p.set('tab', key);
+    router.push(`${pathname}?${p.toString()}`);
+  }
+
+  return (
+    <nav style={{ display: 'flex', flexWrap: 'wrap', gap: 2, padding: 4, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, marginBottom: 24 }}>
+      {CONTRATOS_TABS.map((t) => (
+        <button key={t.key} type="button" onClick={() => go(t.key)} style={{ flex: 1, textAlign: 'center', padding: '7px 8px', fontSize: '0.82rem', fontWeight: active === t.key ? 600 : 500, color: active === t.key ? 'var(--color-primary)' : 'var(--color-text-muted)', background: active === t.key ? 'var(--color-surface-strong)' : 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: 'Poppins, sans-serif', whiteSpace: 'nowrap' }}>
+          {t.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+function ContratosInner() {
+  const searchParams = useSearchParams();
+  const tab = searchParams.get('tab') ?? 'gestion';
+
+  return (
+    <div>
+      <ContratosTabNav active={tab} />
+      {tab === 'gestion' && <GestionContratoTab />}
+      {tab === 'listado' && <ContratosContent />}
+      {tab !== 'gestion' && tab !== 'listado' && (
+        <div className="empty-state" style={{ marginTop: 32 }}>
+          <div className="empty-state__icon">🚧</div>
+          <div className="empty-state__text">{CONTRATOS_TABS.find((t) => t.key === tab)?.label ?? tab} — Próximamente</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ContratosPage() {
+  return (
+    <Suspense>
+      <ContratosInner />
+    </Suspense>
   );
 }

@@ -59,7 +59,7 @@ export default function LoginPage() {
           />
           <div className={styles.logoFallback}>RentIQ</div>
         </div>
-        <p className={styles.subtitle}>Gestión de Flota</p>
+        <p className={styles.subtitle}>Gestión de Rent a Car</p>
 
         {error && (
           <div className={styles.error} role="alert">

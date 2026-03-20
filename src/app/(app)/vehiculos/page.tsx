@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import styles from './vehiculos.module.css';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -112,7 +113,7 @@ const blankExtra = (): Partial<VehicleExtra> => ({
 
 // ─── Component ─────────────────────────────────────────────────────────────
 
-export default function VehiculosPage() {
+function VehiculosContent() {
   const [activeTab, setActiveTab] = useState<Tab>('flota');
 
   // Data
@@ -1341,5 +1342,65 @@ export default function VehiculosPage() {
         </div>
       )}
     </>
+  );
+}
+
+// ─── Sub-tab wrapper ──────────────────────────────────────────────────────────
+
+const VEHICULOS_TABS = [
+  { key: 'flota',      label: 'Listados' },
+  { key: 'grupos',     label: 'Grupos' },
+  { key: 'modelos',    label: 'Modelos' },
+  { key: 'altasbajas', label: 'Altas/Bajas' },
+  { key: 'produccion', label: 'Producción' },
+  { key: 'extras',     label: 'Extras' },
+  { key: 'seguros',    label: 'Seguros' },
+];
+
+function VehiculosTabNav({ active }: { active: string }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  function go(key: string) {
+    const p = new URLSearchParams(searchParams.toString());
+    p.set('tab', key);
+    router.push(`${pathname}?${p.toString()}`);
+  }
+
+  return (
+    <nav style={{ display: 'flex', flexWrap: 'wrap', gap: 2, padding: 4, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, marginBottom: 24 }}>
+      {VEHICULOS_TABS.map((t) => (
+        <button key={t.key} type="button" onClick={() => go(t.key)} style={{ flex: 1, textAlign: 'center', padding: '7px 8px', fontSize: '0.82rem', fontWeight: active === t.key ? 600 : 500, color: active === t.key ? 'var(--color-primary)' : 'var(--color-text-muted)', background: active === t.key ? 'var(--color-surface-strong)' : 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: 'Poppins, sans-serif', whiteSpace: 'nowrap' }}>
+          {t.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+function VehiculosInner() {
+  const searchParams = useSearchParams();
+  const tab = searchParams.get('tab') ?? 'flota';
+
+  return (
+    <div>
+      <VehiculosTabNav active={tab} />
+      {tab === 'flota' && <VehiculosContent />}
+      {tab !== 'flota' && (
+        <div className="empty-state" style={{ marginTop: 32 }}>
+          <div className="empty-state__icon">🚧</div>
+          <div className="empty-state__text">{VEHICULOS_TABS.find((t) => t.key === tab)?.label ?? tab} — Próximamente</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function VehiculosPage() {
+  return (
+    <Suspense>
+      <VehiculosInner />
+    </Suspense>
   );
 }

@@ -1,3 +1,46 @@
+/* ─── Sub-tabs ─────────────────────────────────────────────────────────────── */
+
+.subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: 24px;
+}
+
+.subtab {
+  flex: 1;
+  padding: 7px 8px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.subtab:hover {
+  background: var(--color-bg-main);
+  color: var(--color-text-primary);
+}
+
+.subtabActive {
+  background: var(--color-surface-strong);
+  color: var(--color-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* ─── Table ─────────────────────────────────────────────────────────────────── */
+
 .number {
   font-family: 'Courier New', monospace;
   font-size: 0.8rem;

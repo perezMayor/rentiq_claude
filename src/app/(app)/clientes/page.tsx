@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import type { ClientType, ReservationStatus } from '@/src/lib/types';
 import styles from './clientes.module.css';
 
@@ -150,7 +151,7 @@ function reservationStatusBadge(r: ReservationSummary): string {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function ClientesPage() {
+function ClientesContent() {
   // Data
   const [clients, setClients] = useState<Client[]>([]);
   const [userRole, setUserRole] = useState<string>('');
@@ -831,5 +832,61 @@ export default function ClientesPage() {
         </div>
       )}
     </>
+  );
+}
+
+// ─── Sub-tab wrapper ──────────────────────────────────────────────────────────
+
+const CLIENTES_TABS = [
+  { key: 'listado',   label: 'Listados' },
+  { key: 'ficha',     label: 'Ficha de cliente' },
+  { key: 'historico', label: 'Históricos' },
+];
+
+function ClientesTabNav({ active }: { active: string }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  function go(key: string) {
+    const p = new URLSearchParams(searchParams.toString());
+    p.set('tab', key);
+    router.push(`${pathname}?${p.toString()}`);
+  }
+
+  return (
+    <nav style={{ display: 'flex', flexWrap: 'wrap', gap: 2, padding: 4, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, marginBottom: 24 }}>
+      {CLIENTES_TABS.map((t) => (
+        <button key={t.key} type="button" onClick={() => go(t.key)} style={{ flex: 1, textAlign: 'center', padding: '7px 8px', fontSize: '0.82rem', fontWeight: active === t.key ? 600 : 500, color: active === t.key ? 'var(--color-primary)' : 'var(--color-text-muted)', background: active === t.key ? 'var(--color-surface-strong)' : 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: 'Poppins, sans-serif', whiteSpace: 'nowrap' }}>
+          {t.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+function ClientesInner() {
+  const searchParams = useSearchParams();
+  const tab = searchParams.get('tab') ?? 'listado';
+
+  return (
+    <div>
+      <ClientesTabNav active={tab} />
+      {tab === 'listado' && <ClientesContent />}
+      {tab !== 'listado' && (
+        <div className="empty-state" style={{ marginTop: 32 }}>
+          <div className="empty-state__icon">🚧</div>
+          <div className="empty-state__text">{CLIENTES_TABS.find((t) => t.key === tab)?.label ?? tab} — Próximamente</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ClientesPage() {
+  return (
+    <Suspense>
+      <ClientesInner />
+    </Suspense>
   );
 }

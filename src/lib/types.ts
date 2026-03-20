@@ -244,7 +244,7 @@ export interface Contract {
   id: string;
   number: string;
   branchId: string;
-  reservationId: string;
+  reservationId?: string;
   clientId: string;
   plate: string;
   categoryId: string;
