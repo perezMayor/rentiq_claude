@@ -12,6 +12,8 @@ export async function GET(req: NextRequest) {
 
   // Year for monthly stats
   const year = parseInt(req.nextUrl.searchParams.get('year') ?? String(now.getFullYear()), 10);
+  const prevFrom = req.nextUrl.searchParams.get('from') ?? today;
+  const prevTo   = req.nextUrl.searchParams.get('to')   ?? today;
 
   const summary = withStore((store) => {
     const activeContracts = store.contracts.filter((c) => c.status === 'ABIERTO');
@@ -136,16 +138,22 @@ export async function GET(req: NextRequest) {
       ).length;
     });
 
-    // ─── Previsión por categoría (hoy por defecto) ────────────────────────────
+    // ─── Previsión por categoría (rango from/to) ─────────────────────────────
 
     const categorias = store.vehicleCategories
       .filter((c) => c.active)
       .map((cat) => {
         const catVehicles = activeVehicles.filter((v) => v.categoryId === cat.id);
         const total = catVehicles.length;
+        // Un vehículo está ocupado si tiene algún contrato (no cancelado) que
+        // solapa con el rango consultado: startDate <= prevTo && endDate >= prevFrom
         const ocupados = catVehicles.filter((v) =>
-          activeContracts.some(
-            (c) => c.plate === v.plate && c.startDate <= today && c.endDate >= today
+          store.contracts.some(
+            (c) =>
+              c.status !== 'CANCELADO' &&
+              c.plate === v.plate &&
+              c.startDate <= prevTo &&
+              c.endDate   >= prevFrom
           )
         ).length;
         return {
