@@ -192,13 +192,10 @@ export default function DashboardPage() {
           <div className={styles.agendaGrid}>
             <MiniKpi label="Reservas hoy"             value={data?.reservasHoy ?? '—'} />
             <MiniKpi label="Contratos abiertos"       value={data?.contratosAbiertos ?? '—'} />
-            <MiniKpi label="Reservas sin confirmar"   value={data?.reservasSinConfirmar ?? '—'}  highlight={(data?.reservasSinConfirmar ?? 0) > 0} />
-            <MiniKpi label="Reservas huérfanas"       value={data?.reservasHuerfanas ?? '—'}     highlight={(data?.reservasHuerfanas ?? 0) > 0} />
-            <MiniKpi label="Contratos sin matrícula"  value={data?.contratosSinMatricula ?? '—'} highlight={(data?.contratosSinMatricula ?? 0) > 0} />
-            <MiniKpi label="Sin contrato hoy"         value={data?.entregasHoySinContrato ?? '—'} highlight={(data?.entregasHoySinContrato ?? 0) > 0} />
+            <MiniKpi label="Flota activa"             value={data?.flotaActiva ?? '—'} />
             <MiniKpi label="Ocupación flota"          value={data ? `${data.ocupacionFlota}%` : '—'} />
             <MiniKpi label="Confirmación / petición"  value={data ? `${data.ratioConfirmacion}%` : '—'} />
-            <MiniKpi label="Movimientos próximas 24h" value={data?.movimientosPr24h ?? '—'} />
+            <MiniKpi label="Movimientos próx. 24h"    value={data?.movimientosPr24h ?? '—'} />
           </div>
 
           {/* DEMO — borrar cuando se confirme el diseño */}
@@ -261,21 +258,41 @@ export default function DashboardPage() {
               detail: 'Sin alertas automáticas en los próximos 2 días.',
             }} />
             <AlertSection row={{
-              label: 'Operaciones',
-              count: (data?.reservasHuerfanas ?? 0) + (data?.contratosSinMatricula ?? 0) + (data?.facturasBorrador ?? 0),
-              detail: (data?.reservasHuerfanas ?? 0) + (data?.contratosSinMatricula ?? 0) + (data?.facturasBorrador ?? 0) === 0 ? 'Sin incidencias operativas.' : undefined,
-              items: data?.facturasBorradorDetalle,
+              label: 'Reservas sin confirmar',
+              count: data?.reservasSinConfirmar ?? 0,
+              detail: (data?.reservasSinConfirmar ?? 0) === 0 ? 'Todas las reservas están confirmadas.' : undefined,
             }} />
             <AlertSection row={{
-              label: 'Riesgos operativos',
-              count: data?.gruposDeficit ?? 0,
-              detail: (data?.gruposDeficit ?? 0) === 0 ? 'Sin grupos en déficit.' : undefined,
+              label: 'Reservas huérfanas',
+              count: data?.reservasHuerfanas ?? 0,
+              detail: (data?.reservasHuerfanas ?? 0) === 0 ? 'Sin reservas sin contrato asociado.' : undefined,
+            }} />
+            <AlertSection row={{
+              label: 'Contratos sin matrícula',
+              count: data?.contratosSinMatricula ?? 0,
+              detail: (data?.contratosSinMatricula ?? 0) === 0 ? 'Todos los contratos tienen matrícula asignada.' : undefined,
+            }} />
+            <AlertSection row={{
+              label: 'Entregas sin contrato',
+              count: data?.entregasHoySinContrato ?? 0,
+              detail: (data?.entregasHoySinContrato ?? 0) === 0 ? 'Todas las entregas de hoy tienen contrato.' : undefined,
+            }} />
+            <AlertSection row={{
+              label: 'Facturas en borrador',
+              count: data?.facturasBorrador ?? 0,
+              detail: (data?.facturasBorrador ?? 0) === 0 ? 'Sin facturas pendientes de emitir.' : undefined,
+              items: data?.facturasBorradorDetalle,
             }} />
             <AlertSection row={{
               label: 'Recogidas vencidas',
               count: data?.recogidaVencidaCount ?? 0,
               items: data?.recogidaVencidaDetalle,
               detail: (data?.recogidaVencidaCount ?? 0) === 0 ? 'Sin recogidas vencidas.' : undefined,
+            }} />
+            <AlertSection row={{
+              label: 'Grupos en déficit',
+              count: data?.gruposDeficit ?? 0,
+              detail: (data?.gruposDeficit ?? 0) === 0 ? 'Sin grupos con déficit de flota.' : undefined,
             }} />
             <AlertSection row={{
               label: 'Tareas de flota',
