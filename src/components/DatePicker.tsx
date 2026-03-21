@@ -110,14 +110,16 @@ export default function DatePicker({
         tabIndex={disabled ? -1 : 0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openCalendar(); }}
       >
+        <span className={styles.iconWrap}>
+          <svg className={styles.icon} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="1" y="3" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.4"/>
+            <path d="M1 7h14" stroke="currentColor" strokeWidth="1.4"/>
+            <path d="M5 1v4M11 1v4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+          </svg>
+        </span>
         <span className={value ? styles.triggerText : styles.triggerPlaceholder}>
           {value ? display(value) : placeholder}
         </span>
-        <svg className={styles.icon} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="1" y="3" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.4"/>
-          <path d="M1 7h14" stroke="currentColor" strokeWidth="1.4"/>
-          <path d="M5 1v4M11 1v4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-        </svg>
       </div>
 
       {/* Calendar popup */}
