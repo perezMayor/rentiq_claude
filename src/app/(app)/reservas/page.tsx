@@ -105,11 +105,10 @@ function EntregasTab() {
   return (
     <div>
       <div className="filters-bar" style={{ marginBottom: 16 }}>
-        <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-          {contracts.length} entrega{contracts.length !== 1 ? 's' : ''} · {formatDate(selectedDate)}
-        </span>
         <DatePicker className="form-input" value={selectedDate} onChange={(v) => setSelectedDate(v)} style={{ width: 'auto' }} />
-        <button className="btn btn-ghost btn-sm" onClick={() => setSelectedDate(todayStr())}>Hoy</button>
+        <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+          {contracts.length} entrega{contracts.length !== 1 ? 's' : ''}
+        </span>
       </div>
       {error && <div className="alert alert-danger">{error}</div>}
       <div className="table-wrapper">
@@ -202,11 +201,10 @@ function RecogidasTab() {
   return (
     <div>
       <div className="filters-bar" style={{ marginBottom: 16 }}>
-        <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-          {contracts.length} recogida{contracts.length !== 1 ? 's' : ''} · hasta {formatDate(selectedDate)}
-        </span>
         <DatePicker className="form-input" value={selectedDate} onChange={(v) => setSelectedDate(v)} style={{ width: 'auto' }} />
-        <button className="btn btn-ghost btn-sm" onClick={() => setSelectedDate(todayStr())}>Hoy</button>
+        <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+          {contracts.length} recogida{contracts.length !== 1 ? 's' : ''}
+        </span>
       </div>
       {error && <div className="alert alert-danger">{error}</div>}
       <div className="table-wrapper">
