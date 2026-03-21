@@ -101,10 +101,11 @@ export default function DatePicker({
   for (let d = 1; d <= tail; d++)                cells.push({ day: d, current: false });
 
   return (
-    <div ref={containerRef} className={`${styles.wrap} ${className ?? ''}`} style={style}>
+    <div ref={containerRef} className={styles.wrap} style={{ width: style?.width ?? '100%', position: 'relative', display: 'inline-block' }}>
       {/* Trigger */}
       <div
-        className={`${styles.trigger} ${disabled ? styles.triggerDisabled : ''} ${open ? styles.triggerOpen : ''}`}
+        className={`${styles.trigger} ${disabled ? styles.triggerDisabled : ''} ${open ? styles.triggerOpen : ''} ${className ?? ''}`}
+        style={style}
         onClick={openCalendar}
         role="button"
         tabIndex={disabled ? -1 : 0}
