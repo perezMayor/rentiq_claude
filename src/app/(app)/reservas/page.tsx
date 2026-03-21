@@ -238,7 +238,7 @@ function EntregasTab() {
                   <td style={{ whiteSpace: 'nowrap' }}>{r.startTime || '—'}</td>
                   <td style={{ fontSize: '0.85rem', maxWidth: 180 }}>{r.pickupLocation || '—'}</td>
                   <td style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>{formatDate(r.endDate)} {r.endTime}</td>
-                  <td>{branchMap[r.branchId] ?? r.branchId || '—'}</td>
+                  <td>{branchMap[r.branchId] ?? (r.branchId || '—')}</td>
                   <td>
                     {r.contratada
                       ? <span className="badge badge-confirmada">Contratada</span>
