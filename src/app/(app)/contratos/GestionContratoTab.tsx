@@ -128,6 +128,7 @@ export default function GestionContratoTab() {
   const [catalogInsurances, setCatalogInsurances] = useState<VehicleInsurance[]>([]);
   const [formInsurances, setFormInsurances] = useState<FormInsurance[]>([]);
   const [conductores, setConductores] = useState<FormConductor[]>([]);
+  const [locations, setLocations] = useState<string[]>([]);
 
   const [form, setForm] = useState<FormState>(() => blankForm([], []));
   const [clientSearch, setClientSearch] = useState('');
@@ -140,13 +141,14 @@ export default function GestionContratoTab() {
 
   useEffect(() => {
     async function load() {
-      const [clientsRes, catRes, brRes, tarRes, extrasRes, segurosRes] = await Promise.all([
+      const [clientsRes, catRes, brRes, tarRes, extrasRes, segurosRes, locRes] = await Promise.all([
         fetch('/api/clientes'),
         fetch('/api/categorias'),
         fetch('/api/sucursales'),
         fetch('/api/tarifas').catch(() => null),
         fetch('/api/vehiculos/extras').catch(() => null),
         fetch('/api/vehiculos/seguros').catch(() => null),
+        fetch('/api/locations').catch(() => null),
       ]);
       const clientsData  = clientsRes.ok   ? (await clientsRes.json()).clients      ?? [] : [];
       const catData      = catRes.ok       ? (await catRes.json()).categories        ?? [] : [];
@@ -154,12 +156,14 @@ export default function GestionContratoTab() {
       const tarData      = tarRes?.ok      ? (await tarRes.json()).plans             ?? [] : [];
       const extrasData   = extrasRes?.ok   ? (await extrasRes.json()).extras         ?? [] : [];
       const segurosData  = segurosRes?.ok  ? (await segurosRes.json()).insurances    ?? [] : [];
+      const locData      = locRes?.ok      ? (await locRes.json()).locations         ?? [] : [];
       setClients(clientsData);
       setCategories(catData);
       setBranches(brData);
       setTariffs(tarData);
       setCatalogExtras(extrasData);
       setCatalogInsurances(segurosData);
+      setLocations(locData);
       setForm(blankForm(brData, catData));
     }
     load();
@@ -376,7 +380,8 @@ export default function GestionContratoTab() {
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Lugar entrega</label>
-                  <input className="form-input" value={form.pickupLocation} onChange={(e) => set('pickupLocation', e.target.value)} placeholder="Dirección o punto de entrega" />
+                  <input list="ctr-pickup-locations" className="form-input" value={form.pickupLocation} onChange={(e) => set('pickupLocation', e.target.value)} placeholder="Dirección o punto de entrega" />
+                  <datalist id="ctr-pickup-locations">{locations.map((l) => <option key={l} value={l} />)}</datalist>
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Fecha/hora entrega *</label>
@@ -397,7 +402,8 @@ export default function GestionContratoTab() {
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Lugar recogida</label>
-                  <input className="form-input" value={form.returnLocation} onChange={(e) => set('returnLocation', e.target.value)} placeholder="Dirección o punto de recogida" />
+                  <input list="ctr-return-locations" className="form-input" value={form.returnLocation} onChange={(e) => set('returnLocation', e.target.value)} placeholder="Dirección o punto de recogida" />
+                  <datalist id="ctr-return-locations">{locations.map((l) => <option key={l} value={l} />)}</datalist>
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Fecha/hora recogida *</label>
