@@ -30,7 +30,7 @@ export async function PUT(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { name, nif, address, phone, email, invoiceSeries, ivaPercent, defaultBranchId } = body as {
+    const { name, nif, address, phone, email, invoiceSeries, ivaPercent, defaultBranchId, deliveryLocations } = body as {
       name?: string;
       nif?: string;
       address?: string;
@@ -39,9 +39,11 @@ export async function PUT(req: NextRequest) {
       invoiceSeries?: string;
       ivaPercent?: number;
       defaultBranchId?: string;
+      deliveryLocations?: string[];
     };
 
     const updated = withStoreWrite((store) => {
+      if (!store.settings.deliveryLocations) store.settings.deliveryLocations = [];
       if (name) store.settings.name = name;
       if (nif) store.settings.nif = nif;
       if (address) store.settings.address = address;
@@ -58,6 +60,9 @@ export async function PUT(req: NextRequest) {
         const branch = store.branches.find((b) => b.id === defaultBranchId);
         if (!branch) throw new Error('Sucursal por defecto no existe');
         store.settings.defaultBranchId = defaultBranchId;
+      }
+      if (deliveryLocations !== undefined) {
+        store.settings.deliveryLocations = deliveryLocations.map((l) => l.trim()).filter(Boolean);
       }
       return { ...store.settings };
     });

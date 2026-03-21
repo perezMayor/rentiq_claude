@@ -16,6 +16,7 @@ export function createSeedStore(): RentalStore {
       defaultBranchId: 'branch-1',
       invoiceSeries: 'F',
       ivaPercent: 21,
+      deliveryLocations: [],
     },
     branches: [
       {

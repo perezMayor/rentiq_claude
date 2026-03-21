@@ -43,6 +43,7 @@ export interface CompanySettings {
   defaultBranchId: string;
   invoiceSeries: string;
   ivaPercent: number;
+  deliveryLocations: string[]; // lugares de entrega/recogida configurados
 }
 
 export interface WeeklySchedule {

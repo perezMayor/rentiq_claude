@@ -63,18 +63,41 @@ function TabNav({ active }: { active: string }) {
 
 // ─── Entregas sub-tab ─────────────────────────────────────────────────────────
 
+type EntregaFiltro = 'todas' | 'contratadas' | 'sin_matricula';
+
+interface EntregaRow {
+  id: string;
+  numero: string;
+  clientId: string;
+  plate: string;
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+  pickupLocation: string;
+  branchId: string;
+  contratada: boolean;   // tiene contrato
+  sinMatricula: boolean; // sin matrícula asignada
+}
+
 function EntregasTab() {
-  const [selectedDate, setSelectedDate] = useState(todayStr);
-  const [contracts, setContracts] = useState<Contract[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [branches, setBranches] = useState<CompanyBranch[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const today = todayStr();
+  const [dateFrom, setDateFrom]   = useState(today);
+  const [dateTo, setDateTo]       = useState(today);
+  const [filtro, setFiltro]       = useState<EntregaFiltro>('todas');
+  const [rows, setRows]               = useState<EntregaRow[]>([]);
+  const [clients, setClients]         = useState<Client[]>([]);
+  const [branches, setBranches]       = useState<CompanyBranch[]>([]);
+  const [locations, setLocations]     = useState<string[]>([]);
+  const [filterLocation, setFilterLocation] = useState('');
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState('');
 
   useEffect(() => {
-    Promise.all([fetch('/api/clientes'), fetch('/api/sucursales')]).then(async ([cr, br]) => {
+    Promise.all([fetch('/api/clientes'), fetch('/api/sucursales'), fetch('/api/locations')]).then(async ([cr, br, lr]) => {
       if (cr.ok) setClients((await cr.json()).clients ?? []);
       if (br.ok) setBranches((await br.json()).branches ?? []);
+      if (lr.ok) setLocations((await lr.json()).locations ?? []);
     }).catch(() => {});
   }, []);
 
@@ -83,12 +106,55 @@ function EntregasTab() {
       setLoading(true);
       setError('');
       try {
-        const params = new URLSearchParams({ status: 'ABIERTO', from: selectedDate, to: selectedDate });
-        const res = await fetch(`/api/contratos?${params}`);
-        if (!res.ok) throw new Error('Error al cargar contratos');
-        const data = await res.json();
-        setContracts((data.contracts ?? []).filter(
-          (c: Contract) => c.startDate === selectedDate && !c.checkout
+        // Contratos con salida en el rango (no cancelados)
+        const cp = new URLSearchParams({ from: dateFrom, to: dateTo });
+        const [contratosRes, reservasRes] = await Promise.all([
+          fetch(`/api/contratos?${cp}`),
+          fetch(`/api/reservas?startFrom=${dateFrom}&startTo=${dateTo}`),
+        ]);
+        if (!contratosRes.ok || !reservasRes.ok) throw new Error('Error al cargar datos');
+
+        const contratos: Contract[]    = ((await contratosRes.json()).contracts ?? [])
+          .filter((c: Contract) => c.status !== 'CANCELADO');
+        const reservas: Reservation[]  = ((await reservasRes.json()).reservations ?? [])
+          .filter((r: Reservation) => r.status !== 'CANCELADA' && !r.contractId);
+
+        const contratoIds = new Set(contratos.map((c) => c.reservationId).filter(Boolean));
+
+        const fromContratos: EntregaRow[] = contratos.map((c) => ({
+          id:            c.id,
+          numero:        c.number,
+          clientId:      c.clientId,
+          plate:         c.plate ?? '',
+          startDate:     c.startDate,
+          startTime:     c.startTime ?? '',
+          endDate:       c.endDate,
+          endTime:       c.endTime ?? '',
+          pickupLocation: c.pickupLocation ?? '',
+          branchId:      c.branchId,
+          contratada:    true,
+          sinMatricula:  !c.plate,
+        }));
+
+        const fromReservas: EntregaRow[] = reservas
+          .filter((r) => !contratoIds.has(r.id))
+          .map((r) => ({
+            id:            r.id,
+            numero:        r.number,
+            clientId:      r.clientId,
+            plate:         r.plate ?? '',
+            startDate:     r.startDate,
+            startTime:     r.startTime ?? '',
+            endDate:       r.endDate,
+            endTime:       r.endTime ?? '',
+            pickupLocation: r.pickupBranch ?? '',
+            branchId:      r.branchId ?? '',
+            contratada:    false,
+            sinMatricula:  true,
+          }));
+
+        setRows([...fromContratos, ...fromReservas].sort((a, b) =>
+          a.startDate.localeCompare(b.startDate) || a.startTime.localeCompare(b.startTime)
         ));
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Error desconocido');
@@ -97,50 +163,86 @@ function EntregasTab() {
       }
     }
     load();
-  }, [selectedDate]);
+  }, [dateFrom, dateTo]);
 
   const clientMap = Object.fromEntries(clients.map((c) => [c.id, `${c.name}${c.surname ? ' ' + c.surname : ''}`]));
   const branchMap = Object.fromEntries(branches.map((b) => [b.id, b.name]));
 
+  const filtered = rows.filter((r) => {
+    if (filtro === 'contratadas'   && !r.contratada)   return false;
+    if (filtro === 'sin_matricula' && !r.sinMatricula) return false;
+    if (filterLocation && r.pickupLocation !== filterLocation) return false;
+    return true;
+  });
+
+  const filterBtn = (key: EntregaFiltro, label: string) => (
+    <button
+      type="button"
+      className={`btn btn-sm ${filtro === key ? 'btn-primary' : 'btn-ghost'}`}
+      onClick={() => setFiltro(key)}
+    >{label}</button>
+  );
+
   return (
     <div>
       <div className="filters-bar" style={{ marginBottom: 16 }}>
-        <DatePicker className="form-input" value={selectedDate} onChange={(v) => setSelectedDate(v)} style={{ width: 'auto' }} />
-        <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-          {contracts.length} entrega{contracts.length !== 1 ? 's' : ''}
+        <DatePicker className="form-input" value={dateFrom} onChange={(v) => setDateFrom(v)} style={{ width: 'auto' }} />
+        <DatePicker className="form-input" value={dateTo}   onChange={(v) => setDateTo(v)}   style={{ width: 'auto' }} />
+        <div style={{ display: 'flex', gap: 4 }}>
+          {filterBtn('todas',        'Todas')}
+          {filterBtn('contratadas',  'Contratadas')}
+          {filterBtn('sin_matricula','Sin matrícula')}
+        </div>
+        {locations.length > 0 && (
+          <select className="form-select" value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ width: 'auto' }}>
+            <option value="">Todos los lugares</option>
+            {locations.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+        )}
+        <span style={{ marginLeft: 'auto', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+          {filtered.length} entrega{filtered.length !== 1 ? 's' : ''}
         </span>
       </div>
+
       {error && <div className="alert alert-danger">{error}</div>}
+
       <div className="table-wrapper">
         {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Cargando…</div>
-        ) : contracts.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state__icon">🚗</div>
-            <div className="empty-state__text">No hay entregas pendientes para esta fecha.</div>
+            <div className="empty-state__text">No hay entregas para el período seleccionado.</div>
           </div>
         ) : (
           <table className="data-table">
             <thead>
               <tr>
-                <th>Contrato</th><th>Cliente</th><th>Vehículo</th>
-                <th>Hora salida</th><th>Lugar entrega</th><th>Retorno</th><th>Sucursal</th><th>Estado</th>
+                <th>Nº</th><th>Cliente</th><th>Vehículo</th>
+                <th>Fecha</th><th>Hora</th><th>Lugar entrega</th>
+                <th>Retorno</th><th>Sucursal</th><th>Estado</th>
               </tr>
             </thead>
             <tbody>
-              {contracts.map((c) => (
-                <tr key={c.id}>
-                  <td style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{c.number}</td>
-                  <td>{clientMap[c.clientId] ?? c.clientId}</td>
-                  <td><strong style={{ fontFamily: 'monospace' }}>{c.plate}</strong></td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{c.startTime}</td>
-                  <td style={{ fontSize: '0.85rem', maxWidth: 200 }}>{c.pickupLocation}</td>
-                  <td style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>{formatDate(c.endDate)} {c.endTime}</td>
-                  <td>{branchMap[c.branchId] ?? c.branchId}</td>
+              {filtered.map((r) => (
+                <tr key={r.id}>
+                  <td style={{ fontWeight: 700, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>{r.numero}</td>
+                  <td>{clientMap[r.clientId] ?? r.clientId}</td>
                   <td>
-                    {c.checkout
-                      ? <span className="badge badge-cerrado">Checkout ✓</span>
-                      : <span className="badge badge-peticion">Pendiente</span>
+                    {r.plate
+                      ? <strong style={{ fontFamily: 'monospace' }}>{r.plate}</strong>
+                      : <span style={{ color: 'var(--color-danger)', fontSize: '0.8rem' }}>Sin asignar</span>
+                    }
+                  </td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{formatDate(r.startDate)}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{r.startTime || '—'}</td>
+                  <td style={{ fontSize: '0.85rem', maxWidth: 180 }}>{r.pickupLocation || '—'}</td>
+                  <td style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>{formatDate(r.endDate)} {r.endTime}</td>
+                  <td>{branchMap[r.branchId] ?? r.branchId || '—'}</td>
+                  <td>
+                    {r.contratada
+                      ? <span className="badge badge-confirmada">Contratada</span>
+                      : <span className="badge badge-peticion">Sin contrato</span>
                     }
                   </td>
                 </tr>
@@ -149,27 +251,32 @@ function EntregasTab() {
           </table>
         )}
       </div>
-      <div className="alert alert-info" style={{ marginTop: 16 }}>
-        El checkout se registra desde <strong>Contratos</strong>, abriendo el detalle del contrato.
-      </div>
     </div>
   );
 }
 
 // ─── Recogidas sub-tab ────────────────────────────────────────────────────────
 
+type RecogidaFiltro = 'todas' | 'vencidas' | 'sin_checkin';
+
 function RecogidasTab() {
-  const [selectedDate, setSelectedDate] = useState(todayStr);
-  const [contracts, setContracts] = useState<Contract[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [branches, setBranches] = useState<CompanyBranch[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const today                                     = todayStr();
+  const [dateFrom, setDateFrom]                   = useState(today);
+  const [dateTo, setDateTo]                       = useState(today);
+  const [filtro, setFiltro]                       = useState<RecogidaFiltro>('todas');
+  const [filterLocation, setFilterLocation]       = useState('');
+  const [contracts, setContracts]                 = useState<Contract[]>([]);
+  const [clients, setClients]                     = useState<Client[]>([]);
+  const [branches, setBranches]                   = useState<CompanyBranch[]>([]);
+  const [locations, setLocations]                 = useState<string[]>([]);
+  const [loading, setLoading]                     = useState(true);
+  const [error, setError]                         = useState('');
 
   useEffect(() => {
-    Promise.all([fetch('/api/clientes'), fetch('/api/sucursales')]).then(async ([cr, br]) => {
+    Promise.all([fetch('/api/clientes'), fetch('/api/sucursales'), fetch('/api/locations')]).then(async ([cr, br, lr]) => {
       if (cr.ok) setClients((await cr.json()).clients ?? []);
       if (br.ok) setBranches((await br.json()).branches ?? []);
+      if (lr.ok) setLocations((await lr.json()).locations ?? []);
     }).catch(() => {});
   }, []);
 
@@ -178,12 +285,13 @@ function RecogidasTab() {
       setLoading(true);
       setError('');
       try {
-        const params = new URLSearchParams({ status: 'ABIERTO', to: selectedDate });
+        // Contratos cuya devolución cae en el rango
+        const params = new URLSearchParams({ status: 'ABIERTO' });
         const res = await fetch(`/api/contratos?${params}`);
         if (!res.ok) throw new Error('Error al cargar contratos');
         const data = await res.json();
         setContracts((data.contracts ?? []).filter(
-          (c: Contract) => c.endDate <= selectedDate && c.checkout && !c.checkin
+          (c: Contract) => c.endDate >= dateFrom && c.endDate <= dateTo && c.checkout
         ));
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Error desconocido');
@@ -192,48 +300,76 @@ function RecogidasTab() {
       }
     }
     load();
-  }, [selectedDate]);
+  }, [dateFrom, dateTo]);
 
   const clientMap = Object.fromEntries(clients.map((c) => [c.id, `${c.name}${c.surname ? ' ' + c.surname : ''}`]));
   const branchMap = Object.fromEntries(branches.map((b) => [b.id, b.name]));
-  const today = todayStr();
+
+  const filtered = contracts.filter((c) => {
+    if (filtro === 'vencidas'   && !(c.endDate < today && !c.checkin)) return false;
+    if (filtro === 'sin_checkin' && c.checkin)                          return false;
+    if (filterLocation && c.returnLocation !== filterLocation)          return false;
+    return true;
+  });
+
+  const filterBtn = (key: RecogidaFiltro, label: string) => (
+    <button
+      type="button"
+      className={`btn btn-sm ${filtro === key ? 'btn-primary' : 'btn-ghost'}`}
+      onClick={() => setFiltro(key)}
+    >{label}</button>
+  );
 
   return (
     <div>
       <div className="filters-bar" style={{ marginBottom: 16 }}>
-        <DatePicker className="form-input" value={selectedDate} onChange={(v) => setSelectedDate(v)} style={{ width: 'auto' }} />
-        <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-          {contracts.length} recogida{contracts.length !== 1 ? 's' : ''}
+        <DatePicker className="form-input" value={dateFrom} onChange={(v) => setDateFrom(v)} style={{ width: 'auto' }} />
+        <DatePicker className="form-input" value={dateTo}   onChange={(v) => setDateTo(v)}   style={{ width: 'auto' }} />
+        <div style={{ display: 'flex', gap: 4 }}>
+          {filterBtn('todas',      'Todas')}
+          {filterBtn('sin_checkin','Sin checkin')}
+          {filterBtn('vencidas',   'Vencidas')}
+        </div>
+        {locations.length > 0 && (
+          <select className="form-select" value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ width: 'auto' }}>
+            <option value="">Todos los lugares</option>
+            {locations.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+        )}
+        <span style={{ marginLeft: 'auto', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+          {filtered.length} recogida{filtered.length !== 1 ? 's' : ''}
         </span>
       </div>
+
       {error && <div className="alert alert-danger">{error}</div>}
+
       <div className="table-wrapper">
         {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Cargando…</div>
-        ) : contracts.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state__icon">🔑</div>
-            <div className="empty-state__text">No hay recogidas pendientes hasta esta fecha.</div>
+            <div className="empty-state__text">No hay recogidas para el período seleccionado.</div>
           </div>
         ) : (
           <table className="data-table">
             <thead>
               <tr>
                 <th>Contrato</th><th>Cliente</th><th>Vehículo</th>
-                <th>Vencimiento</th><th>Lugar recogida</th><th>Sucursal</th><th>Estado</th>
+                <th>Fecha devolución</th><th>Hora</th><th>Lugar recogida</th><th>Sucursal</th><th>Estado</th>
               </tr>
             </thead>
             <tbody>
-              {contracts.map((c) => {
-                const isOverdue = c.endDate < today;
+              {filtered.map((c) => {
+                const isOverdue = c.endDate < today && !c.checkin;
                 return (
                   <tr key={c.id}>
-                    <td style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{c.number}</td>
+                    <td style={{ fontWeight: 700, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>{c.number}</td>
                     <td>{clientMap[c.clientId] ?? c.clientId}</td>
                     <td><strong style={{ fontFamily: 'monospace' }}>{c.plate}</strong></td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <span style={isOverdue ? { color: 'var(--color-danger)', fontWeight: 600 } : {}}>
-                        {formatDate(c.endDate)} {c.endTime}
+                        {formatDate(c.endDate)}
                       </span>
                       {isOverdue && (
                         <span style={{ marginLeft: 6, fontSize: '0.7rem', background: 'rgba(180,35,24,0.12)', color: 'var(--color-danger)', padding: '1px 6px', borderRadius: 10, fontWeight: 700 }}>
@@ -241,7 +377,8 @@ function RecogidasTab() {
                         </span>
                       )}
                     </td>
-                    <td style={{ fontSize: '0.85rem', maxWidth: 200 }}>{c.returnLocation}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{c.endTime || '—'}</td>
+                    <td style={{ fontSize: '0.85rem', maxWidth: 180 }}>{c.returnLocation || '—'}</td>
                     <td>{branchMap[c.branchId] ?? c.branchId}</td>
                     <td>
                       {c.checkin
@@ -255,9 +392,6 @@ function RecogidasTab() {
             </tbody>
           </table>
         )}
-      </div>
-      <div className="alert alert-info" style={{ marginTop: 16 }}>
-        El checkin se registra desde <strong>Contratos</strong>, abriendo el detalle del contrato.
       </div>
     </div>
   );
