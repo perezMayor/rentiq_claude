@@ -9,6 +9,7 @@ import type {
   CompanyBranch,
   Contract,
 } from '@/src/lib/types';
+import DatePicker from '@/src/components/DatePicker';
 import styles from './facturacion.module.css';
 
 const STATUS_LABELS: Record<InvoiceStatus, string> = {
@@ -199,21 +200,17 @@ function FacturacionContent() {
             ))}
           </select>
         )}
-        <input
-          type="date"
+        <DatePicker
           className="form-input"
           value={filterFrom}
-          onChange={(e) => setFilterFrom(e.target.value)}
+          onChange={(v) => setFilterFrom(v)}
           style={{ width: 'auto' }}
-          title="Fecha desde"
         />
-        <input
-          type="date"
+        <DatePicker
           className="form-input"
           value={filterTo}
-          onChange={(e) => setFilterTo(e.target.value)}
+          onChange={(v) => setFilterTo(v)}
           style={{ width: 'auto' }}
-          title="Fecha hasta"
         />
         <input
           type="search"

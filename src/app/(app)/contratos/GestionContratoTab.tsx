@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { Client, VehicleCategory, CompanyBranch, TariffPlan, FleetVehicle, VehicleExtra, VehicleInsurance } from '@/src/lib/types';
+import DatePicker from '@/src/components/DatePicker';
 import styles from '../reservas/gestion.module.css';
 import CrearClienteModal from '../reservas/CrearClienteModal';
 import ExtrasTabContent, { type FormExtra } from '../reservas/ExtrasTabContent';
@@ -380,7 +381,7 @@ export default function GestionContratoTab() {
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Fecha/hora entrega *</label>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <input type="date" className="form-input" value={form.startDate} onChange={(e) => set('startDate', e.target.value)} required style={{ flex: 1 }} />
+                    <DatePicker value={form.startDate} onChange={(v) => set('startDate', v)} style={{ flex: 1 }} />
                     <input type="time" className="form-input" value={form.startTime} onChange={(e) => set('startTime', e.target.value)} required style={{ width: 90 }} />
                   </div>
                 </div>
@@ -401,7 +402,7 @@ export default function GestionContratoTab() {
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Fecha/hora recogida *</label>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <input type="date" className="form-input" value={form.endDate} onChange={(e) => set('endDate', e.target.value)} required style={{ flex: 1 }} />
+                    <DatePicker value={form.endDate} onChange={(v) => set('endDate', v)} style={{ flex: 1 }} />
                     <input type="time" className="form-input" value={form.endTime} onChange={(e) => set('endTime', e.target.value)} required style={{ width: 90 }} />
                   </div>
                 </div>

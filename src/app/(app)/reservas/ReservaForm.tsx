@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { Reservation, Client, VehicleCategory, CompanyBranch } from '@/src/lib/types';
+import DatePicker from '@/src/components/DatePicker';
 
 interface Props {
   reservation: Reservation | null;
@@ -220,12 +221,10 @@ export default function ReservaForm({
               {/* Fecha entrada */}
               <div className="form-group">
                 <label className="form-label">Fecha entrada *</label>
-                <input
-                  type="date"
+                <DatePicker
                   className="form-input"
                   value={form.startDate}
-                  onChange={(e) => set('startDate', e.target.value)}
-                  required
+                  onChange={(v) => set('startDate', v)}
                 />
               </div>
 
@@ -244,12 +243,10 @@ export default function ReservaForm({
               {/* Fecha salida */}
               <div className="form-group">
                 <label className="form-label">Fecha salida *</label>
-                <input
-                  type="date"
+                <DatePicker
                   className="form-input"
                   value={form.endDate}
-                  onChange={(e) => set('endDate', e.target.value)}
-                  required
+                  onChange={(v) => set('endDate', v)}
                 />
               </div>
 

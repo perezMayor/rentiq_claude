@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import type { ClientType, ReservationStatus } from '@/src/lib/types';
+import DatePicker from '@/src/components/DatePicker';
 import styles from './clientes.module.css';
 
 // ─── Local types ─────────────────────────────────────────────────────────────
@@ -697,11 +698,10 @@ function ClientesContent() {
                 {/* License expiry */}
                 <div className="form-group">
                   <label className="form-label">Vencimiento licencia</label>
-                  <input
-                    type="date"
+                  <DatePicker
                     className="form-input"
                     value={form.licenseExpiry}
-                    onChange={(e) => setForm({ ...form, licenseExpiry: e.target.value })}
+                    onChange={(v) => setForm({ ...form, licenseExpiry: v })}
                   />
                 </div>
 

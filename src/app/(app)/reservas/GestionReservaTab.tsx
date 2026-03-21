@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { Client, VehicleCategory, CompanyBranch, TariffPlan, FleetVehicle, Reservation, ReservationStatus, VehicleExtra, VehicleInsurance } from '@/src/lib/types';
+import DatePicker from '@/src/components/DatePicker';
 import styles from './gestion.module.css';
 import CrearClienteModal from './CrearClienteModal';
 import ExtrasTabContent, { type FormExtra } from './ExtrasTabContent';
@@ -488,7 +489,7 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Fecha/hora entrega *</label>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <input type="date" className="form-input" value={form.startDate} onChange={(e) => { const d = e.target.value; setForm((p) => ({ ...p, startDate: d, billedDays: String(calcDays(d, p.endDate)) })); }} required style={{ flex: 1 }} />
+                    <DatePicker value={form.startDate} onChange={(d) => { setForm((p) => ({ ...p, startDate: d, billedDays: String(calcDays(d, p.endDate)) })); }} style={{ flex: 1 }} />
                     <input type="time" className="form-input" value={form.startTime} onChange={(e) => set('startTime', e.target.value)} required style={{ width: 90 }} />
                   </div>
                 </div>
@@ -511,7 +512,7 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Fecha/hora recogida *</label>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <input type="date" className="form-input" value={form.endDate} onChange={(e) => { const d = e.target.value; setForm((p) => ({ ...p, endDate: d, billedDays: String(calcDays(p.startDate, d)) })); }} required style={{ flex: 1 }} />
+                    <DatePicker value={form.endDate} onChange={(d) => { setForm((p) => ({ ...p, endDate: d, billedDays: String(calcDays(p.startDate, d)) })); }} style={{ flex: 1 }} />
                     <input type="time" className="form-input" value={form.endTime} onChange={(e) => set('endTime', e.target.value)} required style={{ width: 90 }} />
                   </div>
                 </div>

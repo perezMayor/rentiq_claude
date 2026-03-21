@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReservationStatus, VehicleBlock } from '@/src/lib/types';
+import DatePicker from '@/src/components/DatePicker';
 import styles from './planning.module.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -202,20 +203,18 @@ function BlockModal({ plate, initialDate, onClose, onCreated }: BlockModalProps)
             </div>
             <div className="form-group">
               <label className="form-label">Fecha inicio</label>
-              <input
-                type="date"
+              <DatePicker
                 className="form-input"
                 value={startDate}
-                onChange={(e) => { setStartDate(e.target.value); setConflicts(null); }}
+                onChange={(v) => { setStartDate(v); setConflicts(null); }}
               />
             </div>
             <div className="form-group">
               <label className="form-label">Fecha fin</label>
-              <input
-                type="date"
+              <DatePicker
                 className="form-input"
                 value={endDate}
-                onChange={(e) => { setEndDate(e.target.value); setConflicts(null); }}
+                onChange={(v) => { setEndDate(v); setConflicts(null); }}
               />
             </div>
             <div className="form-group col-span-2">
@@ -520,11 +519,10 @@ export default function PlanningPage() {
           ))}
         </div>
 
-        <input
-          type="date"
+        <DatePicker
           className={styles.dateInput}
           value={from}
-          onChange={(e) => setFrom(e.target.value)}
+          onChange={(v) => setFrom(v)}
         />
 
         <select

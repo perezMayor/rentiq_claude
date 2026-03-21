@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import DatePicker from '@/src/components/DatePicker';
 import styles from './dashboard.module.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -360,20 +361,18 @@ export default function DashboardPage() {
           <div className={styles.previsionRange}>
             <div className={styles.previsionField}>
               <span className={styles.previsionFieldLabel}>Desde</span>
-              <input
-                type="date"
+              <DatePicker
                 className={styles.dateInput}
                 value={prevFrom}
-                onChange={(e) => setPrevFrom(e.target.value)}
+                onChange={(v) => setPrevFrom(v)}
               />
             </div>
             <div className={styles.previsionField}>
               <span className={styles.previsionFieldLabel}>Hasta</span>
-              <input
-                type="date"
+              <DatePicker
                 className={styles.dateInput}
                 value={prevTo}
-                onChange={(e) => setPrevTo(e.target.value)}
+                onChange={(v) => setPrevTo(v)}
               />
             </div>
             <button type="button" className={styles.applyBtn} onClick={applyPrevision}>

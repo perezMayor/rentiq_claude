@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
+import DatePicker from '@/src/components/DatePicker';
 import styles from './vehiculos.module.css';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -1129,12 +1130,11 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Fecha de alta *</label>
-                  <input
-                    type="date"
+                  <DatePicker
                     className="form-input"
                     value={vehicleForm.activeFrom ?? ''}
-                    onChange={(e) =>
-                      setVehicleForm({ ...vehicleForm, activeFrom: e.target.value })
+                    onChange={(v) =>
+                      setVehicleForm({ ...vehicleForm, activeFrom: v })
                     }
                   />
                 </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { DailyExpense, ExpenseCategory, FleetVehicle } from '@/src/lib/types';
+import DatePicker from '@/src/components/DatePicker';
 import styles from './gastos.module.css';
 
 const CATEGORIES: ExpenseCategory[] = ['GASOLINA', 'PEAJE', 'COMIDA', 'PARKING', 'LAVADO', 'OTRO'];
@@ -155,11 +156,10 @@ function RegistrarTab({ vehicles, canWrite }: { vehicles: FleetVehicle[]; canWri
           <div className={styles.dateRow}>
             <div className="form-group" style={{ margin: 0 }}>
               <label className="form-label">Fecha</label>
-              <input
-                type="date"
+              <DatePicker
                 className="form-input"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(v) => setDate(v)}
                 style={{ width: 'auto' }}
               />
             </div>
@@ -445,8 +445,8 @@ function HistorialTab({ vehicles }: { vehicles: FleetVehicle[] }) {
 
       {/* Filters */}
       <div className="filters-bar">
-        <input type="date" className="form-input" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} style={{ width: 'auto' }} title="Desde" />
-        <input type="date" className="form-input" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} style={{ width: 'auto' }} title="Hasta" />
+        <DatePicker className="form-input" value={filterFrom} onChange={(v) => setFilterFrom(v)} style={{ width: 'auto' }} />
+        <DatePicker className="form-input" value={filterTo} onChange={(v) => setFilterTo(v)} style={{ width: 'auto' }} />
         <input type="text" className="form-input" value={filterPlate} onChange={(e) => setFilterPlate(e.target.value)} placeholder="Matrícula" style={{ width: 130 }} />
         <select className="form-select" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ width: 'auto' }}>
           <option value="">Todas las categorías</option>
@@ -522,7 +522,7 @@ function HistorialTab({ vehicles }: { vehicles: FleetVehicle[] }) {
               <div className={styles.editGrid}>
                 <div className="form-group">
                   <label className="form-label">Fecha *</label>
-                  <input type="date" className="form-input" value={String(editFields.date ?? '')} onChange={(e) => setEditFields((f) => ({ ...f, date: e.target.value }))} />
+                  <DatePicker className="form-input" value={String(editFields.date ?? '')} onChange={(v) => setEditFields((f) => ({ ...f, date: v }))} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Matrícula *</label>

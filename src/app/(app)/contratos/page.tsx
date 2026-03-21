@@ -9,6 +9,7 @@ import type {
   VehicleCategory,
   CompanyBranch,
 } from '@/src/lib/types';
+import DatePicker from '@/src/components/DatePicker';
 import ContratoDetail from './ContratoDetail';
 import GestionContratoTab from './GestionContratoTab';
 import styles from './contratos.module.css';
@@ -163,21 +164,17 @@ function ContratosContent() {
             ))}
           </select>
         )}
-        <input
-          type="date"
+        <DatePicker
           className="form-input"
           value={filterFrom}
-          onChange={(e) => setFilterFrom(e.target.value)}
+          onChange={(v) => setFilterFrom(v)}
           style={{ width: 'auto' }}
-          title="Fecha inicio desde"
         />
-        <input
-          type="date"
+        <DatePicker
           className="form-input"
           value={filterTo}
-          onChange={(e) => setFilterTo(e.target.value)}
+          onChange={(v) => setFilterTo(v)}
           style={{ width: 'auto' }}
-          title="Fecha inicio hasta"
         />
         <input
           type="search"

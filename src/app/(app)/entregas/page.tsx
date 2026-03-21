@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import type { Contract, Client, CompanyBranch } from '@/src/lib/types';
+import DatePicker from '@/src/components/DatePicker';
 
 function todayStr() {
   return new Date().toISOString().split('T')[0];
@@ -66,11 +67,10 @@ export default function EntregasPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input
-            type="date"
+          <DatePicker
             className="form-input"
             value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
+            onChange={(v) => setSelectedDate(v)}
             style={{ width: 'auto' }}
           />
           <button className="btn btn-ghost btn-sm" onClick={() => setSelectedDate(todayStr())}>

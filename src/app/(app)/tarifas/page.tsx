@@ -8,6 +8,7 @@ import type {
   VehicleCategory,
   PricingMode,
 } from '@/src/lib/types';
+import DatePicker from '@/src/components/DatePicker';
 import styles from './tarifas.module.css';
 
 const PRICING_MODE_LABELS: Record<PricingMode, string> = {
@@ -489,20 +490,18 @@ export default function TarifasPage() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Válido desde *</label>
-                  <input
-                    type="date"
+                  <DatePicker
                     className="form-input"
                     value={planEdit.validFrom ?? ''}
-                    onChange={(e) => setPlanEdit((p) => ({ ...p, validFrom: e.target.value }))}
+                    onChange={(v) => setPlanEdit((p) => ({ ...p, validFrom: v }))}
                   />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Válido hasta *</label>
-                  <input
-                    type="date"
+                  <DatePicker
                     className="form-input"
                     value={planEdit.validTo ?? ''}
-                    onChange={(e) => setPlanEdit((p) => ({ ...p, validTo: e.target.value }))}
+                    onChange={(v) => setPlanEdit((p) => ({ ...p, validTo: v }))}
                   />
                 </div>
               </div>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { Client } from '@/src/lib/types';
+import DatePicker from '@/src/components/DatePicker';
 import ClientAutocompleteInput from './ClientAutocompleteInput';
 import styles from './gestion.module.css';
 
@@ -113,21 +114,19 @@ export default function ConductoresTabContent({ clients, conductores, onChange }
 
         <div className="form-group" style={{ margin: 0, width: 120 }}>
           <label className="form-label">Cad. carnet</label>
-          <input
+          <DatePicker
             className="form-input"
-            type="date"
             value={draft.licenciaExpiry}
-            onChange={(e) => setDraft({ ...draft, licenciaExpiry: e.target.value })}
+            onChange={(v) => setDraft({ ...draft, licenciaExpiry: v })}
           />
         </div>
 
         <div className="form-group" style={{ margin: 0, width: 120 }}>
           <label className="form-label">F. nacimiento</label>
-          <input
+          <DatePicker
             className="form-input"
-            type="date"
             value={draft.fechaNacimiento}
-            onChange={(e) => setDraft({ ...draft, fechaNacimiento: e.target.value })}
+            onChange={(v) => setDraft({ ...draft, fechaNacimiento: v })}
           />
         </div>
 

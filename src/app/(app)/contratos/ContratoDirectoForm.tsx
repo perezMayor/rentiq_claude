@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { Client, VehicleCategory, CompanyBranch } from '@/src/lib/types';
+import DatePicker from '@/src/components/DatePicker';
 
 interface Props {
   clients: Client[];
@@ -167,7 +168,7 @@ export default function ContratoDirectoForm({ clients, categories, branches, onC
               {/* Fecha entrada */}
               <div className="form-group">
                 <label className="form-label">Fecha entrada *</label>
-                <input type="date" className="form-input" value={form.startDate} onChange={(e) => set('startDate', e.target.value)} required />
+                <DatePicker className="form-input" value={form.startDate} onChange={(v) => set('startDate', v)} />
               </div>
 
               {/* Hora entrada */}
@@ -179,7 +180,7 @@ export default function ContratoDirectoForm({ clients, categories, branches, onC
               {/* Fecha salida */}
               <div className="form-group">
                 <label className="form-label">Fecha salida *</label>
-                <input type="date" className="form-input" value={form.endDate} onChange={(e) => set('endDate', e.target.value)} required />
+                <DatePicker className="form-input" value={form.endDate} onChange={(v) => set('endDate', v)} />
               </div>
 
               {/* Hora salida */}

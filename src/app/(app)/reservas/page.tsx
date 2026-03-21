@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import type { Reservation, Client, VehicleCategory, CompanyBranch, ReservationStatus, Contract } from '@/src/lib/types';
+import DatePicker from '@/src/components/DatePicker';
 import ReservaForm from './ReservaForm';
 import GestionReservaTab from './GestionReservaTab';
 import styles from './reservas.module.css';
@@ -107,7 +108,7 @@ function EntregasTab() {
         <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
           {contracts.length} entrega{contracts.length !== 1 ? 's' : ''} · {formatDate(selectedDate)}
         </span>
-        <input type="date" className="form-input" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{ width: 'auto' }} />
+        <DatePicker className="form-input" value={selectedDate} onChange={(v) => setSelectedDate(v)} style={{ width: 'auto' }} />
         <button className="btn btn-ghost btn-sm" onClick={() => setSelectedDate(todayStr())}>Hoy</button>
       </div>
       {error && <div className="alert alert-danger">{error}</div>}
@@ -204,7 +205,7 @@ function RecogidasTab() {
         <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
           {contracts.length} recogida{contracts.length !== 1 ? 's' : ''} · hasta {formatDate(selectedDate)}
         </span>
-        <input type="date" className="form-input" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{ width: 'auto' }} />
+        <DatePicker className="form-input" value={selectedDate} onChange={(v) => setSelectedDate(v)} style={{ width: 'auto' }} />
         <button className="btn btn-ghost btn-sm" onClick={() => setSelectedDate(todayStr())}>Hoy</button>
       </div>
       {error && <div className="alert alert-danger">{error}</div>}
@@ -394,8 +395,8 @@ function ListadoTab() {
             {storeData.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         )}
-        <input type="date" className="form-input" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} style={{ width: 'auto' }} title="Fecha desde" />
-        <input type="date" className="form-input" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} style={{ width: 'auto' }} title="Fecha hasta" />
+        <DatePicker className="form-input" value={filterFrom} onChange={(v) => setFilterFrom(v)} style={{ width: 'auto' }} />
+        <DatePicker className="form-input" value={filterTo} onChange={(v) => setFilterTo(v)} style={{ width: 'auto' }} />
         <input type="search" className="form-input" value={filterSearch} onChange={(e) => setFilterSearch(e.target.value)} placeholder="Buscar número, matrícula…" style={{ minWidth: 200 }} />
         <button className="btn btn-ghost btn-sm" onClick={loadReservations}>Actualizar</button>
         <span style={{ marginLeft: 'auto', fontSize: '0.82rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
