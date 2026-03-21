@@ -154,17 +154,6 @@ function FacturacionContent() {
 
   return (
     <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Facturación</h1>
-          <p className="page-subtitle">
-            {invoices.length} factura{invoices.length !== 1 ? 's' : ''} ·{' '}
-            {totalBorradores > 0 && `${totalBorradores} borrador${totalBorradores !== 1 ? 'es' : ''} · `}
-            Total: {sumTotal.toFixed(2)} €
-          </p>
-        </div>
-      </div>
-
       {/* KPI */}
       <div className="kpi-grid" style={{ marginBottom: 24 }}>
         <div className="kpi-card">
@@ -499,6 +488,12 @@ function FacturacionInner() {
 
   return (
     <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Facturación</h1>
+          <p className="page-subtitle">{FACTURACION_TABS.find((t) => t.key === tab)?.label ?? tab}</p>
+        </div>
+      </div>
       <FacturacionTabNav active={tab} />
       {tab === 'diario' && <FacturacionContent />}
       {tab !== 'diario' && (

@@ -49,7 +49,6 @@ const STATUS_BADGE: Record<ContractStatus, string> = {
 };
 
 function ContratosContent() {
-  const router = useNextRouter();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [storeData, setStoreData] = useState<StoreData>({
     clients: [],
@@ -138,20 +137,6 @@ function ContratosContent() {
 
   return (
     <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Contratos</h1>
-          <p className="page-subtitle">
-            {contracts.length} contrato{contracts.length !== 1 ? 's' : ''} encontrado{contracts.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-        {storeData.userRole !== 'LECTOR' && (
-          <button className="btn btn-primary" onClick={() => router.push('/contratos?tab=gestion')}>
-            + Nuevo contrato
-          </button>
-        )}
-      </div>
-
       {/* Filters */}
       <div className="filters-bar">
         <select
@@ -205,6 +190,9 @@ function ContratosContent() {
         <button className="btn btn-ghost btn-sm" onClick={loadContracts}>
           Actualizar
         </button>
+        <span style={{ marginLeft: 'auto', fontSize: '0.82rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+          {contracts.length} contrato{contracts.length !== 1 ? 's' : ''}
+        </span>
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
@@ -336,6 +324,12 @@ function ContratosInner() {
 
   return (
     <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Contratos</h1>
+          <p className="page-subtitle">{CONTRATOS_TABS.find((t) => t.key === tab)?.label ?? tab}</p>
+        </div>
+      </div>
       <ContratosTabNav active={tab} />
       {tab === 'gestion' && <GestionContratoTab />}
       {tab === 'listado' && <ContratosContent />}

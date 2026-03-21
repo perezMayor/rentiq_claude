@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
   const plate = url.searchParams.get('plate');
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
+  const activeOn = url.searchParams.get('activeOn');
   const search = url.searchParams.get('search')?.toLowerCase();
 
   const data = withStore((store) => {
@@ -40,6 +41,9 @@ export async function GET(req: NextRequest) {
     }
     if (to) {
       list = list.filter((c) => c.startDate <= to);
+    }
+    if (activeOn) {
+      list = list.filter((c) => c.startDate <= activeOn && c.endDate >= activeOn && !!c.plate);
     }
     if (search) {
       const clientMap = Object.fromEntries(

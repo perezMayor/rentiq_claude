@@ -103,17 +103,12 @@ function EntregasTab() {
 
   return (
     <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Entregas</h1>
-          <p className="page-subtitle">
-            {contracts.length} entrega{contracts.length !== 1 ? 's' : ''} pendiente{contracts.length !== 1 ? 's' : ''} · {formatDate(selectedDate)}
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input type="date" className="form-input" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{ width: 'auto' }} />
-          <button className="btn btn-ghost btn-sm" onClick={() => setSelectedDate(todayStr())}>Hoy</button>
-        </div>
+      <div className="filters-bar" style={{ marginBottom: 16 }}>
+        <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+          {contracts.length} entrega{contracts.length !== 1 ? 's' : ''} · {formatDate(selectedDate)}
+        </span>
+        <input type="date" className="form-input" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{ width: 'auto' }} />
+        <button className="btn btn-ghost btn-sm" onClick={() => setSelectedDate(todayStr())}>Hoy</button>
       </div>
       {error && <div className="alert alert-danger">{error}</div>}
       <div className="table-wrapper">
@@ -205,17 +200,12 @@ function RecogidasTab() {
 
   return (
     <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Recogidas</h1>
-          <p className="page-subtitle">
-            {contracts.length} recogida{contracts.length !== 1 ? 's' : ''} pendiente{contracts.length !== 1 ? 's' : ''} · hasta {formatDate(selectedDate)}
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input type="date" className="form-input" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{ width: 'auto' }} />
-          <button className="btn btn-ghost btn-sm" onClick={() => setSelectedDate(todayStr())}>Hoy</button>
-        </div>
+      <div className="filters-bar" style={{ marginBottom: 16 }}>
+        <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+          {contracts.length} recogida{contracts.length !== 1 ? 's' : ''} · hasta {formatDate(selectedDate)}
+        </span>
+        <input type="date" className="form-input" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{ width: 'auto' }} />
+        <button className="btn btn-ghost btn-sm" onClick={() => setSelectedDate(todayStr())}>Hoy</button>
       </div>
       {error && <div className="alert alert-danger">{error}</div>}
       <div className="table-wrapper">
@@ -391,18 +381,6 @@ function ListadoTab() {
 
   return (
     <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Reservas</h1>
-          <p className="page-subtitle">{reservations.length} reserva{reservations.length !== 1 ? 's' : ''} encontrada{reservations.length !== 1 ? 's' : ''}</p>
-        </div>
-        {canWrite && (
-          <button className="btn btn-primary" onClick={() => router.push(`${pathname}?tab=gestion`)}>
-            + Nueva Reserva
-          </button>
-        )}
-      </div>
-
       <div className="filters-bar">
         <select className="form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ width: 'auto' }}>
           <option value="">Todos los estados</option>
@@ -420,6 +398,14 @@ function ListadoTab() {
         <input type="date" className="form-input" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} style={{ width: 'auto' }} title="Fecha hasta" />
         <input type="search" className="form-input" value={filterSearch} onChange={(e) => setFilterSearch(e.target.value)} placeholder="Buscar número, matrícula…" style={{ minWidth: 200 }} />
         <button className="btn btn-ghost btn-sm" onClick={loadReservations}>Actualizar</button>
+        <span style={{ marginLeft: 'auto', fontSize: '0.82rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+          {reservations.length} reserva{reservations.length !== 1 ? 's' : ''}
+        </span>
+        {canWrite && (
+          <button className="btn btn-primary btn-sm" onClick={() => router.push(`${pathname}?tab=gestion`)}>
+            + Nueva Reserva
+          </button>
+        )}
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
@@ -506,6 +492,12 @@ function ReservasPageInner() {
 
   return (
     <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Reservas</h1>
+          <p className="page-subtitle">{TABS.find((t) => t.key === tab)?.label ?? tab}</p>
+        </div>
+      </div>
       <TabNav active={tab} />
       {tab === 'gestion'     && <GestionReservaTab reservationId={reservationId} />}
       {tab === 'entregas'    && <EntregasTab />}

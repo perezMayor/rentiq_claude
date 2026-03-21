@@ -204,6 +204,7 @@ export function createSeedStore(): RentalStore {
         createdAt: NOW,
       },
     ],
+    vehicleInsurances: [],
     vehicleTasks: [],
     reservations: [],
     contracts: [],

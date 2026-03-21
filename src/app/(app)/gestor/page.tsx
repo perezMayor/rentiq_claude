@@ -271,13 +271,6 @@ function GestorContent() {
 
   return (
     <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Gestor</h1>
-          <p className="page-subtitle">Administración del sistema</p>
-        </div>
-      </div>
-
       {/* Tabs */}
       <div className={styles.tabs}>
         {(['usuarios', 'sucursales', 'empresa'] as Tab[]).map((t) => (
@@ -725,6 +718,12 @@ function GestorInner() {
 
   return (
     <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Gestor</h1>
+          <p className="page-subtitle">{GESTOR_TABS.find((t) => t.key === tab)?.label ?? tab}</p>
+        </div>
+      </div>
       <GestorTabNav active={tab} />
       {tab === 'gestion' && <GestorContent />}
       {tab !== 'gestion' && (

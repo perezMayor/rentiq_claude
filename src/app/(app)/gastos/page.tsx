@@ -4,27 +4,22 @@ import { useState, useEffect, useCallback } from 'react';
 import type { DailyExpense, ExpenseCategory, FleetVehicle } from '@/src/lib/types';
 import styles from './gastos.module.css';
 
-const CATEGORIES: ExpenseCategory[] = ['PEAJE', 'GASOLINA', 'COMIDA', 'PARKING', 'LAVADO', 'OTRO'];
+const CATEGORIES: ExpenseCategory[] = ['GASOLINA', 'PEAJE', 'COMIDA', 'PARKING', 'LAVADO', 'OTRO'];
 const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
-  PEAJE: 'Peaje',
   GASOLINA: 'Gasolina',
+  PEAJE: 'Peaje',
   COMIDA: 'Comida',
   PARKING: 'Parking',
   LAVADO: 'Lavado',
   OTRO: 'Otro',
 };
 
-type ExpenseItem = {
-  plate: string;
-  category: ExpenseCategory;
-  amount: string;
-  worker: string;
-  notes: string;
-};
-
-function emptyItem(): ExpenseItem {
-  return { plate: '', category: 'PEAJE', amount: '', worker: '', notes: '' };
+type CategoryAmounts = Record<ExpenseCategory, string>;
+function emptyAmounts(): CategoryAmounts {
+  return { GASOLINA: '', PEAJE: '', COMIDA: '', PARKING: '', LAVADO: '', OTRO: '' };
 }
+
+function todayStr() { return new Date().toISOString().split('T')[0]; }
 
 function formatDate(d: string): string {
   if (!d) return '—';
@@ -32,32 +27,330 @@ function formatDate(d: string): string {
   return `${day}/${m}/${y}`;
 }
 
-function todayStr(): string {
-  return new Date().toISOString().split('T')[0];
+// ─── Registrar Tab ────────────────────────────────────────────────────────────
+
+function RegistrarTab({ vehicles, canWrite }: { vehicles: FleetVehicle[]; canWrite: boolean }) {
+  const [date, setDate] = useState(todayStr);
+  const [activePlates, setActivePlates] = useState<string[]>([]);
+  const [loadingPlates, setLoadingPlates] = useState(false);
+  const [platesLoaded, setPlatesLoaded] = useState(false);
+  const [amounts, setAmounts] = useState<CategoryAmounts>(emptyAmounts);
+  const [worker, setWorker] = useState('');
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+  const [manualPlate, setManualPlate] = useState('');
+
+  // When date changes, reset plates
+  useEffect(() => {
+    setPlatesLoaded(false);
+    setActivePlates([]);
+  }, [date]);
+
+  async function loadActivePlates() {
+    if (!date) return;
+    setLoadingPlates(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/contratos?activeOn=${date}&status=ABIERTO`);
+      if (!res.ok) throw new Error('Error al cargar contratos');
+      const data = await res.json();
+      const plates = [
+        ...new Set(
+          (data.contracts ?? [])
+            .filter((c: { plate?: string }) => c.plate)
+            .map((c: { plate: string }) => c.plate as string)
+        ),
+      ] as string[];
+      setActivePlates(plates);
+      setPlatesLoaded(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al cargar');
+    } finally {
+      setLoadingPlates(false);
+    }
+  }
+
+  function removePlate(plate: string) {
+    setActivePlates((prev) => prev.filter((p) => p !== plate));
+  }
+
+  function addManualPlate() {
+    const p = manualPlate.trim().toUpperCase();
+    if (!p || activePlates.includes(p)) { setManualPlate(''); return; }
+    setActivePlates((prev) => [...prev, p]);
+    setManualPlate('');
+  }
+
+  const total = CATEGORIES.reduce((s, cat) => s + (parseFloat(amounts[cat]) || 0), 0);
+  const perVehicle = activePlates.length > 0 ? total / activePlates.length : 0;
+  const perVehicleByCat = (cat: ExpenseCategory) => {
+    const catTotal = parseFloat(amounts[cat]) || 0;
+    return activePlates.length > 0 ? catTotal / activePlates.length : 0;
+  };
+
+  async function handleSubmit() {
+    setError('');
+    if (!activePlates.length) { setError('No hay vehículos seleccionados para ese día.'); return; }
+    if (total <= 0) { setError('Introduce al menos un importe mayor que 0.'); return; }
+
+    setSaving(true);
+    try {
+      const items: { plate: string; category: ExpenseCategory; amount: number; worker?: string; notes?: string }[] = [];
+      for (const plate of activePlates) {
+        for (const cat of CATEGORIES) {
+          const catTotal = parseFloat(amounts[cat]) || 0;
+          if (catTotal <= 0) continue;
+          items.push({
+            plate,
+            category: cat,
+            amount: Math.round((catTotal / activePlates.length) * 100) / 100,
+            worker: worker.trim() || undefined,
+            notes: notes.trim() || undefined,
+          });
+        }
+      }
+
+      const res = await fetch('/api/gastos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, items }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error ?? 'Error al guardar');
+      }
+      setSaved(true);
+      setAmounts(emptyAmounts());
+      setWorker('');
+      setNotes('');
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error desconocido');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const allVehiclePlates = vehicles.map((v) => v.plate).filter((p) => !activePlates.includes(p));
+
+  if (!canWrite) {
+    return (
+      <div className="empty-state">
+        <div className="empty-state__text">Sin permisos para registrar gastos.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {error  && <div className="alert alert-danger">{error}</div>}
+      {saved  && <div className="alert alert-success">Gastos registrados y repartidos entre {activePlates.length} vehículo{activePlates.length !== 1 ? 's' : ''}.</div>}
+
+      {/* ── Fecha + cargar ── */}
+      <div className={styles.regCard}>
+        <div className={styles.regCardHeader}>1. Fecha del día</div>
+        <div className={styles.regCardBody}>
+          <div className={styles.dateRow}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Fecha</label>
+              <input
+                type="date"
+                className="form-input"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                style={{ width: 'auto' }}
+              />
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={loadActivePlates}
+              disabled={loadingPlates || !date}
+            >
+              {loadingPlates ? 'Cargando…' : 'Cargar vehículos activos'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Vehículos ── */}
+      <div className={styles.regCard}>
+        <div className={styles.regCardHeader}>2. Vehículos activos ese día</div>
+        <div className={styles.regCardBody}>
+          {!platesLoaded && !loadingPlates && (
+            <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', margin: 0 }}>
+              Selecciona una fecha y pulsa <em>Cargar vehículos activos</em> para detectar los contratos abiertos.
+            </p>
+          )}
+
+          {platesLoaded && (
+            <div className={styles.platesSection}>
+              <div className={styles.platesLabel}>
+                {activePlates.length > 0
+                  ? `${activePlates.length} vehículo${activePlates.length !== 1 ? 's' : ''} — los gastos se repartirán entre todos`
+                  : 'No se encontraron contratos abiertos con matrícula asignada para esa fecha'}
+              </div>
+              <div className={styles.platesRow}>
+                {activePlates.length === 0 && (
+                  <span className={styles.noPlates}>Sin vehículos activos</span>
+                )}
+                {activePlates.map((plate) => (
+                  <span key={plate} className={styles.plateBadge}>
+                    {plate}
+                    <button
+                      type="button"
+                      className={styles.plateBadgeRemove}
+                      onClick={() => removePlate(plate)}
+                      title="Quitar"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Manual plate addition */}
+          <div className={styles.platesManual}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>Añadir manualmente:</span>
+            <select
+              className="form-select"
+              value={manualPlate}
+              onChange={(e) => setManualPlate(e.target.value)}
+              style={{ width: 'auto', minWidth: 140 }}
+            >
+              <option value="">— Matrícula —</option>
+              {allVehiclePlates.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={addManualPlate}
+              disabled={!manualPlate}
+            >
+              + Añadir
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Importes por categoría ── */}
+      <div className={styles.regCard}>
+        <div className={styles.regCardHeader}>
+          3. Importes del día
+          {activePlates.length > 0 && (
+            <span style={{ fontWeight: 400, textTransform: 'none', marginLeft: 8, color: 'var(--color-text-muted)' }}>
+              — se dividirán entre {activePlates.length} vehículo{activePlates.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+        <div className={styles.regCardBody} style={{ padding: 0 }}>
+          <table className={styles.catTable}>
+            <thead>
+              <tr>
+                <th>Categoría</th>
+                <th>Total del día</th>
+                <th>Por vehículo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {CATEGORIES.map((cat) => (
+                <tr key={cat}>
+                  <td>
+                    <span className={`${styles.categoryBadge} ${styles[`cat-${cat}` as keyof typeof styles]}`}>
+                      {CATEGORY_LABELS[cat]}
+                    </span>
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      className={styles.catAmountInput}
+                      min={0}
+                      step="0.01"
+                      placeholder="0.00"
+                      value={amounts[cat]}
+                      onChange={(e) => setAmounts((prev) => ({ ...prev, [cat]: e.target.value }))}
+                    />
+                    {' '}€
+                  </td>
+                  <td>
+                    {activePlates.length > 0 && (parseFloat(amounts[cat]) || 0) > 0
+                      ? `${perVehicleByCat(cat).toFixed(2)} €`
+                      : '—'}
+                  </td>
+                </tr>
+              ))}
+              <tr className={styles.catTableTotal}>
+                <td>Total</td>
+                <td>{total.toFixed(2)} €</td>
+                <td>
+                  {activePlates.length > 0 && total > 0 ? `${perVehicle.toFixed(2)} €` : '—'}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── Trabajador + notas ── */}
+      <div className={styles.regCard}>
+        <div className={styles.regCardHeader}>4. Datos opcionales</div>
+        <div className={styles.regCardBody}>
+          <div className={styles.metaRow}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Trabajador</label>
+              <input
+                className="form-input"
+                value={worker}
+                onChange={(e) => setWorker(e.target.value)}
+                placeholder="Nombre del trabajador"
+              />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Notas</label>
+              <input
+                className="form-input"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Observaciones del día…"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.regActions}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={handleSubmit}
+          disabled={saving || activePlates.length === 0 || total <= 0}
+        >
+          {saving ? 'Guardando…' : 'Guardar gastos del día'}
+        </button>
+      </div>
+    </div>
+  );
 }
 
-export default function GastosPage() {
+// ─── Historial Tab ────────────────────────────────────────────────────────────
+
+function HistorialTab({ vehicles }: { vehicles: FleetVehicle[] }) {
   const [expenses, setExpenses] = useState<DailyExpense[]>([]);
-  const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [userRole, setUserRole] = useState('');
 
-  // Filters
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
   const [filterPlate, setFilterPlate] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
-  const [filterWorker, setFilterWorker] = useState('');
 
-  // Batch form
-  const [showBatchForm, setShowBatchForm] = useState(false);
-  const [batchDate, setBatchDate] = useState(todayStr);
-  const [batchItems, setBatchItems] = useState<ExpenseItem[]>([emptyItem()]);
-  const [batchSaving, setBatchSaving] = useState(false);
-  const [batchError, setBatchError] = useState('');
-
-  // Edit modal
   const [editingExpense, setEditingExpense] = useState<DailyExpense | null>(null);
   const [editFields, setEditFields] = useState<Partial<DailyExpense & { amount: number | string }>>({});
   const [editSaving, setEditSaving] = useState(false);
@@ -74,8 +367,6 @@ export default function GastosPage() {
       if (filterTo) params.set('to', filterTo);
       if (filterPlate) params.set('plate', filterPlate);
       if (filterCategory) params.set('category', filterCategory);
-      if (filterWorker) params.set('worker', filterWorker);
-
       const res = await fetch(`/api/gastos?${params}`);
       if (!res.ok) throw new Error('Error al cargar gastos');
       const data = await res.json();
@@ -85,94 +376,25 @@ export default function GastosPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterFrom, filterTo, filterPlate, filterCategory, filterWorker]);
+  }, [filterFrom, filterTo, filterPlate, filterCategory]);
 
   useEffect(() => {
-    async function loadMeta() {
-      try {
-        const [vehiclesRes, meRes] = await Promise.all([
-          fetch('/api/vehiculos/flota'),
-          fetch('/api/me'),
-        ]);
-        if (vehiclesRes.ok) {
-          const data = await vehiclesRes.json();
-          setVehicles((data.vehicles ?? []).filter((v: FleetVehicle) => v.active));
-        }
-        if (meRes.ok) {
-          const me = await meRes.json();
-          setUserRole(me.role ?? '');
-        }
-      } catch {
-        // non-critical
-      }
-    }
-    loadMeta();
+    fetch('/api/me').then((r) => r.ok ? r.json() : {}).then((d) => setUserRole(d.role ?? ''));
   }, []);
 
-  useEffect(() => {
-    loadExpenses();
-  }, [loadExpenses]);
+  useEffect(() => { loadExpenses(); }, [loadExpenses]);
 
-  // Batch form handlers
-  function updateItem(idx: number, field: keyof ExpenseItem, value: string) {
-    setBatchItems((prev) => prev.map((item, i) => (i === idx ? { ...item, [field]: value } : item)));
-  }
+  const totalAmount = expenses.reduce((s, e) => s + e.amount, 0);
+  const byCategory = CATEGORIES.reduce<Record<string, number>>((acc, cat) => {
+    acc[cat] = expenses.filter((e) => e.category === cat).reduce((s, e) => s + e.amount, 0);
+    return acc;
+  }, {});
+  const activeCats = CATEGORIES.filter((c) => byCategory[c] > 0);
+  const activePlates = vehicles.map((v) => v.plate);
 
-  function addItem() {
-    setBatchItems((prev) => [...prev, emptyItem()]);
-  }
-
-  function removeItem(idx: number) {
-    setBatchItems((prev) => prev.filter((_, i) => i !== idx));
-  }
-
-  async function handleBatchSubmit() {
-    setBatchError('');
-    for (const item of batchItems) {
-      if (!item.plate) { setBatchError('Completa la matrícula en todas las filas'); return; }
-      if (!item.amount || Number(item.amount) <= 0) { setBatchError('El importe debe ser mayor que 0'); return; }
-    }
-
-    setBatchSaving(true);
-    try {
-      const res = await fetch('/api/gastos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: batchDate,
-          items: batchItems.map((it) => ({
-            plate: it.plate,
-            category: it.category,
-            amount: parseFloat(it.amount),
-            worker: it.worker || undefined,
-            notes: it.notes || undefined,
-          })),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Error al guardar');
-      setShowBatchForm(false);
-      setBatchItems([emptyItem()]);
-      setBatchDate(todayStr());
-      await loadExpenses();
-    } catch (e) {
-      setBatchError(e instanceof Error ? e.message : 'Error desconocido');
-    } finally {
-      setBatchSaving(false);
-    }
-  }
-
-  // Edit handlers
   function openEdit(expense: DailyExpense) {
     setEditingExpense(expense);
-    setEditFields({
-      date: expense.date,
-      plate: expense.plate,
-      category: expense.category,
-      amount: expense.amount,
-      worker: expense.worker ?? '',
-      notes: expense.notes ?? '',
-    });
+    setEditFields({ date: expense.date, plate: expense.plate, category: expense.category, amount: expense.amount, worker: expense.worker ?? '', notes: expense.notes ?? '' });
     setEditError('');
   }
 
@@ -184,21 +406,13 @@ export default function GastosPage() {
       const res = await fetch(`/api/gastos/${editingExpense.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: editFields.date,
-          plate: editFields.plate,
-          category: editFields.category,
-          amount: Number(editFields.amount),
-          worker: editFields.worker || undefined,
-          notes: editFields.notes || undefined,
-        }),
+        body: JSON.stringify({ date: editFields.date, plate: editFields.plate, category: editFields.category, amount: Number(editFields.amount), worker: editFields.worker || undefined, notes: editFields.notes || undefined }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Error al guardar');
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Error'); }
       setEditingExpense(null);
       await loadExpenses();
     } catch (e) {
-      setEditError(e instanceof Error ? e.message : 'Error desconocido');
+      setEditError(e instanceof Error ? e.message : 'Error');
     } finally {
       setEditSaving(false);
     }
@@ -206,49 +420,13 @@ export default function GastosPage() {
 
   async function handleDelete(id: string) {
     if (!confirm('¿Eliminar este gasto?')) return;
-    try {
-      const res = await fetch(`/api/gastos/${id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const data = await res.json();
-        alert(data.error ?? 'Error al eliminar');
-        return;
-      }
-      await loadExpenses();
-    } catch {
-      alert('Error de red');
-    }
+    const res = await fetch(`/api/gastos/${id}`, { method: 'DELETE' });
+    if (!res.ok) { const d = await res.json(); alert(d.error ?? 'Error al eliminar'); return; }
+    await loadExpenses();
   }
-
-  // Summary calculations
-  const totalAmount = expenses.reduce((s, e) => s + e.amount, 0);
-  const byCategory = CATEGORIES.reduce<Record<string, number>>((acc, cat) => {
-    acc[cat] = expenses.filter((e) => e.category === cat).reduce((s, e) => s + e.amount, 0);
-    return acc;
-  }, {});
-  const activeCats = CATEGORIES.filter((c) => byCategory[c] > 0);
-
-  const activePlates = vehicles.map((v) => v.plate);
 
   return (
     <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Gastos</h1>
-          <p className="page-subtitle">
-            {expenses.length} gasto{expenses.length !== 1 ? 's' : ''} ·{' '}
-            Total: {totalAmount.toFixed(2)} €
-          </p>
-        </div>
-        {canWrite && (
-          <button
-            className="btn btn-primary"
-            onClick={() => { setShowBatchForm(true); setBatchError(''); }}
-          >
-            + Registrar gastos
-          </button>
-        )}
-      </div>
-
       {/* Summary */}
       {activeCats.length > 0 && (
         <div className={styles.summaryBar}>
@@ -265,200 +443,30 @@ export default function GastosPage() {
         </div>
       )}
 
-      {/* Batch form */}
-      {showBatchForm && (
-        <div className={styles.batchForm}>
-          <div className={styles.batchFormTitle}>Registrar gastos del día</div>
-          <div className={styles.batchDateRow}>
-            <div className="form-group">
-              <label className="form-label">Fecha *</label>
-              <input
-                type="date"
-                className="form-input"
-                value={batchDate}
-                onChange={(e) => setBatchDate(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <table className={styles.itemsTable}>
-            <thead>
-              <tr>
-                <th style={{ width: 140 }}>Matrícula *</th>
-                <th style={{ width: 130 }}>Categoría *</th>
-                <th style={{ width: 110 }}>Importe (€) *</th>
-                <th style={{ width: 130 }}>Trabajador</th>
-                <th>Notas</th>
-                <th style={{ width: 36 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {batchItems.map((item, idx) => (
-                <tr key={idx}>
-                  <td>
-                    <select
-                      value={item.plate}
-                      onChange={(e) => updateItem(idx, 'plate', e.target.value)}
-                    >
-                      <option value="">-- Matrícula</option>
-                      {activePlates.map((p) => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <select
-                      value={item.category}
-                      onChange={(e) => updateItem(idx, 'category', e.target.value as ExpenseCategory)}
-                    >
-                      {CATEGORIES.map((c) => (
-                        <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={item.amount}
-                      onChange={(e) => updateItem(idx, 'amount', e.target.value)}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="text"
-                      placeholder="Nombre"
-                      value={item.worker}
-                      onChange={(e) => updateItem(idx, 'worker', e.target.value)}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="text"
-                      placeholder="Observaciones"
-                      value={item.notes}
-                      onChange={(e) => updateItem(idx, 'notes', e.target.value)}
-                    />
-                  </td>
-                  <td>
-                    {batchItems.length > 1 && (
-                      <button
-                        className={styles.removeRow}
-                        onClick={() => removeItem(idx)}
-                        title="Eliminar fila"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <button
-            className={`btn btn-ghost btn-sm ${styles.addRowBtn}`}
-            onClick={addItem}
-          >
-            + Añadir fila
-          </button>
-
-          {batchError && <div className="alert alert-danger" style={{ marginTop: 12 }}>{batchError}</div>}
-
-          <div className={styles.batchFormActions}>
-            <button
-              className="btn btn-ghost"
-              onClick={() => { setShowBatchForm(false); setBatchItems([emptyItem()]); }}
-              disabled={batchSaving}
-            >
-              Cancelar
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={handleBatchSubmit}
-              disabled={batchSaving}
-            >
-              {batchSaving ? 'Guardando…' : 'Guardar gastos'}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Filters */}
       <div className="filters-bar">
-        <input
-          type="date"
-          className="form-input"
-          value={filterFrom}
-          onChange={(e) => setFilterFrom(e.target.value)}
-          style={{ width: 'auto' }}
-          title="Desde"
-        />
-        <input
-          type="date"
-          className="form-input"
-          value={filterTo}
-          onChange={(e) => setFilterTo(e.target.value)}
-          style={{ width: 'auto' }}
-          title="Hasta"
-        />
-        <input
-          type="text"
-          className="form-input"
-          value={filterPlate}
-          onChange={(e) => setFilterPlate(e.target.value)}
-          placeholder="Matrícula"
-          style={{ width: 140 }}
-        />
-        <select
-          className="form-select"
-          value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
-          style={{ width: 'auto' }}
-        >
+        <input type="date" className="form-input" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} style={{ width: 'auto' }} title="Desde" />
+        <input type="date" className="form-input" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} style={{ width: 'auto' }} title="Hasta" />
+        <input type="text" className="form-input" value={filterPlate} onChange={(e) => setFilterPlate(e.target.value)} placeholder="Matrícula" style={{ width: 130 }} />
+        <select className="form-select" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ width: 'auto' }}>
           <option value="">Todas las categorías</option>
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
-          ))}
+          {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
         </select>
-        <input
-          type="text"
-          className="form-input"
-          value={filterWorker}
-          onChange={(e) => setFilterWorker(e.target.value)}
-          placeholder="Trabajador"
-          style={{ width: 150 }}
-        />
-        <button className="btn btn-ghost btn-sm" onClick={loadExpenses}>
-          Actualizar
-        </button>
-        {(filterFrom || filterTo || filterPlate || filterCategory || filterWorker) && (
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={() => {
-              setFilterFrom('');
-              setFilterTo('');
-              setFilterPlate('');
-              setFilterCategory('');
-              setFilterWorker('');
-            }}
-          >
-            Limpiar filtros
+        <button className="btn btn-ghost btn-sm" onClick={loadExpenses}>Actualizar</button>
+        {(filterFrom || filterTo || filterPlate || filterCategory) && (
+          <button className="btn btn-ghost btn-sm" onClick={() => { setFilterFrom(''); setFilterTo(''); setFilterPlate(''); setFilterCategory(''); }}>
+            Limpiar
           </button>
         )}
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
 
-      {/* Table */}
       <div className="table-wrapper">
         {loading ? (
           <div className={styles.loadingRow}>Cargando gastos…</div>
         ) : expenses.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state__icon">🧾</div>
             <div className="empty-state__text">No hay gastos que coincidan con los filtros.</div>
           </div>
         ) : (
@@ -478,39 +486,20 @@ export default function GastosPage() {
               {expenses.map((e) => (
                 <tr key={e.id}>
                   <td style={{ whiteSpace: 'nowrap' }}>{formatDate(e.date)}</td>
-                  <td>
-                    <span className={styles.plate}>{e.plate}</span>
-                  </td>
+                  <td><span className={styles.plate}>{e.plate}</span></td>
                   <td>
                     <span className={`${styles.categoryBadge} ${styles[`cat-${e.category}` as keyof typeof styles]}`}>
                       {CATEGORY_LABELS[e.category]}
                     </span>
                   </td>
-                  <td>
-                    <span className={styles.amount}>{e.amount.toFixed(2)} €</span>
-                  </td>
+                  <td><span className={styles.amount}>{e.amount.toFixed(2)} €</span></td>
                   <td>{e.worker ?? '—'}</td>
-                  <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {e.notes ?? '—'}
-                  </td>
+                  <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.notes ?? '—'}</td>
                   {canWrite && (
                     <td>
                       <div className={styles.actions}>
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => openEdit(e)}
-                          title="Editar"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => handleDelete(e.id)}
-                          title="Eliminar"
-                          style={{ color: 'var(--color-danger)' }}
-                        >
-                          Eliminar
-                        </button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => openEdit(e)}>Editar</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => handleDelete(e.id)} style={{ color: 'var(--color-danger)' }}>Eliminar</button>
                       </div>
                     </td>
                   )}
@@ -533,83 +522,95 @@ export default function GastosPage() {
               <div className={styles.editGrid}>
                 <div className="form-group">
                   <label className="form-label">Fecha *</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={String(editFields.date ?? '')}
-                    onChange={(e) => setEditFields((f) => ({ ...f, date: e.target.value }))}
-                  />
+                  <input type="date" className="form-input" value={String(editFields.date ?? '')} onChange={(e) => setEditFields((f) => ({ ...f, date: e.target.value }))} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Matrícula *</label>
-                  <select
-                    className="form-select"
-                    value={String(editFields.plate ?? '')}
-                    onChange={(e) => setEditFields((f) => ({ ...f, plate: e.target.value }))}
-                  >
-                    <option value="">-- Seleccionar</option>
-                    {activePlates.map((p) => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
+                  <select className="form-select" value={String(editFields.plate ?? '')} onChange={(e) => setEditFields((f) => ({ ...f, plate: e.target.value }))}>
+                    <option value="">— Seleccionar</option>
+                    {activePlates.map((p) => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Categoría *</label>
-                  <select
-                    className="form-select"
-                    value={String(editFields.category ?? 'OTRO')}
-                    onChange={(e) => setEditFields((f) => ({ ...f, category: e.target.value as ExpenseCategory }))}
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
-                    ))}
+                  <select className="form-select" value={String(editFields.category ?? 'OTRO')} onChange={(e) => setEditFields((f) => ({ ...f, category: e.target.value as ExpenseCategory }))}>
+                    {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Importe (€) *</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    min="0.01"
-                    step="0.01"
-                    value={String(editFields.amount ?? '')}
-                    onChange={(e) => setEditFields((f) => ({ ...f, amount: parseFloat(e.target.value) }))}
-                  />
+                  <input type="number" className="form-input" min="0.01" step="0.01" value={String(editFields.amount ?? '')} onChange={(e) => setEditFields((f) => ({ ...f, amount: parseFloat(e.target.value) }))} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Trabajador</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={String(editFields.worker ?? '')}
-                    onChange={(e) => setEditFields((f) => ({ ...f, worker: e.target.value }))}
-                    placeholder="Nombre del trabajador"
-                  />
+                  <input type="text" className="form-input" value={String(editFields.worker ?? '')} onChange={(e) => setEditFields((f) => ({ ...f, worker: e.target.value }))} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Notas</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={String(editFields.notes ?? '')}
-                    onChange={(e) => setEditFields((f) => ({ ...f, notes: e.target.value }))}
-                    placeholder="Observaciones"
-                  />
+                  <input type="text" className="form-input" value={String(editFields.notes ?? '')} onChange={(e) => setEditFields((f) => ({ ...f, notes: e.target.value }))} />
                 </div>
               </div>
               {editError && <div className="alert alert-danger" style={{ marginTop: 16 }}>{editError}</div>}
             </div>
             <div className="modal__footer">
-              <button className="btn btn-ghost" onClick={() => setEditingExpense(null)} disabled={editSaving}>
-                Cancelar
-              </button>
-              <button className="btn btn-primary" onClick={handleEditSave} disabled={editSaving}>
-                {editSaving ? 'Guardando…' : 'Guardar'}
-              </button>
+              <button className="btn btn-ghost" onClick={() => setEditingExpense(null)} disabled={editSaving}>Cancelar</button>
+              <button className="btn btn-primary" onClick={handleEditSave} disabled={editSaving}>{editSaving ? 'Guardando…' : 'Guardar'}</button>
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+type Tab = 'registrar' | 'historial';
+
+export default function GastosPage() {
+  const [tab, setTab] = useState<Tab>('registrar');
+  const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
+  const [userRole, setUserRole] = useState('');
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/vehiculos/flota').then((r) => r.ok ? r.json() : { vehicles: [] }),
+      fetch('/api/me').then((r) => r.ok ? r.json() : {}),
+    ]).then(([vData, me]) => {
+      setVehicles((vData.vehicles ?? []).filter((v: FleetVehicle) => v.active));
+      setUserRole(me.role ?? '');
+    });
+  }, []);
+
+  const canWrite = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Gastos internos</h1>
+          <p className="page-subtitle">Gastos operativos diarios — no facturables, asignados a vehículos</p>
+        </div>
+      </div>
+
+      <nav className={styles.tabNav}>
+        {([
+          { key: 'registrar', label: 'Registrar gastos' },
+          { key: 'historial', label: 'Historial' },
+        ] as { key: Tab; label: string }[]).map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            className={`${styles.tabBtn} ${tab === t.key ? styles.tabBtnActive : ''}`}
+            onClick={() => setTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      {tab === 'registrar' && <RegistrarTab vehicles={vehicles} canWrite={canWrite} />}
+      {tab === 'historial' && <HistorialTab vehicles={vehicles} />}
     </div>
   );
 }

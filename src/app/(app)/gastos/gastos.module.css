@@ -165,6 +165,222 @@
   border-top: 1px solid var(--color-border);
 }
 
+/* ─── Tab nav ─────────────────────────────────────────────────────────────── */
+
+.tabNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.tabBtn {
+  flex: 1;
+  text-align: center;
+  padding: 7px 8px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  white-space: nowrap;
+}
+
+.tabBtnActive {
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-surface-strong);
+}
+
+/* ─── Registro card ───────────────────────────────────────────────────────── */
+
+.regCard {
+  background: var(--color-surface-strong);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.regCardHeader {
+  padding: 10px 16px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-primary);
+}
+
+.regCardBody {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ─── Date row ────────────────────────────────────────────────────────────── */
+
+.dateRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ─── Plates row ──────────────────────────────────────────────────────────── */
+
+.platesSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.platesLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.platesRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.plateBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: rgba(43, 108, 189, 0.1);
+  border: 1px solid rgba(43, 108, 189, 0.3);
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: monospace;
+  letter-spacing: 0.04em;
+  color: var(--color-primary);
+}
+
+.plateBadgeRemove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  padding: 0 2px;
+  line-height: 1;
+  border-radius: 50%;
+}
+
+.plateBadgeRemove:hover { color: var(--color-danger); }
+
+.noPlates {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.platesManual {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ─── Category amounts table ──────────────────────────────────────────────── */
+
+.catTable {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.catTable th {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  padding: 8px 14px;
+  text-align: left;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.catTable th:last-child { text-align: right; }
+.catTable th:nth-child(2) { text-align: right; }
+
+.catTable td {
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+  font-size: 0.85rem;
+}
+
+.catTable tr:last-child td { border-bottom: none; }
+
+.catTable td:nth-child(2) { text-align: right; }
+.catTable td:last-child { text-align: right; color: var(--color-text-muted); font-size: 0.8rem; }
+
+.catAmountInput {
+  width: 110px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: 'Poppins', sans-serif;
+  text-align: right;
+}
+
+.catAmountInput:focus { outline: none; border-color: var(--color-primary); }
+
+.catTableTotal td {
+  font-weight: 700;
+  background: var(--color-surface);
+  border-top: 2px solid var(--color-border);
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+/* ─── Registro meta row (worker + notes) ──────────────────────────────────── */
+
+.metaRow {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 14px;
+}
+
+/* ─── Registro submit bar ─────────────────────────────────────────────────── */
+
+.regActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
 /* Edit modal */
 .editGrid {
   display: grid;

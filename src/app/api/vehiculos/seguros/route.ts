@@ -2,20 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest, canWrite } from '@/src/lib/auth';
 import { withStore, withStoreWrite, generateId } from '@/src/lib/store';
 import { appendEvent } from '@/src/lib/audit';
-import type { VehicleExtra } from '@/src/lib/types';
+import type { VehicleInsurance } from '@/src/lib/types';
 
-// GET /api/vehiculos/extras
+// GET /api/vehiculos/seguros
 export async function GET(req: NextRequest) {
   const session = getSessionFromRequest(req);
   if (!session) {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
   }
 
-  const data = withStore((store) => [...store.vehicleExtras]);
-  return NextResponse.json({ extras: data });
+  const data = withStore((store) => [...(store.vehicleInsurances ?? [])]);
+  return NextResponse.json({ insurances: data });
 }
 
-// POST /api/vehiculos/extras
+// POST /api/vehiculos/seguros
 export async function POST(req: NextRequest) {
   const session = getSessionFromRequest(req);
   if (!session) {
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       action: 'RBAC_DENIED',
       actorId: session.userId,
       actorRole: session.role,
-      entity: 'VehicleExtra',
+      entity: 'VehicleInsurance',
       details: { action: 'CREATE' },
     });
     return NextResponse.json({ error: 'Sin permisos de escritura' }, { status: 403 });
@@ -54,44 +54,44 @@ export async function POST(req: NextRequest) {
     }
 
     const result = withStoreWrite((store) => {
+      if (!store.vehicleInsurances) store.vehicleInsurances = [];
       if (code) {
-        const existing = store.vehicleExtras.find(
+        const existing = store.vehicleInsurances.find(
           (e) => e.code.toUpperCase() === code.toUpperCase()
         );
         if (existing) {
-          throw new Error(`Ya existe un extra con código: ${code}`);
+          throw new Error(`Ya existe un seguro con código: ${code}`);
         }
       }
 
       const now = new Date().toISOString();
-      const extra: VehicleExtra = {
+      const insurance: VehicleInsurance = {
         id: generateId(),
         code: code ? code.toUpperCase() : '',
         name,
-        pricingMode: pricingMode ?? 'FIXED',
+        pricingMode: pricingMode ?? 'PER_DAY',
         unitPrice,
-        maxDays: maxDays ?? undefined,
+        ...(maxDays !== undefined && maxDays > 0 && { maxDays }),
         active: active ?? true,
         createdAt: now,
       };
 
-      store.vehicleExtras.push(extra);
-      return extra;
+      store.vehicleInsurances.push(insurance);
+      return insurance;
     });
 
     await appendEvent({
       action: 'SYSTEM',
       actorId: session.userId,
       actorRole: session.role,
-      entity: 'VehicleExtra',
+      entity: 'VehicleInsurance',
       entityId: result.id,
       details: { action: 'CREATE', code: result.code, name: result.name },
     });
 
-    return NextResponse.json({ extra: result }, { status: 201 });
+    return NextResponse.json({ insurance: result }, { status: 201 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Error interno';
-    console.error('[extras POST] error:', err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

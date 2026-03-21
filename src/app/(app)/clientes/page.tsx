@@ -354,21 +354,6 @@ function ClientesContent() {
 
   return (
     <>
-      {/* ── PAGE HEADER ───────────────────────────────────────────────────── */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Clientes</h1>
-          <p className="page-subtitle">
-            {loading ? 'Cargando...' : `${filtered.length} cliente${filtered.length !== 1 ? 's' : ''}`}
-          </p>
-        </div>
-        {canWrite && (
-          <button className="btn btn-primary" onClick={openCreate}>
-            + Nuevo Cliente
-          </button>
-        )}
-      </div>
-
       {/* ── FILTERS BAR ───────────────────────────────────────────────────── */}
       <div className="filters-bar">
         <select
@@ -393,11 +378,19 @@ function ClientesContent() {
 
         <input
           className="form-input"
-          placeholder="Buscar nombre, NIF, email..."
+          placeholder="Buscar nombre, DNI, email..."
           value={filterSearch}
           onChange={(e) => setFilterSearch(e.target.value)}
           style={{ minWidth: 220 }}
         />
+        <span style={{ marginLeft: 'auto', fontSize: '0.82rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+          {loading ? '…' : `${filtered.length} cliente${filtered.length !== 1 ? 's' : ''}`}
+        </span>
+        {canWrite && (
+          <button className="btn btn-primary btn-sm" onClick={openCreate}>
+            + Nuevo Cliente
+          </button>
+        )}
       </div>
 
       {/* ── ERROR ─────────────────────────────────────────────────────────── */}
@@ -409,7 +402,7 @@ function ClientesContent() {
           <thead>
             <tr>
               <th>Nombre</th>
-              <th>NIF / CIF</th>
+              <th>DNI / CIF</th>
               <th>Tipo</th>
               <th>Teléfono</th>
               <th>Email</th>
@@ -609,7 +602,7 @@ function ClientesContent() {
                 {/* NIF / CIF */}
                 <div className="form-group">
                   <label className="form-label">
-                    {form.type === 'EMPRESA' ? 'CIF' : 'NIF'}
+                    {form.type === 'EMPRESA' ? 'CIF' : 'DNI / Pasaporte'}
                   </label>
                   <input
                     className="form-input"
@@ -871,6 +864,12 @@ function ClientesInner() {
 
   return (
     <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Clientes</h1>
+          <p className="page-subtitle">{CLIENTES_TABS.find((t) => t.key === tab)?.label ?? tab}</p>
+        </div>
+      </div>
       <ClientesTabNav active={tab} />
       {tab === 'listado' && <ClientesContent />}
       {tab !== 'listado' && (

@@ -1,8 +1,13 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { Client, VehicleCategory, CompanyBranch, TariffPlan, FleetVehicle, Reservation, ReservationStatus } from '@/src/lib/types';
+import type { Client, VehicleCategory, CompanyBranch, TariffPlan, FleetVehicle, Reservation, ReservationStatus, VehicleExtra, VehicleInsurance } from '@/src/lib/types';
 import styles from './gestion.module.css';
+import CrearClienteModal from './CrearClienteModal';
+import ExtrasTabContent, { type FormExtra } from './ExtrasTabContent';
+import SegurosTabContent, { type FormInsurance } from './SegurosTabContent';
+import ConductoresTabContent, { type FormConductor } from './ConductoresTabContent';
+import ClientAutocompleteInput from './ClientAutocompleteInput';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,6 +51,13 @@ function today() { return new Date().toISOString().slice(0, 10); }
 function nowTime() {
   const d = new Date();
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function calcDays(startDate: string, endDate: string): number {
+  if (!startDate || !endDate) return 1;
+  const ms = new Date(endDate).getTime() - new Date(startDate).getTime();
+  const days = Math.round(ms / (1000 * 60 * 60 * 24));
+  return days > 0 ? days : 1;
 }
 
 function blankForm(branches: CompanyBranch[], categories: VehicleCategory[]): FormState {
@@ -157,6 +169,11 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
   const [branches, setBranches] = useState<CompanyBranch[]>([]);
   const [tariffs, setTariffs] = useState<TariffPlan[]>([]);
   const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
+  const [catalogExtras, setCatalogExtras] = useState<VehicleExtra[]>([]);
+  const [formExtras, setFormExtras] = useState<FormExtra[]>([]);
+  const [catalogInsurances, setCatalogInsurances] = useState<VehicleInsurance[]>([]);
+  const [formInsurances, setFormInsurances] = useState<FormInsurance[]>([]);
+  const [conductores, setConductores] = useState<FormConductor[]>([]);
 
   const [form, setForm] = useState<FormState>(() => blankForm([], []));
   const [clientSearch, setClientSearch] = useState('');
@@ -165,26 +182,33 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showCrearCliente, setShowCrearCliente] = useState(false);
 
   // ── Load reference data ──────────────────────────────────────────────────
 
   useEffect(() => {
     async function load() {
-      const [clientsRes, catRes, brRes, tarRes] = await Promise.all([
+      const [clientsRes, catRes, brRes, tarRes, extrasRes, segurosRes] = await Promise.all([
         fetch('/api/clientes'),
         fetch('/api/categorias'),
         fetch('/api/sucursales'),
         fetch('/api/tarifas').catch(() => null),
+        fetch('/api/vehiculos/extras').catch(() => null),
+        fetch('/api/vehiculos/seguros').catch(() => null),
       ]);
-      const clientsData  = clientsRes.ok  ? (await clientsRes.json()).clients    ?? [] : [];
-      const catData      = catRes.ok      ? (await catRes.json()).categories      ?? [] : [];
-      const brData       = brRes.ok       ? (await brRes.json()).branches         ?? [] : [];
-      const tarData      = tarRes?.ok     ? (await tarRes.json()).plans           ?? [] : [];
+      const clientsData    = clientsRes.ok   ? (await clientsRes.json()).clients      ?? [] : [];
+      const catData        = catRes.ok       ? (await catRes.json()).categories        ?? [] : [];
+      const brData         = brRes.ok        ? (await brRes.json()).branches           ?? [] : [];
+      const tarData        = tarRes?.ok      ? (await tarRes.json()).plans             ?? [] : [];
+      const extrasData     = extrasRes?.ok   ? (await extrasRes.json()).extras         ?? [] : [];
+      const segurosData    = segurosRes?.ok  ? (await segurosRes.json()).insurances    ?? [] : [];
 
       setClients(clientsData);
       setCategories(catData);
       setBranches(brData);
       setTariffs(tarData);
+      setCatalogExtras(extrasData);
+      setCatalogInsurances(segurosData);
       setForm(blankForm(brData, catData));
     }
     load();
@@ -203,6 +227,48 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
         setForm(reservationToForm(r));
       });
   }, [reservationId]);
+
+  // ── Sync formExtras total → form.extrasTotal ─────────────────────────────
+
+  useEffect(() => {
+    const total = formExtras.reduce((s, e) => s + e.total, 0);
+    setForm((prev) => ({ ...prev, extrasTotal: total.toFixed(2) }));
+  }, [formExtras]);
+
+  // ── Recalculate PER_DAY extras when billedDays changes ───────────────────
+
+  useEffect(() => {
+    const days = parseInt(form.billedDays) || 1;
+    setFormExtras((prev) =>
+      prev.map((e) =>
+        e.pricingMode === 'PER_DAY'
+          ? { ...e, total: Math.round(e.unitPrice * e.quantity * Math.min(days, e.maxDays ?? days) * 100) / 100 }
+          : e
+      )
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.billedDays]);
+
+  // ── Sync formInsurances total → form.insuranceTotal ──────────────────────
+
+  useEffect(() => {
+    const total = formInsurances.reduce((s, i) => s + i.total, 0);
+    setForm((prev) => ({ ...prev, insuranceTotal: total.toFixed(2) }));
+  }, [formInsurances]);
+
+  // ── Recalculate PER_DAY insurances when billedDays changes ───────────────
+
+  useEffect(() => {
+    const days = parseInt(form.billedDays) || 1;
+    setFormInsurances((prev) =>
+      prev.map((i) =>
+        i.pricingMode === 'PER_DAY'
+          ? { ...i, total: Math.round(i.unitPrice * i.quantity * Math.min(days, i.maxDays ?? days) * 100) / 100 }
+          : i
+      )
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.billedDays]);
 
   // ── Load vehicles when category changes ──────────────────────────────────
 
@@ -276,6 +342,7 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
         status:         form.status,
         basePrice:      parseFloat(form.basePrice)      || 0,
         extrasTotal:    parseFloat(form.extrasTotal)    || 0,
+        extras:         formExtras.map((e) => ({ extraId: e.extraId, quantity: e.quantity, unitPrice: e.unitPrice, total: e.total })),
         insuranceTotal: parseFloat(form.insuranceTotal) || 0,
         fuelCharge:     parseFloat(form.fuelCharge)     || 0,
         penalties:      0,
@@ -312,6 +379,7 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
   function handleClear() {
     setForm(blankForm(branches, categories));
     setClientSearch('');
+    setFormExtras([]);
     setError('');
   }
 
@@ -323,7 +391,7 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
       {/* ── Top bar ── */}
       <div className={styles.topbar}>
         <div className={styles.topbarLeft}>
-          <button type="button" className="btn btn-ghost btn-sm">Crear cliente</button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowCrearCliente(true)}>Crear cliente</button>
           {isEdit && (
             <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', padding: '4px 10px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 6 }}>
               Editando reserva
@@ -364,38 +432,14 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
             <div className={styles.cardBody}>
 
               {/* Search */}
-              <div className={`${styles.searchWrap} ${styles.full}`}>
-                <input
-                  className="form-input"
-                  placeholder="Buscar cliente — Nombre, documento, email, teléfono o código"
+              <div className={styles.full}>
+                <ClientAutocompleteInput
+                  clients={clients}
                   value={selectedClient ? `${selectedClient.name}${selectedClient.surname ? ' ' + selectedClient.surname : ''}` : clientSearch}
-                  onChange={(e) => {
-                    setClientSearch(e.target.value);
-                    set('clientId', '');
-                    setShowSearch(true);
-                  }}
-                  onFocus={() => setShowSearch(true)}
-                  onBlur={() => setTimeout(() => setShowSearch(false), 150)}
-                  autoComplete="off"
+                  onTextChange={(v) => { setClientSearch(v); set('clientId', ''); }}
+                  onSelect={(c) => { set('clientId', c.id); setClientSearch(''); }}
+                  placeholder="Buscar cliente — Nombre, documento, email, teléfono o código"
                 />
-                {showSearch && filteredClients.length > 0 && (
-                  <div className={styles.searchResults}>
-                    {filteredClients.map((c) => (
-                      <div
-                        key={c.id}
-                        className={styles.searchItem}
-                        onMouseDown={() => {
-                          set('clientId', c.id);
-                          setClientSearch('');
-                          setShowSearch(false);
-                        }}
-                      >
-                        <span className={styles.searchItemMain}>{c.name}{c.surname ? ' ' + c.surname : ''}</span>
-                        <span className={styles.searchItemSub}>{[c.nif, c.email, c.phone].filter(Boolean).join(' · ')}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
               <div className={styles.grid2}>
@@ -444,7 +488,7 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Fecha/hora entrega *</label>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <input type="date" className="form-input" value={form.startDate} onChange={(e) => set('startDate', e.target.value)} required style={{ flex: 1 }} />
+                    <input type="date" className="form-input" value={form.startDate} onChange={(e) => { const d = e.target.value; setForm((p) => ({ ...p, startDate: d, billedDays: String(calcDays(d, p.endDate)) })); }} required style={{ flex: 1 }} />
                     <input type="time" className="form-input" value={form.startTime} onChange={(e) => set('startTime', e.target.value)} required style={{ width: 90 }} />
                   </div>
                 </div>
@@ -467,7 +511,7 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Fecha/hora recogida *</label>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <input type="date" className="form-input" value={form.endDate} onChange={(e) => set('endDate', e.target.value)} required style={{ flex: 1 }} />
+                    <input type="date" className="form-input" value={form.endDate} onChange={(e) => { const d = e.target.value; setForm((p) => ({ ...p, endDate: d, billedDays: String(calcDays(p.startDate, d)) })); }} required style={{ flex: 1 }} />
                     <input type="time" className="form-input" value={form.endTime} onChange={(e) => set('endTime', e.target.value)} required style={{ width: 90 }} />
                   </div>
                 </div>
@@ -548,38 +592,23 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
                 </div>
 
                 {form.vehicleTabIn === 'seguros' && (
-                  <div className={styles.seguroRow}>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">Seguro</label>
-                      <select className="form-select">
-                        <option>Ninguno</option>
-                      </select>
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">Unidades</label>
-                      <input type="number" className="form-input" defaultValue={1} min={1} />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">Precio ud.</label>
-                      <input type="number" className="form-input" defaultValue="0.00" step="0.01" min={0} />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">Total</label>
-                      <input type="number" className="form-input" defaultValue="0.00" readOnly style={{ color: 'var(--color-text-muted)' }} />
-                    </div>
-                    <div className={styles.franquiciaToggle}>
-                      <span>Franquicia</span>
-                      <div style={{ width: 36, height: 20, borderRadius: 10, background: 'var(--color-primary)', position: 'relative', cursor: 'pointer' }}>
-                        <div style={{ position: 'absolute', top: 2, left: 18, width: 16, height: 16, borderRadius: '50%', background: '#fff' }} />
-                      </div>
-                    </div>
-                  </div>
+                  <SegurosTabContent
+                    catalogInsurances={catalogInsurances}
+                    formInsurances={formInsurances}
+                    billedDays={parseInt(form.billedDays) || 1}
+                    franchise={parseFloat(form.franchise) || 0}
+                    onChange={setFormInsurances}
+                    onFranchiseChange={(v) => set('franchise', v.toFixed(2))}
+                  />
                 )}
 
                 {form.vehicleTabIn === 'extras' && (
-                  <div style={{ color: 'var(--color-text-muted)', fontSize: '0.82rem', padding: '8px 0' }}>
-                    Sin extras añadidos.
-                  </div>
+                  <ExtrasTabContent
+                    catalogExtras={catalogExtras}
+                    formExtras={formExtras}
+                    billedDays={parseInt(form.billedDays) || 1}
+                    onChange={setFormExtras}
+                  />
                 )}
               </div>
             </div>
@@ -675,7 +704,11 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
             <textarea className={styles.notesTextarea} value={form.notesPrivate} onChange={(e) => set('notesPrivate', e.target.value)} placeholder="Notas internas…" />
           )}
           {form.notesTab === 'conductores' && (
-            <div style={{ color: 'var(--color-text-muted)', fontSize: '0.82rem', padding: '8px 0' }}>Sin conductores adicionales.</div>
+            <ConductoresTabContent
+              clients={clients}
+              conductores={conductores}
+              onChange={setConductores}
+            />
           )}
         </div>
       </div>
@@ -693,6 +726,17 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
         </div>
       </div>
 
+      {showCrearCliente && (
+        <CrearClienteModal
+          onClose={() => setShowCrearCliente(false)}
+          onCreated={(client) => {
+            setClients((prev) => [...prev, client]);
+            set('clientId', client.id);
+            setClientSearch('');
+            setShowCrearCliente(false);
+          }}
+        />
+      )}
     </form>
   );
 }

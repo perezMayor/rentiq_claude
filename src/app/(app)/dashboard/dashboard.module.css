@@ -5,37 +5,36 @@
   padding-bottom: 0;
 }
 
-/* ─── Top KPI strip ─────────────────────────────────────────────────────────── */
+/* ─── Top KPI chips ──────────────────────────────────────────────────────────── */
 
 .topStrip {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-strong);
-  overflow: hidden;
+  gap: 12px;
 }
 
 .kpiStrip {
-  padding: 8px 24px;
-  border-right: 1px solid var(--color-border);
-}
-
-.kpiStrip:last-child {
-  border-right: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 24px;
+  background: var(--color-surface-strong);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: center;
 }
 
 .kpiStripLabel {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 4px;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
 }
 
 .kpiStripValue {
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
   color: var(--color-text-primary);
   line-height: 1;
@@ -536,8 +535,6 @@
   }
 
   .kpiStrip {
-    border-right: none;
-    border-bottom: 1px solid var(--color-border);
   }
 
   .agendaGrid {

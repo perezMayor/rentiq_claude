@@ -3,7 +3,7 @@ import { getSessionFromRequest, canWrite } from '@/src/lib/auth';
 import { withStoreWrite } from '@/src/lib/store';
 import { appendEvent } from '@/src/lib/audit';
 
-// PUT /api/vehiculos/categorias/[id]
+// PUT /api/vehiculos/seguros/[id]
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -17,7 +17,7 @@ export async function PUT(
       action: 'RBAC_DENIED',
       actorId: session.userId,
       actorRole: session.role,
-      entity: 'VehicleCategory',
+      entity: 'VehicleInsurance',
       details: { action: 'UPDATE' },
     });
     return NextResponse.json({ error: 'Sin permisos de escritura' }, { status: 403 });
@@ -26,40 +26,42 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { code, name, description, defaultInsuranceId, active } = body as {
+    const { code, name, pricingMode, unitPrice, maxDays, active } = body as {
       code?: string;
       name?: string;
-      description?: string;
-      defaultInsuranceId?: string | null;
+      pricingMode?: 'FIXED' | 'PER_DAY';
+      unitPrice?: number;
+      maxDays?: number | null;
       active?: boolean;
     };
 
     const result = withStoreWrite((store) => {
-      const idx = store.vehicleCategories.findIndex((c) => c.id === id);
+      if (!store.vehicleInsurances) store.vehicleInsurances = [];
+      const idx = store.vehicleInsurances.findIndex((e) => e.id === id);
       if (idx === -1) {
-        throw new Error(`Categoría no encontrada: ${id}`);
+        throw new Error(`Seguro no encontrado: ${id}`);
       }
 
-      // Check code uniqueness if changing
-      if (code && code.toUpperCase() !== store.vehicleCategories[idx].code) {
-        const conflict = store.vehicleCategories.find(
-          (c) => c.id !== id && c.code.toUpperCase() === code.toUpperCase()
+      if (code && code.toUpperCase() !== store.vehicleInsurances[idx].code) {
+        const conflict = store.vehicleInsurances.find(
+          (e) => e.id !== id && e.code.toUpperCase() === code.toUpperCase()
         );
         if (conflict) {
-          throw new Error(`Ya existe una categoría con código: ${code}`);
+          throw new Error(`Ya existe un seguro con código: ${code}`);
         }
       }
 
       const updated = {
-        ...store.vehicleCategories[idx],
+        ...store.vehicleInsurances[idx],
         ...(code !== undefined && { code: code.toUpperCase() }),
         ...(name !== undefined && { name }),
-        ...(description !== undefined && { description }),
-        ...(defaultInsuranceId !== undefined && { defaultInsuranceId: defaultInsuranceId ?? undefined }),
+        ...(pricingMode !== undefined && { pricingMode }),
+        ...(unitPrice !== undefined && { unitPrice }),
+        ...(maxDays !== undefined && { maxDays: maxDays === null ? undefined : maxDays }),
         ...(active !== undefined && { active }),
       };
 
-      store.vehicleCategories[idx] = updated;
+      store.vehicleInsurances[idx] = updated;
       return updated;
     });
 
@@ -67,20 +69,19 @@ export async function PUT(
       action: 'SYSTEM',
       actorId: session.userId,
       actorRole: session.role,
-      entity: 'VehicleCategory',
+      entity: 'VehicleInsurance',
       entityId: id,
       details: { action: 'UPDATE' },
     });
 
-    return NextResponse.json({ category: result });
+    return NextResponse.json({ insurance: result });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Error interno';
-    console.error('[categorias PUT] error:', err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-// DELETE /api/vehiculos/categorias/[id]
+// DELETE /api/vehiculos/seguros/[id]
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -94,7 +95,7 @@ export async function DELETE(
       action: 'RBAC_DENIED',
       actorId: session.userId,
       actorRole: session.role,
-      entity: 'VehicleCategory',
+      entity: 'VehicleInsurance',
       details: { action: 'DELETE' },
     });
     return NextResponse.json({ error: 'Sin permisos de escritura' }, { status: 403 });
@@ -104,32 +105,12 @@ export async function DELETE(
     const { id } = await params;
 
     const result = withStoreWrite((store) => {
-      const idx = store.vehicleCategories.findIndex((c) => c.id === id);
+      if (!store.vehicleInsurances) store.vehicleInsurances = [];
+      const idx = store.vehicleInsurances.findIndex((e) => e.id === id);
       if (idx === -1) {
-        throw new Error(`Categoría no encontrada: ${id}`);
+        throw new Error(`Seguro no encontrado: ${id}`);
       }
-
-      // Guard: no vehicles reference this category
-      const hasVehicles = store.vehicles.some((v) => v.categoryId === id);
-      if (hasVehicles) {
-        const err = new Error(
-          'No se puede eliminar: hay vehículos asignados a esta categoría'
-        );
-        (err as Error & { statusCode: number }).statusCode = 409;
-        throw err;
-      }
-
-      // Guard: no models reference this category
-      const hasModels = store.vehicleModels.some((m) => m.categoryId === id);
-      if (hasModels) {
-        const err = new Error(
-          'No se puede eliminar: hay modelos asignados a esta categoría'
-        );
-        (err as Error & { statusCode: number }).statusCode = 409;
-        throw err;
-      }
-
-      const [removed] = store.vehicleCategories.splice(idx, 1);
+      const [removed] = store.vehicleInsurances.splice(idx, 1);
       return removed;
     });
 
@@ -137,7 +118,7 @@ export async function DELETE(
       action: 'SYSTEM',
       actorId: session.userId,
       actorRole: session.role,
-      entity: 'VehicleCategory',
+      entity: 'VehicleInsurance',
       entityId: id,
       details: { action: 'DELETE', code: result.code },
     });
@@ -145,11 +126,6 @@ export async function DELETE(
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Error interno';
-    const statusCode =
-      err instanceof Error && (err as Error & { statusCode?: number }).statusCode === 409
-        ? 409
-        : 500;
-    console.error('[categorias DELETE] error:', err);
-    return NextResponse.json({ error: message }, { status: statusCode });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

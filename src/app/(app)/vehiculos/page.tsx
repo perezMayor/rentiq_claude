@@ -12,14 +12,6 @@ interface Branch {
   active: boolean;
 }
 
-interface VehicleCategory {
-  id: string;
-  code: string;
-  name: string;
-  description?: string;
-  active: boolean;
-}
-
 interface VehicleModel {
   id: string;
   brand: string;
@@ -55,10 +47,30 @@ interface VehicleExtra {
   name: string;
   pricingMode: 'FIXED' | 'PER_DAY';
   unitPrice: number;
+  maxDays?: number;
   active: boolean;
 }
 
-type Tab = 'flota' | 'categorias' | 'modelos' | 'extras';
+interface VehicleInsurance {
+  id: string;
+  code: string;
+  name: string;
+  pricingMode: 'FIXED' | 'PER_DAY';
+  unitPrice: number;
+  maxDays?: number;
+  active: boolean;
+}
+
+interface VehicleCategory {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  defaultInsuranceId?: string;
+  active: boolean;
+}
+
+type Tab = 'flota' | 'categorias' | 'modelos' | 'extras' | 'seguros';
 
 // ─── Blank form states ──────────────────────────────────────────────────────
 
@@ -111,10 +123,19 @@ const blankExtra = (): Partial<VehicleExtra> => ({
   active: true,
 });
 
+const blankInsurance = (): Partial<VehicleInsurance> => ({
+  code: '',
+  name: '',
+  pricingMode: 'PER_DAY',
+  unitPrice: 0,
+  maxDays: undefined,
+  active: true,
+});
+
 // ─── Component ─────────────────────────────────────────────────────────────
 
-function VehiculosContent() {
-  const [activeTab, setActiveTab] = useState<Tab>('flota');
+function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? 'flota');
 
   // Data
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -122,6 +143,7 @@ function VehiculosContent() {
   const [models, setModels] = useState<VehicleModel[]>([]);
   const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
   const [extras, setExtras] = useState<VehicleExtra[]>([]);
+  const [insurances, setInsurances] = useState<VehicleInsurance[]>([]);
 
   // Flota filters
   const [filterActive, setFilterActive] = useState(true);
@@ -134,18 +156,21 @@ function VehiculosContent() {
   const [categoryModal, setCategoryModal] = useState<'create' | 'edit' | null>(null);
   const [modelModal, setModelModal] = useState<'create' | 'edit' | null>(null);
   const [extraModal, setExtraModal] = useState<'create' | 'edit' | null>(null);
+  const [insuranceModal, setInsuranceModal] = useState<'create' | 'edit' | null>(null);
 
   // Form data
   const [vehicleForm, setVehicleForm] = useState<Partial<FleetVehicle>>(blankVehicle());
   const [categoryForm, setCategoryForm] = useState<Partial<VehicleCategory>>(blankCategory());
   const [modelForm, setModelForm] = useState<ReturnType<typeof blankModel>>(blankModel());
   const [extraForm, setExtraForm] = useState<Partial<VehicleExtra>>(blankExtra());
+  const [insuranceForm, setInsuranceForm] = useState<Partial<VehicleInsurance>>(blankInsurance());
 
   // Editing IDs
   const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editingModelId, setEditingModelId] = useState<string | null>(null);
   const [editingExtraId, setEditingExtraId] = useState<string | null>(null);
+  const [editingInsuranceId, setEditingInsuranceId] = useState<string | null>(null);
 
   // Error/loading
   const [error, setError] = useState<string | null>(null);
@@ -219,12 +244,25 @@ function VehiculosContent() {
     }
   }, []);
 
+  const fetchInsurances = useCallback(async () => {
+    try {
+      const res = await fetch('/api/vehiculos/seguros');
+      if (res.ok) {
+        const data = await res.json() as { insurances: VehicleInsurance[] };
+        setInsurances(data.insurances ?? []);
+      }
+    } catch {
+      // non-critical
+    }
+  }, []);
+
   useEffect(() => {
     void fetchBranches();
     void fetchCategories();
     void fetchModels();
     void fetchExtras();
-  }, [fetchBranches, fetchCategories, fetchModels, fetchExtras]);
+    void fetchInsurances();
+  }, [fetchBranches, fetchCategories, fetchModels, fetchExtras, fetchInsurances]);
 
   useEffect(() => {
     void fetchVehicles();
@@ -498,15 +536,73 @@ function VehiculosContent() {
     void fetchExtras();
   };
 
+  // ─── Insurance CRUD ───────────────────────────────────────────────────
+
+  const openCreateInsurance = () => {
+    setInsuranceForm(blankInsurance());
+    setEditingInsuranceId(null);
+    setError(null);
+    setInsuranceModal('create');
+  };
+
+  const openEditInsurance = (i: VehicleInsurance) => {
+    setInsuranceForm({ ...i });
+    setEditingInsuranceId(i.id);
+    setError(null);
+    setInsuranceModal('edit');
+  };
+
+  const saveInsurance = async () => {
+    setError(null);
+    setSaving(true);
+    try {
+      const isEdit = insuranceModal === 'edit';
+      const url = isEdit
+        ? `/api/vehiculos/seguros/${editingInsuranceId}`
+        : '/api/vehiculos/seguros';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const payload = {
+        ...insuranceForm,
+        code: (insuranceForm.code ?? '').toUpperCase(),
+        unitPrice: Number(insuranceForm.unitPrice),
+        maxDays: insuranceForm.maxDays ? Number(insuranceForm.maxDays) : undefined,
+      };
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json() as { error?: string };
+      if (!res.ok) {
+        setError(data.error ?? 'Error al guardar');
+        return;
+      }
+      setInsuranceModal(null);
+      void fetchInsurances();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteInsurance = async (id: string) => {
+    if (!confirm('Eliminar este seguro?')) return;
+    const res = await fetch(`/api/vehiculos/seguros/${id}`, { method: 'DELETE' });
+    const data = await res.json() as { error?: string };
+    if (!res.ok) {
+      alert(data.error ?? 'No se pudo eliminar');
+      return;
+    }
+    void fetchInsurances();
+  };
+
   // ─── Render ────────────────────────────────────────────────────────────
 
   return (
     <>
       <div className="page-header">
-        <div>
-          <h1 className="page-title">Vehículos</h1>
-          <p className="page-subtitle">Flota, categorías, modelos y extras</p>
-        </div>
+        <div />
         {activeTab === 'flota' && (
           <button className="btn btn-primary" onClick={openCreateVehicle}>
             + Nuevo Vehículo
@@ -514,7 +610,7 @@ function VehiculosContent() {
         )}
         {activeTab === 'categorias' && (
           <button className="btn btn-primary" onClick={openCreateCategory}>
-            + Nueva Categoría
+            + Nuevo Grupo
           </button>
         )}
         {activeTab === 'modelos' && (
@@ -527,19 +623,11 @@ function VehiculosContent() {
             + Nuevo Extra
           </button>
         )}
-      </div>
-
-      {/* Tab navigation */}
-      <div className={styles.tabs}>
-        {(['flota', 'categorias', 'modelos', 'extras'] as Tab[]).map((tab) => (
-          <button
-            key={tab}
-            className={`${styles.tab} ${activeTab === tab ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+        {activeTab === 'seguros' && (
+          <button className="btn btn-primary" onClick={openCreateInsurance}>
+            + Nuevo Seguro
           </button>
-        ))}
+        )}
       </div>
 
       {/* ── TAB: FLOTA ─────────────────────────────────────────────────────── */}
@@ -663,6 +751,7 @@ function VehiculosContent() {
                 <th>Código</th>
                 <th>Nombre</th>
                 <th>Descripción</th>
+                <th>Seguro</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
@@ -670,7 +759,7 @@ function VehiculosContent() {
             <tbody>
               {categories.length === 0 ? (
                 <tr>
-                  <td colSpan={5}>
+                  <td colSpan={6}>
                     <div className="empty-state">
                       <div className="empty-state__text">No hay categorías definidas.</div>
                     </div>
@@ -684,6 +773,9 @@ function VehiculosContent() {
                     </td>
                     <td>{c.name}</td>
                     <td className="text-muted">{c.description ?? '—'}</td>
+                    <td className="text-muted" style={{ fontSize: '0.82rem' }}>
+                      {insurances.find((i) => i.id === c.defaultInsuranceId)?.name ?? '—'}
+                    </td>
                     <td>
                       <span
                         className={`badge ${c.active ? 'badge-confirmada' : 'badge-cancelada'}`}
@@ -831,6 +923,63 @@ function VehiculosContent() {
                           className="btn btn-danger btn-sm"
                           onClick={() => void deleteExtra(e.id)}
                         >
+                          Eliminar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── TAB: SEGUROS ─────────────────────────────────────────────────── */}
+      {activeTab === 'seguros' && (
+        <div className="table-wrapper">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Tipo precio</th>
+                <th>Precio ud.</th>
+                <th>Máx. días</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {insurances.length === 0 ? (
+                <tr>
+                  <td colSpan={7}>
+                    <div className="empty-state">
+                      <div className="empty-state__text">No hay seguros definidos.</div>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                insurances.map((ins) => (
+                  <tr key={ins.id}>
+                    <td><strong>{ins.code}</strong></td>
+                    <td>{ins.name}</td>
+                    <td>{ins.pricingMode === 'FIXED' ? 'Precio fijo' : 'Por día'}</td>
+                    <td>{ins.unitPrice.toFixed(2)} €</td>
+                    <td style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                      {ins.maxDays ?? '—'}
+                    </td>
+                    <td>
+                      <span className={`badge ${ins.active ? 'badge-confirmada' : 'badge-cancelada'}`}>
+                        {ins.active ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className={styles.actionsCell}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => openEditInsurance(ins)}>
+                          Editar
+                        </button>
+                        <button className="btn btn-danger btn-sm" onClick={() => void deleteInsurance(ins.id)}>
                           Eliminar
                         </button>
                       </div>
@@ -1082,6 +1231,23 @@ function VehiculosContent() {
                     <option value="false">Inactiva</option>
                   </select>
                 </div>
+                <div className="form-group col-span-2">
+                  <label className="form-label">Seguro predeterminado</label>
+                  <select
+                    className="form-select"
+                    value={categoryForm.defaultInsuranceId ?? ''}
+                    onChange={(e) =>
+                      setCategoryForm({ ...categoryForm, defaultInsuranceId: e.target.value || undefined })
+                    }
+                  >
+                    <option value="">— Sin seguro predeterminado —</option>
+                    {insurances.filter((i) => i.active).map((i) => (
+                      <option key={i.id} value={i.id}>
+                        {i.code ? `[${i.code}] ` : ''}{i.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
             <div className="modal__footer">
@@ -1311,6 +1477,24 @@ function VehiculosContent() {
                     step={0.01}
                   />
                 </div>
+                {extraForm.pricingMode === 'PER_DAY' && (
+                  <div className="form-group">
+                    <label className="form-label">Máx. días (opcional)</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={extraForm.maxDays ?? ''}
+                      onChange={(e) =>
+                        setExtraForm({
+                          ...extraForm,
+                          maxDays: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                      min={1}
+                      placeholder="Sin límite"
+                    />
+                  </div>
+                )}
                 <div className="form-group">
                   <label className="form-label">Estado</label>
                   <select
@@ -1333,6 +1517,119 @@ function VehiculosContent() {
               <button
                 className="btn btn-primary"
                 onClick={() => void saveExtra()}
+                disabled={saving}
+              >
+                {saving ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: SEGURO ───────────────────────────────────────────────────── */}
+      {insuranceModal !== null && (
+        <div className="modal-overlay" onClick={() => setInsuranceModal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <h2 className="modal__title">
+                {insuranceModal === 'create' ? 'Nuevo Seguro' : 'Editar Seguro'}
+              </h2>
+              <button className="modal__close" onClick={() => setInsuranceModal(null)}>
+                ×
+              </button>
+            </div>
+            <div className="modal__body">
+              {error && <div className="alert alert-danger">{error}</div>}
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Código</label>
+                  <input
+                    className="form-input"
+                    value={insuranceForm.code ?? ''}
+                    onChange={(e) =>
+                      setInsuranceForm({ ...insuranceForm, code: e.target.value.toUpperCase() })
+                    }
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Nombre *</label>
+                  <input
+                    className="form-input"
+                    value={insuranceForm.name ?? ''}
+                    onChange={(e) =>
+                      setInsuranceForm({ ...insuranceForm, name: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Modo precio</label>
+                  <select
+                    className="form-select"
+                    value={insuranceForm.pricingMode ?? 'PER_DAY'}
+                    onChange={(e) =>
+                      setInsuranceForm({
+                        ...insuranceForm,
+                        pricingMode: e.target.value as 'FIXED' | 'PER_DAY',
+                      })
+                    }
+                  >
+                    <option value="PER_DAY">Por día</option>
+                    <option value="FIXED">Precio fijo</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Precio unitario (€) *</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={insuranceForm.unitPrice ?? 0}
+                    onChange={(e) =>
+                      setInsuranceForm({ ...insuranceForm, unitPrice: Number(e.target.value) })
+                    }
+                    min={0}
+                    step={0.01}
+                  />
+                </div>
+                {insuranceForm.pricingMode === 'PER_DAY' && (
+                  <div className="form-group">
+                    <label className="form-label">Máx. días (opcional)</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={insuranceForm.maxDays ?? ''}
+                      onChange={(e) =>
+                        setInsuranceForm({
+                          ...insuranceForm,
+                          maxDays: e.target.value ? Number(e.target.value) : undefined,
+                        })
+                      }
+                      min={1}
+                      placeholder="Sin límite"
+                    />
+                  </div>
+                )}
+                <div className="form-group">
+                  <label className="form-label">Estado</label>
+                  <select
+                    className="form-select"
+                    value={insuranceForm.active ? 'true' : 'false'}
+                    onChange={(e) =>
+                      setInsuranceForm({ ...insuranceForm, active: e.target.value === 'true' })
+                    }
+                  >
+                    <option value="true">Activo</option>
+                    <option value="false">Inactivo</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="modal__footer">
+              <button className="btn btn-ghost" onClick={() => setInsuranceModal(null)}>
+                Cancelar
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => void saveInsurance()}
                 disabled={saving}
               >
                 {saving ? 'Guardando...' : 'Guardar'}
@@ -1379,15 +1676,32 @@ function VehiculosTabNav({ active }: { active: string }) {
   );
 }
 
+// Map outer URL tab key → inner VehiculosContent Tab
+const URL_TO_INNER: Partial<Record<string, Tab>> = {
+  flota:    'flota',
+  grupos:   'categorias',
+  modelos:  'modelos',
+  extras:   'extras',
+  seguros:  'seguros',
+};
+
 function VehiculosInner() {
   const searchParams = useSearchParams();
   const tab = searchParams.get('tab') ?? 'flota';
+  const innerTab = URL_TO_INNER[tab];
 
   return (
     <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Vehículos</h1>
+          <p className="page-subtitle">{VEHICULOS_TABS.find((t) => t.key === tab)?.label ?? 'Flota'}</p>
+        </div>
+      </div>
       <VehiculosTabNav active={tab} />
-      {tab === 'flota' && <VehiculosContent />}
-      {tab !== 'flota' && (
+      {innerTab ? (
+        <VehiculosContent initialTab={innerTab} />
+      ) : (
         <div className="empty-state" style={{ marginTop: 32 }}>
           <div className="empty-state__icon">🚧</div>
           <div className="empty-state__text">{VEHICULOS_TABS.find((t) => t.key === tab)?.label ?? tab} — Próximamente</div>

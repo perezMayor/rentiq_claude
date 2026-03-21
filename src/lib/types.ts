@@ -111,6 +111,7 @@ export interface VehicleCategory {
   code: string;
   name: string;
   description?: string;
+  defaultInsuranceId?: string;
   active: boolean;
   createdAt: string;
 }
@@ -153,6 +154,18 @@ export interface VehicleExtra {
   name: string;
   pricingMode: 'FIXED' | 'PER_DAY';
   unitPrice: number;
+  maxDays?: number;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface VehicleInsurance {
+  id: string;
+  code: string;
+  name: string;
+  pricingMode: 'FIXED' | 'PER_DAY';
+  unitPrice: number;
+  maxDays?: number;
   active: boolean;
   createdAt: string;
 }
@@ -445,6 +458,7 @@ export interface RentalStore {
   vehicleCategories: VehicleCategory[];
   vehicleModels: VehicleModel[];
   vehicleExtras: VehicleExtra[];
+  vehicleInsurances: VehicleInsurance[];
   vehicleTasks: VehicleTask[];
   reservations: Reservation[];
   contracts: Contract[];
