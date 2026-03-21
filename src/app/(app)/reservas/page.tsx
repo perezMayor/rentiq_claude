@@ -175,30 +175,20 @@ function EntregasTab() {
     return true;
   });
 
-  const filterBtn = (key: EntregaFiltro, label: string) => (
-    <button
-      type="button"
-      className={`btn btn-sm ${filtro === key ? 'btn-primary' : 'btn-ghost'}`}
-      onClick={() => setFiltro(key)}
-    >{label}</button>
-  );
-
   return (
     <div>
       <div className="filters-bar" style={{ marginBottom: 16 }}>
         <DatePicker className="form-input" value={dateFrom} onChange={(v) => setDateFrom(v)} style={{ width: 'auto' }} />
         <DatePicker className="form-input" value={dateTo}   onChange={(v) => setDateTo(v)}   style={{ width: 'auto' }} />
-        <div style={{ display: 'flex', gap: 4 }}>
-          {filterBtn('todas',        'Todas')}
-          {filterBtn('contratadas',  'Contratadas')}
-          {filterBtn('sin_matricula','Sin matrícula')}
-        </div>
-        {locations.length > 0 && (
-          <select className="form-select" value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ width: 'auto' }}>
-            <option value="">Todos los lugares</option>
-            {locations.map((l) => <option key={l} value={l}>{l}</option>)}
-          </select>
-        )}
+        <select className="form-select" value={filtro} onChange={(e) => setFiltro(e.target.value as EntregaFiltro)} style={{ width: 'auto' }}>
+          <option value="todas">Todas</option>
+          <option value="contratadas">Contratadas</option>
+          <option value="sin_matricula">Sin matrícula</option>
+        </select>
+        <select className="form-select" value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ width: 'auto' }}>
+          <option value="">Todos los lugares</option>
+          {locations.map((l) => <option key={l} value={l}>{l}</option>)}
+        </select>
         <span style={{ marginLeft: 'auto', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
           {filtered.length} entrega{filtered.length !== 1 ? 's' : ''}
         </span>
@@ -312,30 +302,20 @@ function RecogidasTab() {
     return true;
   });
 
-  const filterBtn = (key: RecogidaFiltro, label: string) => (
-    <button
-      type="button"
-      className={`btn btn-sm ${filtro === key ? 'btn-primary' : 'btn-ghost'}`}
-      onClick={() => setFiltro(key)}
-    >{label}</button>
-  );
-
   return (
     <div>
       <div className="filters-bar" style={{ marginBottom: 16 }}>
         <DatePicker className="form-input" value={dateFrom} onChange={(v) => setDateFrom(v)} style={{ width: 'auto' }} />
         <DatePicker className="form-input" value={dateTo}   onChange={(v) => setDateTo(v)}   style={{ width: 'auto' }} />
-        <div style={{ display: 'flex', gap: 4 }}>
-          {filterBtn('todas',      'Todas')}
-          {filterBtn('sin_checkin','Sin checkin')}
-          {filterBtn('vencidas',   'Vencidas')}
-        </div>
-        {locations.length > 0 && (
-          <select className="form-select" value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ width: 'auto' }}>
-            <option value="">Todos los lugares</option>
-            {locations.map((l) => <option key={l} value={l}>{l}</option>)}
-          </select>
-        )}
+        <select className="form-select" value={filtro} onChange={(e) => setFiltro(e.target.value as RecogidaFiltro)} style={{ width: 'auto' }}>
+          <option value="todas">Todas</option>
+          <option value="sin_checkin">Sin checkin</option>
+          <option value="vencidas">Vencidas</option>
+        </select>
+        <select className="form-select" value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ width: 'auto' }}>
+          <option value="">Todos los lugares</option>
+          {locations.map((l) => <option key={l} value={l}>{l}</option>)}
+        </select>
         <span style={{ marginLeft: 'auto', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
           {filtered.length} recogida{filtered.length !== 1 ? 's' : ''}
         </span>
