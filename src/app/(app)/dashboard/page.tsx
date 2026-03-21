@@ -190,12 +190,12 @@ export default function DashboardPage() {
             <span className={styles.cardTitle}>Agenda</span>
           </div>
           <div className={styles.agendaGrid}>
-            <MiniKpi label="Vehículos disponibles"     value={data ? data.flotaActiva - data.contratosAbiertos : '—'} />
-            <MiniKpi label="Contratos abiertos"       value={data?.contratosAbiertos ?? '—'} />
             <MiniKpi label="Flota activa"             value={data?.flotaActiva ?? '—'} />
-            <MiniKpi label="Ocupación flota"          value={data ? `${data.ocupacionFlota}%` : '—'} />
-            <MiniKpi label="Confirmación / petición"  value={data ? `${data.ratioConfirmacion}%` : '—'} />
-            <MiniKpi label="Movimientos próx. 24h"    value={data?.movimientosPr24h ?? '—'} />
+            <MiniKpi label="Vehículos disponibles"   value={data ? data.flotaActiva - data.contratosAbiertos : '—'} />
+            <MiniKpi label="Ocupación flota"         value={data ? `${data.ocupacionFlota}%` : '—'} />
+            <MiniKpi label="Contratos abiertos"      value={data?.contratosAbiertos ?? '—'} />
+            <MiniKpi label="Confirmación / petición" value={data ? `${data.ratioConfirmacion}%` : '—'} />
+            <MiniKpi label="Movimientos próx. 24h"   value={data?.movimientosPr24h ?? '—'} />
           </div>
 
           {/* DEMO — borrar cuando se confirme el diseño */}
