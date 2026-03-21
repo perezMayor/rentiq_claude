@@ -411,11 +411,11 @@ export default function DashboardPage() {
       {/* ── Accesos rápidos ── */}
       <div className={styles.quickBar}>
         {[
-          { label: 'Nueva reserva',  href: '/reservas?tab=nueva' },
-          { label: 'Nuevo contrato', href: '/contratos?tab=nueva' },
+          { label: 'Nueva reserva',  href: '/reservas?tab=gestion' },
+          { label: 'Nuevo contrato', href: '/contratos?tab=gestion' },
           { label: 'Presupuesto',    href: '/reservas?tab=presupuesto' },
           { label: 'Planning',       href: '/planning' },
-          { label: 'Gastos',         href: '/facturacion?tab=gastos' },
+          { label: 'Gastos',         href: '/gastos' },
         ].map((a) => (
           <button
             key={a.label}
