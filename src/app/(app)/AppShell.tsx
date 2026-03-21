@@ -177,7 +177,6 @@ export default function AppShell({ user, branch, children }: Props) {
         {/* Bottom section */}
         <div className={styles.sidebarBottom}>
           <div className={styles.sessionInfo}>
-            <div className={styles.sessionName}>{user.name}</div>
             <div className={styles.sessionMeta}>
               <span className={styles.roleBadge}>{ROLE_LABELS[user.role]}</span>
               {branch && <span className={styles.branchLabel}>{branch.name}</span>}
