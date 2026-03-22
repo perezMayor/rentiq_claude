@@ -29,8 +29,8 @@
 }
 
 .tabActive {
-  background: var(--color-surface-strong);
-  color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
   font-weight: 600;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 4px rgba(43, 108, 189, 0.25);
 }
