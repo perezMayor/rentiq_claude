@@ -44,6 +44,7 @@ export interface CompanySettings {
   invoiceSeries: string;
   ivaPercent: number;
   deliveryLocations: string[]; // lugares de entrega/recogida configurados
+  overlapMinHours: number;
 }
 
 export interface WeeklySchedule {

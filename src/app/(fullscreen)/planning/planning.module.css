@@ -429,9 +429,26 @@
 .barHuerfana   { background: var(--color-status-huerfana); }
 
 .barStart    { border-radius: 3px 0 0 3px; left: 4px; }
-.barEnd      { border-radius: 0 3px 3px 0; right: 4px; }
+.barEnd      {
+  right: 4px;
+  border-radius: 0;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%);
+}
 .barStartEnd { border-radius: 3px; left: 4px; right: 4px; }
 .barMiddle   { border-radius: 0; left: 0; right: 0; }
+
+/* Overlap: striped pattern on the first cell of an overlapping reservation */
+.barOverlapStart {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255,255,255,0.25) 0px,
+    rgba(255,255,255,0.25) 4px,
+    transparent 4px,
+    transparent 8px
+  ) !important;
+  outline: 2px solid rgba(255,255,255,0.5);
+  outline-offset: -2px;
+}
 
 /* ─── Tooltip ─────────────────────────────────────────────────────────────── */
 
@@ -520,10 +537,51 @@
   color: var(--color-text-primary);
 }
 
+.infoPanelBadge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
 .infoPanelActions {
   display: flex;
   gap: 8px;
   margin-top: 12px;
+}
+
+/* ─── Category group row ──────────────────────────────────────────────────── */
+
+.categoryRow {
+  background: var(--color-surface-strong);
+  border-top: 2px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  padding: 5px 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.categoryRowCount {
+  font-weight: 400;
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ─── Drag over ───────────────────────────────────────────────────────────── */
+
+.dragOverRow {
+  background: rgba(43, 108, 189, 0.12) !important;
+  border-color: rgba(43, 108, 189, 0.5) !important;
 }
 
 /* ─── Orphan rows ─────────────────────────────────────────────────────────── */

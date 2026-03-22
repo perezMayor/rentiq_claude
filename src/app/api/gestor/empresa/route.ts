@@ -30,7 +30,7 @@ export async function PUT(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { name, nif, address, phone, email, invoiceSeries, ivaPercent, defaultBranchId, deliveryLocations } = body as {
+    const { name, nif, address, phone, email, invoiceSeries, ivaPercent, defaultBranchId, deliveryLocations, overlapMinHours } = body as {
       name?: string;
       nif?: string;
       address?: string;
@@ -40,6 +40,7 @@ export async function PUT(req: NextRequest) {
       ivaPercent?: number;
       defaultBranchId?: string;
       deliveryLocations?: string[];
+      overlapMinHours?: number;
     };
 
     const updated = withStoreWrite((store) => {
@@ -63,6 +64,9 @@ export async function PUT(req: NextRequest) {
       }
       if (deliveryLocations !== undefined) {
         store.settings.deliveryLocations = deliveryLocations.map((l) => l.trim()).filter(Boolean);
+      }
+      if (typeof overlapMinHours === 'number' && overlapMinHours >= 0) {
+        (store.settings as { overlapMinHours?: number }).overlapMinHours = overlapMinHours;
       }
       return { ...store.settings };
     });

@@ -96,6 +96,60 @@ export async function PUT(req: NextRequest, { params }: Params) {
   }
 }
 
+// PATCH /api/reservas/[id] — partial update (currently: assignedPlate)
+export async function PATCH(req: NextRequest, { params }: Params) {
+  const session = getSessionFromRequest(req);
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  if (!canWrite(session.role)) {
+    await appendEvent({ action: 'RBAC_DENIED', actorId: session.userId, actorRole: session.role, entity: 'Reservation', details: { action: 'PATCH' } });
+    return NextResponse.json({ error: 'Sin permisos de escritura' }, { status: 403 });
+  }
+
+  try {
+    const { id } = await params;
+    const body = await req.json() as { assignedPlate?: string | null };
+
+    const updated = withStoreWrite((store) => {
+      const rsv = store.reservations.find((r) => r.id === id);
+      if (!rsv) throw new Error('Reserva no encontrada');
+
+      if ('assignedPlate' in body) {
+        if (body.assignedPlate) {
+          // Validate plate exists and is active
+          const vehicle = store.vehicles.find((v) => v.plate === body.assignedPlate && v.active);
+          if (!vehicle) throw new Error('Matrícula no encontrada o inactiva');
+
+          // Check for conflicts on target plate
+          const conflicts = store.reservations.filter((r) => {
+            if (r.id === id) return false;
+            if (r.assignedPlate !== body.assignedPlate) return false;
+            if (r.status === 'CANCELADA') return false;
+            return r.startDate <= rsv.endDate && r.endDate >= rsv.startDate;
+          });
+          if (conflicts.length > 0) {
+            throw new Error(`Conflicto con reserva ${conflicts[0].number} en esa matrícula`);
+          }
+          rsv.assignedPlate = body.assignedPlate;
+        } else {
+          rsv.assignedPlate = undefined;
+        }
+      }
+
+      rsv.updatedAt = new Date().toISOString();
+      return { ...rsv };
+    });
+
+    await appendEvent({
+      action: 'SYSTEM', actorId: session.userId, actorRole: session.role,
+      entity: 'Reservation', entityId: id,
+      details: { action: 'PATCH', assignedPlate: body.assignedPlate },
+    });
+    return NextResponse.json({ reservation: updated });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Error interno' }, { status: 500 });
+  }
+}
+
 // DELETE /api/reservas/[id]
 export async function DELETE(req: NextRequest, { params }: Params) {
   const session = getSessionFromRequest(req);

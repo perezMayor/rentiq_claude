@@ -442,6 +442,7 @@ function ConfiguracionTab({ myRole }: { myRole: UserRole }) {
           name: edit.name, nif: edit.nif, address: edit.address,
           phone: edit.phone, email: edit.email,
           invoiceSeries: edit.invoiceSeries, ivaPercent: edit.ivaPercent,
+          overlapMinHours: edit.overlapMinHours,
         }),
       });
       const data = await res.json();
@@ -489,6 +490,10 @@ function ConfiguracionTab({ myRole }: { myRole: UserRole }) {
             <div className="form-group">
               <label className="form-label">IVA (%)</label>
               <input type="number" className="form-input" min="0" max="100" step="0.1" value={edit.ivaPercent ?? ''} onChange={(e) => setEdit((s) => ({ ...s, ivaPercent: parseFloat(e.target.value) }))} disabled={!isSuperAdmin} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Tiempo de solape planning (h)</label>
+              <input type="number" className="form-input" min="0" max="48" step="1" value={edit.overlapMinHours ?? 2} onChange={(e) => setEdit((s) => ({ ...s, overlapMinHours: parseInt(e.target.value, 10) }))} disabled={!isSuperAdmin} />
             </div>
           </div>
           {isSuperAdmin ? (

@@ -2,6 +2,16 @@ import type { RentalStore } from './types';
 
 export function createSeedStore(): RentalStore {
   const NOW = new Date().toISOString();
+
+  const today = new Date();
+  const d = (n: number): string => {
+    const dt = new Date(today);
+    dt.setDate(dt.getDate() + n);
+    return dt.toISOString().split('T')[0];
+  };
+  const yr = today.getFullYear();
+  const rsv = (n: number) => `RSV-${yr}-${String(n).padStart(6, '0')}`;
+
   return {
     meta: {
       version: '3.0.0',
@@ -17,6 +27,7 @@ export function createSeedStore(): RentalStore {
       invoiceSeries: 'F',
       ivaPercent: 21,
       deliveryLocations: [],
+      overlapMinHours: 2,
     },
     branches: [
       {
@@ -73,7 +84,37 @@ export function createSeedStore(): RentalStore {
         updatedAt: NOW,
       },
     ],
-    clients: [],
+    clients: [
+      {
+        id: 'client-1',
+        type: 'PARTICULAR' as const,
+        name: 'Juan',
+        surname: 'García López',
+        email: 'juan@example.com',
+        phone: '+34 600 000 001',
+        nif: '12345678A',
+        address: 'Calle Sol 5, Madrid',
+        active: true,
+        createdAt: NOW,
+        updatedAt: NOW,
+        notes: '',
+      },
+      {
+        id: 'client-2',
+        type: 'EMPRESA' as const,
+        name: 'Contacto',
+        surname: 'Viajes',
+        companyName: 'Empresa Viajes S.L.',
+        email: 'info@viajes.com',
+        phone: '+34 600 000 002',
+        nif: 'B87654321',
+        address: 'Avenida Luna 10, Madrid',
+        active: true,
+        createdAt: NOW,
+        updatedAt: NOW,
+        notes: '',
+      },
+    ],
     vehicleCategories: [
       {
         id: 'cat-mini',
@@ -207,8 +248,121 @@ export function createSeedStore(): RentalStore {
     ],
     vehicleInsurances: [],
     vehicleTasks: [],
-    reservations: [],
-    contracts: [],
+    reservations: [
+      {
+        id: 'rsv-1', number: rsv(1), branchId: 'branch-1',
+        pickupLocation: 'Oficina Principal', returnLocation: 'Oficina Principal',
+        clientId: 'client-1', categoryId: 'cat-mini', assignedPlate: '1234ABC',
+        startDate: d(-3), startTime: '09:00', endDate: d(2), endTime: '18:00',
+        billedDays: 6, basePrice: 180, extrasTotal: 0, insuranceTotal: 0,
+        fuelCharge: 0, penalties: 0, discount: 0, total: 180,
+        extras: [],
+        status: 'CONFIRMADA' as const, notes: '', auditLog: [],
+        createdBy: 'user-admin', createdAt: NOW, updatedAt: NOW,
+      },
+      {
+        id: 'rsv-2', number: rsv(2), branchId: 'branch-1',
+        pickupLocation: 'Aeropuerto', returnLocation: 'Aeropuerto',
+        clientId: 'client-2', categoryId: 'cat-mini', assignedPlate: '1234ABC',
+        startDate: d(4), startTime: '10:00', endDate: d(8), endTime: '17:00',
+        billedDays: 5, basePrice: 150, extrasTotal: 0, insuranceTotal: 0,
+        fuelCharge: 0, penalties: 0, discount: 0, total: 150,
+        extras: [],
+        status: 'PETICION' as const, notes: '', auditLog: [],
+        createdBy: 'user-admin', createdAt: NOW, updatedAt: NOW,
+      },
+      {
+        id: 'rsv-3', number: rsv(3), branchId: 'branch-1',
+        pickupLocation: 'Oficina Principal', returnLocation: 'Oficina Principal',
+        clientId: 'client-1', categoryId: 'cat-compacto', assignedPlate: '5678DEF',
+        startDate: d(-1), startTime: '09:00', endDate: d(5), endTime: '18:00',
+        billedDays: 7, basePrice: 280, extrasTotal: 0, insuranceTotal: 0,
+        fuelCharge: 0, penalties: 0, discount: 0, total: 280,
+        extras: [],
+        status: 'CONFIRMADA' as const, contractId: 'ctr-1', notes: '', auditLog: [],
+        createdBy: 'user-admin', createdAt: NOW, updatedAt: NOW,
+      },
+      {
+        id: 'rsv-4', number: rsv(4), branchId: 'branch-1',
+        pickupLocation: 'Puerto', returnLocation: 'Puerto',
+        clientId: 'client-2', categoryId: 'cat-compacto', assignedPlate: '5678DEF',
+        startDate: d(6), startTime: '08:00', endDate: d(11), endTime: '18:00',
+        billedDays: 6, basePrice: 240, extrasTotal: 0, insuranceTotal: 0,
+        fuelCharge: 0, penalties: 0, discount: 0, total: 240,
+        extras: [],
+        status: 'PETICION' as const, notes: '', auditLog: [],
+        createdBy: 'user-admin', createdAt: NOW, updatedAt: NOW,
+      },
+      {
+        id: 'rsv-5', number: rsv(5), branchId: 'branch-1',
+        pickupLocation: 'Oficina Principal', returnLocation: 'Aeropuerto',
+        clientId: 'client-2', categoryId: 'cat-suv', assignedPlate: '9012GHI',
+        startDate: d(3), startTime: '09:00', endDate: d(9), endTime: '17:00',
+        billedDays: 7, basePrice: 406, extrasTotal: 0, insuranceTotal: 0,
+        fuelCharge: 0, penalties: 0, discount: 0, total: 406,
+        extras: [],
+        status: 'CONFIRMADA' as const, notes: '', auditLog: [],
+        createdBy: 'user-admin', createdAt: NOW, updatedAt: NOW,
+      },
+      {
+        id: 'rsv-6', number: rsv(6), branchId: 'branch-1',
+        pickupLocation: 'Aeropuerto', returnLocation: 'Oficina Principal',
+        clientId: 'client-1', categoryId: 'cat-suv', assignedPlate: '9012GHI',
+        startDate: d(15), startTime: '10:00', endDate: d(19), endTime: '18:00',
+        billedDays: 5, basePrice: 290, extrasTotal: 0, insuranceTotal: 0,
+        fuelCharge: 0, penalties: 0, discount: 0, total: 290,
+        extras: [],
+        status: 'PETICION' as const, notes: '', auditLog: [],
+        createdBy: 'user-admin', createdAt: NOW, updatedAt: NOW,
+      },
+      {
+        id: 'rsv-7', number: rsv(7), branchId: 'branch-1',
+        pickupLocation: 'Oficina Principal', returnLocation: 'Oficina Principal',
+        clientId: 'client-2', categoryId: 'cat-compacto',
+        startDate: d(2), startTime: '09:00', endDate: d(7), endTime: '18:00',
+        billedDays: 6, basePrice: 240, extrasTotal: 0, insuranceTotal: 0,
+        fuelCharge: 0, penalties: 0, discount: 0, total: 240,
+        extras: [],
+        status: 'PETICION' as const, notes: '', auditLog: [],
+        createdBy: 'user-admin', createdAt: NOW, updatedAt: NOW,
+      },
+      {
+        id: 'rsv-8', number: rsv(8), branchId: 'branch-1',
+        pickupLocation: 'Aeropuerto', returnLocation: 'Aeropuerto',
+        clientId: 'client-1', categoryId: 'cat-mini',
+        startDate: d(10), startTime: '11:00', endDate: d(14), endTime: '17:00',
+        billedDays: 5, basePrice: 125, extrasTotal: 0, insuranceTotal: 0,
+        fuelCharge: 0, penalties: 0, discount: 0, total: 125,
+        extras: [],
+        status: 'CONFIRMADA' as const, notes: '', auditLog: [],
+        createdBy: 'user-admin', createdAt: NOW, updatedAt: NOW,
+      },
+    ],
+    contracts: [
+      {
+        id: 'ctr-1',
+        number: 'MAD-2026-000001',
+        reservationId: 'rsv-3',
+        branchId: 'branch-1',
+        clientId: 'client-1',
+        plate: '5678DEF',
+        categoryId: 'cat-compacto',
+        pickupLocation: 'Oficina Principal',
+        returnLocation: 'Oficina Principal',
+        startDate: d(-1), startTime: '09:00',
+        endDate: d(5), endTime: '18:00',
+        billedDays: 7,
+        basePrice: 280,
+        extrasTotal: 0, insuranceTotal: 0, fuelCharge: 0,
+        penalties: 0, discount: 0, total: 280,
+        extras: [],
+        status: 'ABIERTO' as const,
+        payments: [],
+        internalExpenseIds: [],
+        auditLog: [],
+        createdBy: 'user-admin', createdAt: NOW, updatedAt: NOW,
+      },
+    ],
     invoices: [],
     tariffPlans: [
       {
@@ -281,6 +435,16 @@ export function createSeedStore(): RentalStore {
       },
     ],
     templates: [],
-    vehicleBlocks: [],
+    vehicleBlocks: [
+      {
+        id: 'block-1',
+        plate: '9012GHI',
+        startDate: d(11),
+        endDate: d(13),
+        reason: 'ITV',
+        createdBy: 'user-admin',
+        createdAt: NOW,
+      },
+    ],
   };
 }
