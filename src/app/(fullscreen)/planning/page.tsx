@@ -642,7 +642,9 @@ export default function PlanningPage() {
     return (
       <div key={orph.id} className={styles.vehicleRow}>
         <div className={`${styles.vehicleCellPlate} ${styles.orphanVehicleCell}`} style={{ left: 0 }}>
-          <div className={styles.vehiclePlate} style={{ color: 'var(--color-status-huerfana)', fontSize: '0.72rem', opacity: 0.7 }}>—</div>
+          <div className={styles.orphanNumBadge}>
+            #{orph.number.split('-').pop()?.replace(/^0+/, '') ?? '?'}
+          </div>
         </div>
         <div className={`${styles.vehicleCellGroup} ${styles.orphanVehicleCell}`} style={{ left: COL_PLATE }}>
           <div className={styles.vehicleCategoryBadge} style={{ background: 'rgba(220,38,38,0.1)', color: 'var(--color-status-huerfana)', borderColor: 'rgba(220,38,38,0.25)' }}>
