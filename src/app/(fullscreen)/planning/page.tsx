@@ -28,9 +28,21 @@ interface PlanningReservation {
   returnLocation?: string;
 }
 
+interface OrphanReservation {
+  id: string;
+  number: string;
+  startDate: string;
+  endDate: string;
+  status: ReservationStatus;
+  clientName: string;
+  pickupLocation?: string;
+  returnLocation?: string;
+}
+
 interface PlanningData {
   vehicles: PlanningVehicle[];
   reservations: PlanningReservation[];
+  orphans: OrphanReservation[];
   blocks: VehicleBlock[];
   from: string;
   days: number;
@@ -236,6 +248,7 @@ export default function PlanningPage() {
   const [loading, setLoading] = useState(false);
 
   // UI state
+  const [showOrphans, setShowOrphans] = useState(true);
   const [blockModal, setBlockModal] = useState<{ plate: string; date: string } | null>(null);
   const [selectedInfo, setSelectedInfo] = useState<CellInfo | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; info: CellInfo } | null>(null);
@@ -338,6 +351,7 @@ export default function PlanningPage() {
   // Active vehicle + reservation counts for header
   const vehicleCount = data?.vehicles.length ?? 0;
   const occupiedToday = data ? data.reservations.filter((r) => today >= r.startDate && today <= r.endDate).length : 0;
+  const orphans = (showOrphans && data?.orphans) ? data.orphans : [];
 
   return (
     <div className={styles.layout}>
@@ -431,6 +445,15 @@ export default function PlanningPage() {
                   <span>{label}</span>
                 </div>
               ))}
+              <button
+                className={`${styles.legendItem} ${styles.legendToggle} ${showOrphans ? styles.legendToggleActive : ''}`}
+                onClick={() => setShowOrphans((v) => !v)}
+                type="button"
+              >
+                <div className={styles.legendDot} style={{ background: 'var(--color-status-huerfana)', opacity: showOrphans ? 1 : 0.35 }} />
+                <span style={{ opacity: showOrphans ? 1 : 0.5 }}>Huérfanas</span>
+                <span className={styles.legendToggleBadge}>{showOrphans ? 'ON' : 'OFF'}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -526,6 +549,51 @@ export default function PlanningPage() {
                     })}
                   </div>
                 ))}
+
+                {/* ── Huérfanas ── */}
+                {orphans.length > 0 && (
+                  <>
+                    {/* Separator row */}
+                    <div className={styles.orphanSeparator}>
+                      Sin matrícula asignada ({orphans.length})
+                    </div>
+                    {Array.from({ length: dates.length }).map((_, i) => (
+                      <div key={i} className={styles.orphanSeparatorCell} />
+                    ))}
+
+                    {orphans.map((orph) => (
+                      <div key={orph.id} className={styles.vehicleRow}>
+                        <div className={`${styles.vehicleCell} ${styles.orphanVehicleCell}`}>
+                          <div className={styles.vehiclePlate} style={{ color: 'var(--color-status-huerfana)' }}>{orph.number}</div>
+                          <div className={styles.vehicleModel}>{orph.clientName}</div>
+                          <div className={styles.vehicleCategoryBadge} style={{ background: 'rgba(220,38,38,0.1)', color: 'var(--color-status-huerfana)', borderColor: 'rgba(220,38,38,0.25)' }}>Sin matrícula</div>
+                        </div>
+                        {dates.map((d) => {
+                          const inRange = d >= orph.startDate && d <= orph.endDate;
+                          const dow = dayOfWeek(d);
+                          const isWeekend = dow === 0 || dow === 6;
+                          const pos = inRange ? barPosition(d, orph.startDate, orph.endDate) : null;
+                          const posCls = pos ? barClass(pos, styles) : '';
+                          return (
+                            <div
+                              key={d}
+                              className={[styles.dayCell, isWeekend && !inRange ? styles.weekendCell : ''].filter(Boolean).join(' ')}
+                              onClick={() => inRange && setSelectedInfo({ type: 'orphan' as never, data: orph as never })}
+                              onMouseEnter={(e) => {
+                                if (!inRange) return;
+                                if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
+                                tooltipTimer.current = setTimeout(() => setTooltip({ x: e.clientX + 12, y: e.clientY + 12, info: { type: 'orphan' as never, data: orph as never } }), 250);
+                              }}
+                              onMouseLeave={handleCellMouseLeave}
+                            >
+                              {inRange && <div className={`${styles.cellBar} ${styles.barHuerfana} ${posCls}`} />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -548,6 +616,19 @@ export default function PlanningPage() {
                 }}
               >
                 {statusLabel(tooltip.info.data.status, tooltip.info.data.contractId)}
+              </span>
+            </>
+          ) : tooltip.info.type === ('orphan' as string) ? (
+            <>
+              <div className={styles.tooltipTitle} style={{ color: 'var(--color-status-huerfana)' }}>
+                {(tooltip.info.data as unknown as OrphanReservation).number}
+              </div>
+              <div className={styles.tooltipRow}>{(tooltip.info.data as unknown as OrphanReservation).clientName}</div>
+              <div className={styles.tooltipRow}>
+                {(tooltip.info.data as unknown as OrphanReservation).startDate} — {(tooltip.info.data as unknown as OrphanReservation).endDate}
+              </div>
+              <span className={styles.tooltipStatus} style={{ background: 'rgba(220,38,38,0.12)', color: 'var(--color-status-huerfana)' }}>
+                Sin matrícula
               </span>
             </>
           ) : (

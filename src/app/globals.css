@@ -18,6 +18,7 @@
   --color-status-contratado: #15803d;
   --color-status-no-disponible: #64748b;
   --color-status-bloqueado: #7c3aed;
+  --color-status-huerfana: #dc2626;
 
   --sidebar-width: 240px;
   --radius-sm: 4px;

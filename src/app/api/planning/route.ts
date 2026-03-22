@@ -53,6 +53,16 @@ export async function GET(req: NextRequest) {
 
     const activePlates = new Set(vehicleOut.map((v) => v.plate));
 
+    function buildClientName(clientId: string) {
+      const client = store.clients.find((c) => c.id === clientId);
+      if (!client) return clientId;
+      return client.type === 'EMPRESA' && client.companyName
+        ? client.companyName
+        : client.surname
+        ? `${client.name} ${client.surname}`
+        : client.name;
+    }
+
     // Filter reservations: must have assignedPlate, overlap period, plate in fleet
     const reservationOut = store.reservations
       .filter((r) => {
@@ -64,33 +74,38 @@ export async function GET(req: NextRequest) {
           const ret = (r.returnLocation ?? '').toLowerCase();
           if (!pickup.includes(location) && !ret.includes(location)) return false;
         }
-        // Overlap: startDate <= to AND endDate >= from
         return r.startDate <= to && r.endDate >= from;
       })
-      .map((r) => {
-        const client = store.clients.find((c) => c.id === r.clientId);
-        let clientName = r.clientId;
-        if (client) {
-          clientName =
-            client.type === 'EMPRESA' && client.companyName
-              ? client.companyName
-              : client.surname
-              ? `${client.name} ${client.surname}`
-              : client.name;
-        }
-        return {
-          id: r.id,
-          number: r.number,
-          plate: r.assignedPlate as string,
-          startDate: r.startDate,
-          endDate: r.endDate,
-          status: r.status,
-          contractId: r.contractId,
-          clientName,
-          pickupLocation: r.pickupLocation,
-          returnLocation: r.returnLocation,
-        };
-      });
+      .map((r) => ({
+        id: r.id,
+        number: r.number,
+        plate: r.assignedPlate as string,
+        startDate: r.startDate,
+        endDate: r.endDate,
+        status: r.status,
+        contractId: r.contractId,
+        clientName: buildClientName(r.clientId),
+        pickupLocation: r.pickupLocation,
+        returnLocation: r.returnLocation,
+      }));
+
+    // Orphan reservations: active, no assignedPlate, overlap period
+    const orphanOut = store.reservations
+      .filter((r) => {
+        if (r.assignedPlate) return false;
+        if (r.status === 'CANCELADA') return false;
+        return r.startDate <= to && r.endDate >= from;
+      })
+      .map((r) => ({
+        id: r.id,
+        number: r.number,
+        startDate: r.startDate,
+        endDate: r.endDate,
+        status: r.status,
+        clientName: buildClientName(r.clientId),
+        pickupLocation: r.pickupLocation,
+        returnLocation: r.returnLocation,
+      }));
 
     // Filter blocks: plate in fleet, overlap period
     const blocksOut = (store.vehicleBlocks ?? []).filter((b) => {
@@ -101,6 +116,7 @@ export async function GET(req: NextRequest) {
     return {
       vehicles: vehicleOut,
       reservations: reservationOut,
+      orphans: orphanOut,
       blocks: blocksOut,
       from,
       days,
