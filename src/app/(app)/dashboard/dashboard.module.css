@@ -23,8 +23,8 @@
   position: relative;
   background: var(--color-surface-strong);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 14px 18px 12px;
+  border-radius: 8px;
+  padding: 8px 14px 7px;
   overflow: hidden;
   transition: box-shadow 0.15s, transform 0.15s;
 }
@@ -33,41 +33,41 @@
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 3px;
+  height: 2px;
   background: var(--kpi-accent, var(--color-primary));
-  border-radius: 10px 10px 0 0;
+  border-radius: 8px 8px 0 0;
 }
 
 .kpiCard:hover {
-  box-shadow: 0 4px 18px rgba(0,0,0,0.10);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.08);
   transform: translateY(-1px);
 }
 
 .kpiLabel {
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   color: var(--color-text-muted);
-  margin-bottom: 6px;
+  margin-bottom: 3px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .kpiValue {
-  font-size: 2rem;
+  font-size: 1.35rem;
   font-weight: 700;
   color: var(--color-text-primary);
   line-height: 1;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
 .kpiSub {
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   color: var(--color-text-muted);
-  margin-top: 5px;
+  margin-top: 3px;
 }
 
 .kpiAccentBlue   { --kpi-accent: var(--color-primary); }
