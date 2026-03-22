@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import type { ReservationStatus, VehicleBlock } from '@/src/lib/types';
 import DatePicker from '@/src/components/DatePicker';
 import styles from './planning.module.css';
@@ -337,6 +338,7 @@ function TooltipContent({ item }: { item: SelectedItem }) {
 // ─── Main planning page ───────────────────────────────────────────────────────
 
 export default function PlanningPage() {
+  const router = useRouter();
   const today = new Date().toISOString().split('T')[0];
 
   // Filter state
@@ -779,8 +781,8 @@ export default function PlanningPage() {
           <button className={`${styles.sidebarBtn} ${styles.sidebarBtnPrimary}`} onClick={() => window.print()}>
             Exportar PDF
           </button>
-          <button className={styles.sidebarBtn} onClick={() => window.open('/reservas', '_blank')}>Ir a Reservas</button>
-          <button className={styles.sidebarBtn} onClick={() => window.open('/dashboard', '_blank')}>Ir a Dashboard</button>
+          <button className={styles.sidebarBtn} onClick={() => router.push('/reservas')}>Ir a Reservas</button>
+          <button className={styles.sidebarBtn} onClick={() => router.push('/dashboard')}>Ir a Dashboard</button>
         </div>
       </aside>
 
