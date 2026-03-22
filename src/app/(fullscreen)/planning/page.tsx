@@ -509,6 +509,7 @@ export default function PlanningPage() {
   ) {
     dragRef.current = { reservationId, sourcePlate, sourceCategoryId, sourceCategoryName, isOrphan };
     e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', reservationId);
     hideTooltip();
   }
 
@@ -607,8 +608,6 @@ export default function PlanningPage() {
               bar = (
                 <div
                   className={`${styles.cellBar} ${colorCls} ${posCls} ${isOverlap ? styles.barOverlapStart : ''}`}
-                  draggable={userRole !== 'LECTOR'}
-                  onDragStart={(e) => handleDragStart(e, r.id, vehicle.plate, vehicle.categoryId, vehicle.categoryName, false)}
                   onDoubleClick={(e) => { e.stopPropagation(); window.open(`/reservas?tab=gestion&id=${r.id}`, '_blank'); }}
                   onMouseEnter={(e) => { e.stopPropagation(); showTooltipFor(e, { type: 'reservation', data: r }); }}
                   onMouseLeave={hideTooltip}
@@ -618,6 +617,10 @@ export default function PlanningPage() {
           }
 
           const dragHandlers = userRole !== 'LECTOR' ? {
+            ...(cellInfo?.type === 'reservation' ? {
+              draggable: true,
+              onDragStart: (e: React.DragEvent) => handleDragStart(e, cellInfo.data.id, vehicle.plate, vehicle.categoryId, vehicle.categoryName, false),
+            } : {}),
             onDragOver: (e: React.DragEvent) => { e.preventDefault(); setDragOverPlate(vehicle.plate); },
             onDragLeave: () => setDragOverPlate(null),
             onDrop: (e: React.DragEvent) => { e.preventDefault(); void handleDrop(vehicle.plate, vehicle.categoryId, vehicle.categoryName); },
@@ -664,8 +667,6 @@ export default function PlanningPage() {
           const bar = inRange ? (
             <div
               className={`${styles.cellBar} ${styles.barHuerfana} ${pos ? barClass(pos, styles) : ''}`}
-              draggable={userRole !== 'LECTOR'}
-              onDragStart={(e) => handleDragStart(e, orph.id, null, orph.categoryId, orph.categoryName, true)}
               onDoubleClick={(e) => { e.stopPropagation(); window.open(`/reservas?tab=gestion&id=${orph.id}`, '_blank'); }}
               onMouseEnter={(e) => { e.stopPropagation(); showTooltipFor(e, { type: 'orphan', data: orph }); }}
               onMouseLeave={hideTooltip}
@@ -676,10 +677,16 @@ export default function PlanningPage() {
             </div>
           ) : null;
 
+          const orphanDragHandlers = inRange && userRole !== 'LECTOR' ? {
+            draggable: true,
+            onDragStart: (e: React.DragEvent) => handleDragStart(e, orph.id, null, orph.categoryId, orph.categoryName, true),
+          } : {};
+
           return renderDayCell(
             d, inRange, isToday, dow,
             () => inRange ? setSelectedItem({ type: 'orphan', data: orph }) : undefined,
-            bar
+            bar,
+            orphanDragHandlers
           );
         })}
       </div>
