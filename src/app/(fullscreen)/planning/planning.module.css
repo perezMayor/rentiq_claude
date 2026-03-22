@@ -1,11 +1,117 @@
-/* ─── Planning module styles ─────────────────────────────────────────────── */
+/* ─── Full-screen layout ──────────────────────────────────────────────────── */
 
-.controls {
+.layout {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: flex-end;
-  margin-bottom: 20px;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--color-bg-main);
+}
+
+/* ─── Sidebar ─────────────────────────────────────────────────────────────── */
+
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-sidebar-bg);
+  color: var(--color-sidebar-text);
+  border-right: 1px solid rgba(255,255,255,0.07);
+  overflow: hidden;
+}
+
+.sidebarHeader {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+
+.sidebarTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.01em;
+}
+
+.sidebarSubtitle {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.45);
+  margin-top: 2px;
+}
+
+.sidebarBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sidebarBody::-webkit-scrollbar { width: 4px; }
+.sidebarBody::-webkit-scrollbar-track { background: transparent; }
+.sidebarBody::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+
+.sidebarSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebarLabel {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 2px;
+}
+
+.sidebarInput {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.07);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.825rem;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.sidebarInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.sidebarSelect {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.07);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.825rem;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.4)'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+.sidebarSelect:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.sidebarSelect option {
+  background: #1e3a5f;
+  color: #fff;
 }
 
 .periodGroup {
@@ -14,81 +120,136 @@
 }
 
 .periodBtn {
-  padding: 7px 14px;
-  border: 1px solid var(--color-border);
+  flex: 1;
+  padding: 7px 4px;
+  border: 1px solid rgba(255,255,255,0.15);
   border-radius: 6px;
-  background: var(--color-surface-strong);
-  color: var(--color-text-primary);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.7);
   font-family: inherit;
-  font-size: 0.875rem;
+  font-size: 0.78rem;
   font-weight: 500;
   cursor: pointer;
+  text-align: center;
   transition: all 0.15s;
 }
 
 .periodBtn:hover {
-  background: var(--color-surface);
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  background: rgba(255,255,255,0.12);
+  color: #fff;
 }
 
 .periodBtnActive {
-  background: var(--color-primary);
+  background: var(--color-primary) !important;
+  color: #fff !important;
+  border-color: var(--color-primary) !important;
+}
+
+/* ─── Legend in sidebar ───────────────────────────────────────────────────── */
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.55);
+}
+
+.legendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ─── Sidebar bottom ──────────────────────────────────────────────────────── */
+
+.sidebarBottom {
+  flex-shrink: 0;
+  padding: 12px 14px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebarBtn {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.8);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+
+.sidebarBtn:hover {
+  background: rgba(255,255,255,0.13);
   color: #fff;
-  border-color: var(--color-primary);
 }
 
-.dateInput {
-  padding: 7px 11px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
+.sidebarBtnPrimary {
+  background: rgba(43,108,189,0.35);
+  border-color: rgba(43,108,189,0.5);
+  color: #fff;
+}
+
+.sidebarBtnPrimary:hover {
+  background: var(--color-primary);
+}
+
+/* ─── Main content ────────────────────────────────────────────────────────── */
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.mainHeader {
+  flex-shrink: 0;
+  padding: 14px 20px 10px;
   background: var(--color-surface-strong);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mainTitle {
+  font-size: 1rem;
+  font-weight: 700;
   color: var(--color-text-primary);
-  font-family: inherit;
-  font-size: 0.875rem;
-  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.dateInput:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(43, 108, 189, 0.18);
+.mainMeta {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
 }
 
-.filterSelect {
-  padding: 7px 11px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-surface-strong);
-  color: var(--color-text-primary);
-  font-family: inherit;
-  font-size: 0.875rem;
-  min-width: 140px;
-  transition: border-color 0.15s, box-shadow 0.15s;
+.mainHint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
 }
 
-.filterSelect:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(43, 108, 189, 0.18);
-}
-
-.searchInput {
-  padding: 7px 11px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-surface-strong);
-  color: var(--color-text-primary);
-  font-family: inherit;
-  font-size: 0.875rem;
-  min-width: 140px;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.searchInput:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(43, 108, 189, 0.18);
+.mainBody {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 20px;
 }
 
 /* ─── Grid wrapper ────────────────────────────────────────────────────────── */
@@ -103,15 +264,10 @@
 
 .grid {
   display: grid;
-  /* First column is vehicle info, rest are day columns — set via inline style */
   min-width: max-content;
 }
 
 /* ─── Header row ──────────────────────────────────────────────────────────── */
-
-.headerRow {
-  display: contents;
-}
 
 .vehicleHeaderCell {
   position: sticky;
@@ -182,8 +338,8 @@
   border-bottom: 1px solid var(--color-border);
   border-right: 2px solid var(--color-border);
   padding: 8px 12px;
-  min-width: 180px;
-  max-width: 180px;
+  min-width: 170px;
+  max-width: 170px;
 }
 
 .vehiclePlate {
@@ -246,51 +402,17 @@
   transition: opacity 0.1s;
 }
 
-.cellBar:hover {
-  opacity: 1;
-}
+.cellBar:hover { opacity: 1; }
 
-.barPeticion {
-  background: var(--color-status-peticion);
-}
+.barPeticion   { background: var(--color-status-peticion); }
+.barConfirmada { background: var(--color-status-confirmada); }
+.barContratado { background: var(--color-status-contratado); }
+.barBloqueado  { background: var(--color-status-bloqueado); }
 
-.barConfirmada {
-  background: var(--color-status-confirmada);
-}
-
-.barContratado {
-  background: var(--color-status-contratado);
-}
-
-.barBloqueado {
-  background: var(--color-status-bloqueado);
-}
-
-/* Left cap for first cell in a span */
-.barStart {
-  border-radius: 3px 0 0 3px;
-  left: 4px;
-}
-
-/* Right cap for last cell in a span */
-.barEnd {
-  border-radius: 0 3px 3px 0;
-  right: 4px;
-}
-
-/* Both caps for single-day spans */
-.barStartEnd {
-  border-radius: 3px;
-  left: 4px;
-  right: 4px;
-}
-
-/* Middle cells — no caps */
-.barMiddle {
-  border-radius: 0;
-  left: 0;
-  right: 0;
-}
+.barStart    { border-radius: 3px 0 0 3px; left: 4px; }
+.barEnd      { border-radius: 0 3px 3px 0; right: 4px; }
+.barStartEnd { border-radius: 3px; left: 4px; right: 4px; }
+.barMiddle   { border-radius: 0; left: 0; right: 0; }
 
 /* ─── Tooltip ─────────────────────────────────────────────────────────────── */
 
@@ -329,7 +451,7 @@
   text-transform: uppercase;
 }
 
-/* ─── Info panel (click detail) ───────────────────────────────────────────── */
+/* ─── Info panel ──────────────────────────────────────────────────────────── */
 
 .infoPanel {
   position: fixed;
@@ -385,31 +507,6 @@
   margin-top: 12px;
 }
 
-/* ─── Legend ──────────────────────────────────────────────────────────────── */
-
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  margin-bottom: 16px;
-  align-items: center;
-}
-
-.legendItem {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-}
-
-.legendDot {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-
 /* ─── Loading / empty ─────────────────────────────────────────────────────── */
 
 .loadingText {
@@ -426,10 +523,11 @@
   font-size: 0.9rem;
 }
 
-/* ─── Block button on vehicle cell ───────────────────────────────────────── */
+/* ─── Print ───────────────────────────────────────────────────────────────── */
 
-.blockBtn {
-  margin-top: 6px;
-  font-size: 0.7rem;
-  padding: 2px 8px;
+@media print {
+  .sidebar { display: none !important; }
+  .main { overflow: visible !important; }
+  .mainBody { overflow: visible !important; padding: 0 !important; }
+  .gridWrapper { overflow: visible !important; box-shadow: none !important; border: none !important; }
 }

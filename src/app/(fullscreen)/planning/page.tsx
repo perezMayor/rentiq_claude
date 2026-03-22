@@ -24,6 +24,8 @@ interface PlanningReservation {
   status: ReservationStatus;
   contractId?: string;
   clientName: string;
+  pickupLocation?: string;
+  returnLocation?: string;
 }
 
 interface PlanningData {
@@ -34,15 +36,10 @@ interface PlanningData {
   days: number;
 }
 
-interface Branch {
-  id: string;
-  name: string;
-}
+interface Branch { id: string; name: string; }
+interface Category { id: string; name: string; }
 
-interface Category {
-  id: string;
-  name: string;
-}
+type FleetFilter = 'all' | 'group' | 'model';
 
 type CellInfo =
   | { type: 'reservation'; data: PlanningReservation }
@@ -67,74 +64,43 @@ function dayOfWeek(dateStr: string): number {
 
 const DAY_NAMES = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 
-// ─── Cell bar position helper ─────────────────────────────────────────────────
+// ─── Bar helpers ──────────────────────────────────────────────────────────────
 
-function barPosition(
-  dateStr: string,
-  startDate: string,
-  endDate: string
-): 'start' | 'end' | 'startEnd' | 'middle' {
-  const isStart = dateStr === startDate || dateStr < startDate;
-  const isEnd = dateStr === endDate || dateStr > endDate;
-  // isStart: true if this day IS the first day of the bar in the visible range
-  const atStart = dateStr === startDate;
-  const atEnd = dateStr === endDate;
-  if (atStart && atEnd) return 'startEnd';
-  if (atStart) return 'start';
-  if (atEnd) return 'end';
-  void isStart;
-  void isEnd;
+function barPosition(dateStr: string, startDate: string, endDate: string): 'start' | 'end' | 'startEnd' | 'middle' {
+  if (dateStr === startDate && dateStr === endDate) return 'startEnd';
+  if (dateStr === startDate) return 'start';
+  if (dateStr === endDate) return 'end';
   return 'middle';
 }
 
-function barClass(pos: ReturnType<typeof barPosition>, styles: Record<string, string>): string {
+function barClass(pos: ReturnType<typeof barPosition>, s: Record<string, string>): string {
   switch (pos) {
-    case 'startEnd': return styles.barStartEnd ?? '';
-    case 'start': return styles.barStart ?? '';
-    case 'end': return styles.barEnd ?? '';
-    default: return styles.barMiddle ?? '';
+    case 'startEnd': return s.barStartEnd ?? '';
+    case 'start':    return s.barStart ?? '';
+    case 'end':      return s.barEnd ?? '';
+    default:         return s.barMiddle ?? '';
   }
 }
 
-function statusBarClass(
-  status: ReservationStatus,
-  contractId: string | undefined,
-  styles: Record<string, string>
-): string {
-  if (contractId) return styles.barContratado ?? '';
-  switch (status) {
-    case 'PETICION': return styles.barPeticion ?? '';
-    case 'CONFIRMADA': return styles.barConfirmada ?? '';
-    default: return '';
-  }
+function statusBarClass(status: ReservationStatus, contractId: string | undefined, s: Record<string, string>): string {
+  if (contractId) return s.barContratado ?? '';
+  if (status === 'PETICION') return s.barPeticion ?? '';
+  if (status === 'CONFIRMADA') return s.barConfirmada ?? '';
+  return '';
 }
 
 function statusLabel(status: ReservationStatus, contractId?: string): string {
   if (contractId) return 'Contratado';
-  switch (status) {
-    case 'PETICION': return 'Peticion';
-    case 'CONFIRMADA': return 'Confirmada';
-    default: return status;
-  }
+  if (status === 'PETICION') return 'Peticion';
+  if (status === 'CONFIRMADA') return 'Confirmada';
+  return status;
 }
 
 // ─── Block modal ──────────────────────────────────────────────────────────────
 
-interface BlockModalProps {
-  plate: string;
-  initialDate: string;
-  onClose: () => void;
-  onCreated: () => void;
-}
+interface ConflictInfo { contractId: string; contractNumber: string; startDate: string; endDate: string; }
 
-interface ConflictInfo {
-  contractId: string;
-  contractNumber: string;
-  startDate: string;
-  endDate: string;
-}
-
-function BlockModal({ plate, initialDate, onClose, onCreated }: BlockModalProps) {
+function BlockModal({ plate, initialDate, onClose, onCreated }: { plate: string; initialDate: string; onClose: () => void; onCreated: () => void; }) {
   const [startDate, setStartDate] = useState(initialDate);
   const [endDate, setEndDate] = useState(initialDate);
   const [reason, setReason] = useState('');
@@ -143,112 +109,62 @@ function BlockModal({ plate, initialDate, onClose, onCreated }: BlockModalProps)
   const [conflicts, setConflicts] = useState<ConflictInfo[] | null>(null);
 
   async function submit(override: boolean) {
-    setSaving(true);
-    setError(null);
+    setSaving(true); setError(null);
     try {
       const res = await fetch('/api/planning/bloquear', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plate, startDate, endDate, reason: reason || undefined, override }),
       });
-      const json = (await res.json()) as {
-        error?: string;
-        conflicts?: ConflictInfo[];
-        block?: VehicleBlock;
-      };
-      if (res.status === 409 && json.conflicts) {
-        setConflicts(json.conflicts);
-        setSaving(false);
-        return;
-      }
-      if (!res.ok) {
-        setError(json.error ?? 'Error al crear el bloqueo');
-        setSaving(false);
-        return;
-      }
+      const json = (await res.json()) as { error?: string; conflicts?: ConflictInfo[] };
+      if (res.status === 409 && json.conflicts) { setConflicts(json.conflicts); setSaving(false); return; }
+      if (!res.ok) { setError(json.error ?? 'Error al crear el bloqueo'); setSaving(false); return; }
       onCreated();
-    } catch {
-      setError('Error de red');
-      setSaving(false);
-    }
+    } catch { setError('Error de red'); setSaving(false); }
   }
 
   return (
     <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal">
         <div className="modal__header">
-          <span className="modal__title">Bloquear vehiculo</span>
-          <button className="modal__close" onClick={onClose} aria-label="Cerrar">x</button>
+          <span className="modal__title">Bloquear vehículo</span>
+          <button className="modal__close" onClick={onClose}>×</button>
         </div>
         <div className="modal__body">
           {error && <div className="alert alert-danger">{error}</div>}
-
           {conflicts && (
             <div className="alert alert-danger">
               <strong>Conflicto con contratos abiertos:</strong>
               <ul style={{ marginTop: 6, paddingLeft: 16 }}>
-                {conflicts.map((c) => (
-                  <li key={c.contractId} style={{ fontSize: '0.82rem' }}>
-                    {c.contractNumber} ({c.startDate} — {c.endDate})
-                  </li>
-                ))}
+                {conflicts.map((c) => <li key={c.contractId} style={{ fontSize: '0.82rem' }}>{c.contractNumber} ({c.startDate} — {c.endDate})</li>)}
               </ul>
             </div>
           )}
-
           <div className="form-grid">
             <div className="form-group col-span-2">
-              <label className="form-label">Matricula</label>
+              <label className="form-label">Matrícula</label>
               <input className="form-input" value={plate} readOnly />
             </div>
             <div className="form-group">
               <label className="form-label">Fecha inicio</label>
-              <DatePicker
-                className="form-input"
-                value={startDate}
-                onChange={(v) => { setStartDate(v); setConflicts(null); }}
-              />
+              <DatePicker className="form-input" value={startDate} onChange={(v) => { setStartDate(v); setConflicts(null); }} />
             </div>
             <div className="form-group">
               <label className="form-label">Fecha fin</label>
-              <DatePicker
-                className="form-input"
-                value={endDate}
-                onChange={(v) => { setEndDate(v); setConflicts(null); }}
-              />
+              <DatePicker className="form-input" value={endDate} onChange={(v) => { setEndDate(v); setConflicts(null); }} />
             </div>
             <div className="form-group col-span-2">
               <label className="form-label">Motivo (opcional)</label>
-              <input
-                type="text"
-                className="form-input"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Ej: Mantenimiento, ITV..."
-              />
+              <input type="text" className="form-input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ej: Mantenimiento, ITV..." />
             </div>
           </div>
         </div>
         <div className="modal__footer">
-          <button className="btn btn-ghost" onClick={onClose} disabled={saving}>
-            Cancelar
-          </button>
+          <button className="btn btn-ghost" onClick={onClose} disabled={saving}>Cancelar</button>
           {conflicts ? (
-            <button
-              className="btn btn-danger"
-              onClick={() => { void submit(true); }}
-              disabled={saving}
-            >
-              Forzar bloqueo (override)
-            </button>
+            <button className="btn btn-danger" onClick={() => { void submit(true); }} disabled={saving}>Forzar bloqueo</button>
           ) : (
-            <button
-              className="btn btn-primary"
-              onClick={() => { void submit(false); }}
-              disabled={saving}
-            >
-              {saving ? 'Guardando...' : 'Crear bloqueo'}
-            </button>
+            <button className="btn btn-primary" onClick={() => { void submit(false); }} disabled={saving}>{saving ? 'Guardando...' : 'Crear bloqueo'}</button>
           )}
         </div>
       </div>
@@ -258,77 +174,37 @@ function BlockModal({ plate, initialDate, onClose, onCreated }: BlockModalProps)
 
 // ─── Info panel ───────────────────────────────────────────────────────────────
 
-interface InfoPanelProps {
-  info: CellInfo;
-  onClose: () => void;
-  onDeleteBlock: (id: string) => void;
-  canWrite: boolean;
-}
-
-function InfoPanel({ info, onClose, onDeleteBlock, canWrite: writeAllowed }: InfoPanelProps) {
+function InfoPanel({ info, onClose, onDeleteBlock, canWrite }: { info: CellInfo; onClose: () => void; onDeleteBlock: (id: string) => void; canWrite: boolean; }) {
   if (info.type === 'reservation') {
     const r = info.data;
     return (
       <div className={styles.infoPanel}>
         <div className={styles.infoPanelHeader}>
           <span className={styles.infoPanelTitle}>{r.number}</span>
-          <button className={styles.infoPanelClose} onClick={onClose} aria-label="Cerrar">x</button>
+          <button className={styles.infoPanelClose} onClick={onClose}>×</button>
         </div>
-        <div className={styles.infoPanelRow}>
-          <span className={styles.infoPanelRowLabel}>Estado: </span>
-          {statusLabel(r.status, r.contractId)}
-        </div>
-        <div className={styles.infoPanelRow}>
-          <span className={styles.infoPanelRowLabel}>Cliente: </span>
-          {r.clientName}
-        </div>
-        <div className={styles.infoPanelRow}>
-          <span className={styles.infoPanelRowLabel}>Fechas: </span>
-          {r.startDate} — {r.endDate}
-        </div>
-        <div className={styles.infoPanelRow}>
-          <span className={styles.infoPanelRowLabel}>Matricula: </span>
-          {r.plate}
-        </div>
-        {r.contractId && (
-          <div className={styles.infoPanelRow}>
-            <span className={styles.infoPanelRowLabel}>Contrato: </span>
-            {r.contractId}
-          </div>
-        )}
+        <div className={styles.infoPanelRow}><span className={styles.infoPanelRowLabel}>Estado: </span>{statusLabel(r.status, r.contractId)}</div>
+        <div className={styles.infoPanelRow}><span className={styles.infoPanelRowLabel}>Cliente: </span>{r.clientName}</div>
+        <div className={styles.infoPanelRow}><span className={styles.infoPanelRowLabel}>Fechas: </span>{r.startDate} — {r.endDate}</div>
+        <div className={styles.infoPanelRow}><span className={styles.infoPanelRowLabel}>Matrícula: </span>{r.plate}</div>
+        {r.pickupLocation && <div className={styles.infoPanelRow}><span className={styles.infoPanelRowLabel}>Entrega: </span>{r.pickupLocation}</div>}
+        {r.returnLocation && <div className={styles.infoPanelRow}><span className={styles.infoPanelRowLabel}>Recogida: </span>{r.returnLocation}</div>}
       </div>
     );
   }
-
   const b = info.data;
   return (
     <div className={styles.infoPanel}>
       <div className={styles.infoPanelHeader}>
         <span className={styles.infoPanelTitle}>Bloqueo manual</span>
-        <button className={styles.infoPanelClose} onClick={onClose} aria-label="Cerrar">x</button>
+        <button className={styles.infoPanelClose} onClick={onClose}>×</button>
       </div>
-      <div className={styles.infoPanelRow}>
-        <span className={styles.infoPanelRowLabel}>Matricula: </span>
-        {b.plate}
-      </div>
-      <div className={styles.infoPanelRow}>
-        <span className={styles.infoPanelRowLabel}>Fechas: </span>
-        {b.startDate} — {b.endDate}
-      </div>
-      {b.reason && (
-        <div className={styles.infoPanelRow}>
-          <span className={styles.infoPanelRowLabel}>Motivo: </span>
-          {b.reason}
-        </div>
-      )}
-      {writeAllowed && (
+      <div className={styles.infoPanelRow}><span className={styles.infoPanelRowLabel}>Matrícula: </span>{b.plate}</div>
+      <div className={styles.infoPanelRow}><span className={styles.infoPanelRowLabel}>Fechas: </span>{b.startDate} — {b.endDate}</div>
+      {b.reason && <div className={styles.infoPanelRow}><span className={styles.infoPanelRowLabel}>Motivo: </span>{b.reason}</div>}
+      {canWrite && (
         <div className={styles.infoPanelActions}>
-          <button
-            className="btn btn-danger btn-sm"
-            onClick={() => onDeleteBlock(b.id)}
-          >
-            Eliminar bloqueo
-          </button>
+          <button className="btn btn-danger btn-sm" onClick={() => onDeleteBlock(b.id)}>Eliminar bloqueo</button>
         </div>
       )}
     </div>
@@ -340,112 +216,86 @@ function InfoPanel({ info, onClose, onDeleteBlock, canWrite: writeAllowed }: Inf
 export default function PlanningPage() {
   const today = new Date().toISOString().split('T')[0];
 
+  // Filter state
   const [from, setFrom] = useState(today);
   const [days, setDays] = useState<30 | 60 | 90>(30);
-  const [branchId, setBranchId] = useState('');
+  const [fleetFilter, setFleetFilter] = useState<FleetFilter>('all');
   const [categoryId, setCategoryId] = useState('');
-  const [plate, setPlate] = useState('');
+  const [plateSearch, setPlateSearch] = useState('');
+  const [branchId, setBranchId] = useState('');
+  const [locationFilter, setLocationFilter] = useState('');
 
-  const [data, setData] = useState<PlanningData | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Reference data
   const [branches, setBranches] = useState<Branch[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-
-  // Modal state
-  const [blockModal, setBlockModal] = useState<{ plate: string; date: string } | null>(null);
-  // Info panel state
-  const [selectedInfo, setSelectedInfo] = useState<CellInfo | null>(null);
-  // User role for write permission
+  const [locations, setLocations] = useState<string[]>([]);
   const [userRole, setUserRole] = useState<string>('LECTOR');
 
-  // Tooltip state
-  const [tooltip, setTooltip] = useState<{
-    x: number;
-    y: number;
-    info: CellInfo;
-  } | null>(null);
+  // Grid data
+  const [data, setData] = useState<PlanningData | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // UI state
+  const [blockModal, setBlockModal] = useState<{ plate: string; date: string } | null>(null);
+  const [selectedInfo, setSelectedInfo] = useState<CellInfo | null>(null);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; info: CellInfo } | null>(null);
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Fetch branches and categories for filters
+  // Load reference data once
   useEffect(() => {
     void (async () => {
       try {
         const res = await fetch('/api/sucursales');
-        if (res.ok) {
-          const json = (await res.json()) as { branches?: Branch[] };
-          setBranches(json.branches ?? []);
-        }
+        if (res.ok) { const j = (await res.json()) as { branches?: Branch[] }; setBranches(j.branches ?? []); }
       } catch { /* silent */ }
       try {
         const res = await fetch('/api/categorias');
-        if (res.ok) {
-          const json = (await res.json()) as { categories?: Category[] };
-          setCategories(json.categories ?? []);
-        }
+        if (res.ok) { const j = (await res.json()) as { categories?: Category[] }; setCategories(j.categories ?? []); }
+      } catch { /* silent */ }
+      try {
+        const res = await fetch('/api/gestor/empresa');
+        if (res.ok) { const j = (await res.json()) as { settings?: { deliveryLocations?: string[] } }; setLocations(j.settings?.deliveryLocations ?? []); }
       } catch { /* silent */ }
       try {
         const res = await fetch('/api/me');
-        if (res.ok) {
-          const json = (await res.json()) as { role?: string };
-          if (json.role) setUserRole(json.role);
-        }
+        if (res.ok) { const j = (await res.json()) as { role?: string }; if (j.role) setUserRole(j.role); }
       } catch { /* silent */ }
     })();
   }, []);
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
-    setSelectedInfo(null);
+    setLoading(true); setSelectedInfo(null);
     try {
-      const params = new URLSearchParams({
-        from,
-        days: String(days),
-      });
+      const params = new URLSearchParams({ from, days: String(days) });
       if (branchId) params.set('branchId', branchId);
-      if (categoryId) params.set('categoryId', categoryId);
-      if (plate) params.set('plate', plate);
-
+      if (fleetFilter === 'group' && categoryId) params.set('categoryId', categoryId);
+      if (fleetFilter === 'model' && plateSearch.trim()) params.set('plate', plateSearch.trim());
+      if (locationFilter) params.set('location', locationFilter);
       const res = await fetch(`/api/planning?${params.toString()}`);
-      if (res.ok) {
-        const json = (await res.json()) as PlanningData;
-        setData(json);
-      }
+      if (res.ok) { const j = (await res.json()) as PlanningData; setData(j); }
     } catch { /* silent */ }
     setLoading(false);
-  }, [from, days, branchId, categoryId, plate]);
+  }, [from, days, branchId, fleetFilter, categoryId, plateSearch, locationFilter]);
 
-  useEffect(() => {
-    void fetchData();
-  }, [fetchData]);
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const dates = data ? dateRange(data.from, data.days) : [];
 
   // Build lookup maps
-  // reservationsByPlateDate: plate -> date -> reservation
   const reservationsByPlateDate = new Map<string, Map<string, PlanningReservation>>();
   const blocksByPlateDate = new Map<string, Map<string, VehicleBlock>>();
 
   if (data) {
     for (const r of data.reservations) {
-      if (!reservationsByPlateDate.has(r.plate)) {
-        reservationsByPlateDate.set(r.plate, new Map());
-      }
-      // Mark every date in the range
+      if (!reservationsByPlateDate.has(r.plate)) reservationsByPlateDate.set(r.plate, new Map());
       for (const d of dates) {
-        if (d >= r.startDate && d <= r.endDate) {
-          reservationsByPlateDate.get(r.plate)!.set(d, r);
-        }
+        if (d >= r.startDate && d <= r.endDate) reservationsByPlateDate.get(r.plate)!.set(d, r);
       }
     }
-
     for (const b of data.blocks) {
-      if (!blocksByPlateDate.has(b.plate)) {
-        blocksByPlateDate.set(b.plate, new Map());
-      }
+      if (!blocksByPlateDate.has(b.plate)) blocksByPlateDate.set(b.plate, new Map());
       for (const d of dates) {
-        if (d >= b.startDate && d <= b.endDate) {
-          blocksByPlateDate.get(b.plate)!.set(d, b);
-        }
+        if (d >= b.startDate && d <= b.endDate) blocksByPlateDate.get(b.plate)!.set(d, b);
       }
     }
   }
@@ -460,22 +310,15 @@ export default function PlanningPage() {
 
   function handleCellClick(vehiclePlate: string, dateStr: string) {
     const info = getCellInfo(vehiclePlate, dateStr);
-    if (info) {
-      setSelectedInfo(info);
-    } else {
-      if (userRole !== 'LECTOR') {
-        setBlockModal({ plate: vehiclePlate, date: dateStr });
-      }
-    }
+    if (info) { setSelectedInfo(info); }
+    else if (userRole !== 'LECTOR') { setBlockModal({ plate: vehiclePlate, date: dateStr }); }
   }
 
   function handleCellMouseEnter(e: React.MouseEvent, vehiclePlate: string, dateStr: string) {
     const info = getCellInfo(vehiclePlate, dateStr);
     if (!info) return;
     if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
-    tooltipTimer.current = setTimeout(() => {
-      setTooltip({ x: e.clientX + 12, y: e.clientY + 12, info });
-    }, 250);
+    tooltipTimer.current = setTimeout(() => { setTooltip({ x: e.clientX + 12, y: e.clientY + 12, info }); }, 250);
   }
 
   function handleCellMouseLeave() {
@@ -486,212 +329,224 @@ export default function PlanningPage() {
   async function handleDeleteBlock(id: string) {
     try {
       const res = await fetch(`/api/planning/bloquear/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setSelectedInfo(null);
-        void fetchData();
-      }
+      if (res.ok) { setSelectedInfo(null); void fetchData(); }
     } catch { /* silent */ }
   }
 
-  // Grid template columns: 180px for vehicle + 36px per day
-  const gridTemplateColumns = `180px repeat(${dates.length}, 36px)`;
+  const gridTemplateColumns = `170px repeat(${dates.length}, 36px)`;
+
+  // Active vehicle + reservation counts for header
+  const vehicleCount = data?.vehicles.length ?? 0;
+  const occupiedToday = data ? data.reservations.filter((r) => today >= r.startDate && today <= r.endDate).length : 0;
 
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Planning de Flota</h1>
-          <p className="page-subtitle">Vista diaria de disponibilidad de vehiculos</p>
-        </div>
-      </div>
-
-      {/* Controls */}
-      <div className={styles.controls}>
-        <div className={styles.periodGroup}>
-          {([30, 60, 90] as const).map((d) => (
-            <button
-              key={d}
-              className={`${styles.periodBtn} ${days === d ? styles.periodBtnActive : ''}`}
-              onClick={() => setDays(d)}
-            >
-              {d} dias
-            </button>
-          ))}
+    <div className={styles.layout}>
+      {/* ── Sidebar ── */}
+      <aside className={styles.sidebar}>
+        <div className={styles.sidebarHeader}>
+          <div className={styles.sidebarTitle}>Planning de Flota</div>
+          <div className={styles.sidebarSubtitle}>Vista de disponibilidad</div>
         </div>
 
-        <DatePicker
-          className={styles.dateInput}
-          value={from}
-          onChange={(v) => setFrom(v)}
-        />
+        <div className={styles.sidebarBody}>
+          {/* Fecha */}
+          <div className={styles.sidebarSection}>
+            <div className={styles.sidebarLabel}>Fecha inicio</div>
+            <DatePicker className={styles.sidebarInput} value={from} onChange={(v) => setFrom(v)} />
+          </div>
 
-        <select
-          className={styles.filterSelect}
-          value={branchId}
-          onChange={(e) => setBranchId(e.target.value)}
-        >
-          <option value="">Todas las sucursales</option>
-          {branches.map((b) => (
-            <option key={b.id} value={b.id}>{b.name}</option>
-          ))}
-        </select>
-
-        <select
-          className={styles.filterSelect}
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-        >
-          <option value="">Todas las categorias</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-
-        <input
-          type="text"
-          className={styles.searchInput}
-          placeholder="Buscar matricula..."
-          value={plate}
-          onChange={(e) => setPlate(e.target.value)}
-        />
-      </div>
-
-      {/* Legend */}
-      <div className={styles.legend}>
-        <div className={styles.legendItem}>
-          <div className={styles.legendDot} style={{ background: 'var(--color-status-peticion)' }} />
-          <span>Peticion</span>
-        </div>
-        <div className={styles.legendItem}>
-          <div className={styles.legendDot} style={{ background: 'var(--color-status-confirmada)' }} />
-          <span>Confirmada</span>
-        </div>
-        <div className={styles.legendItem}>
-          <div className={styles.legendDot} style={{ background: 'var(--color-status-contratado)' }} />
-          <span>Contratado</span>
-        </div>
-        <div className={styles.legendItem}>
-          <div className={styles.legendDot} style={{ background: 'var(--color-status-bloqueado)' }} />
-          <span>Bloqueado</span>
-        </div>
-        {userRole !== 'LECTOR' && (
-          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginLeft: 'auto' }}>
-            Clic en celda libre para bloquear
-          </span>
-        )}
-      </div>
-
-      {/* Grid */}
-      {loading ? (
-        <div className={styles.loadingText}>Cargando planning...</div>
-      ) : !data || data.vehicles.length === 0 ? (
-        <div className={styles.emptyText}>No hay vehiculos activos para los filtros seleccionados.</div>
-      ) : (
-        <div className={styles.gridWrapper}>
-          <div
-            className={styles.grid}
-            style={{ gridTemplateColumns }}
-          >
-            {/* Header row */}
-            <div className={styles.vehicleHeaderCell}>Vehiculo</div>
-            {dates.map((d) => {
-              const dow = dayOfWeek(d);
-              const isToday = d === today;
-              const isWeekend = dow === 0 || dow === 6;
-              const dayNum = d.split('-')[2];
-              return (
-                <div
+          {/* Periodo */}
+          <div className={styles.sidebarSection}>
+            <div className={styles.sidebarLabel}>Periodo</div>
+            <div className={styles.periodGroup}>
+              {([30, 60, 90] as const).map((d) => (
+                <button
                   key={d}
-                  className={`${styles.dayHeader} ${isToday ? styles.todayHeader : ''} ${isWeekend && !isToday ? styles.weekendCol : ''}`}
+                  className={`${styles.periodBtn} ${days === d ? styles.periodBtnActive : ''}`}
+                  onClick={() => setDays(d)}
                 >
-                  <span className={styles.dayHeaderNum}>{dayNum}</span>
-                  <span className={styles.dayHeaderName}>{DAY_NAMES[dow]}</span>
-                </div>
-              );
-            })}
+                  {d}d
+                </button>
+              ))}
+            </div>
+          </div>
 
-            {/* Vehicle rows */}
-            {data.vehicles.map((vehicle) => (
-              <div key={vehicle.plate} className={styles.vehicleRow}>
-                {/* Vehicle info cell */}
-                <div className={styles.vehicleCell}>
-                  <div className={styles.vehiclePlate}>{vehicle.plate}</div>
-                  <div className={styles.vehicleModel}>{vehicle.modelName}</div>
-                  <div className={styles.vehicleCategoryBadge}>{vehicle.categoryName}</div>
-                </div>
+          {/* Flota */}
+          <div className={styles.sidebarSection}>
+            <div className={styles.sidebarLabel}>Flota</div>
+            <select
+              className={styles.sidebarSelect}
+              value={fleetFilter}
+              onChange={(e) => { setFleetFilter(e.target.value as FleetFilter); setCategoryId(''); setPlateSearch(''); }}
+            >
+              <option value="all">Toda la flota</option>
+              <option value="group">Por grupos</option>
+              <option value="model">Por marca / modelo</option>
+            </select>
+            {fleetFilter === 'group' && (
+              <select className={styles.sidebarSelect} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                <option value="">Todos los grupos</option>
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            )}
+            {fleetFilter === 'model' && (
+              <input
+                type="text"
+                className={styles.sidebarInput}
+                placeholder="Matrícula o modelo..."
+                value={plateSearch}
+                onChange={(e) => setPlateSearch(e.target.value)}
+              />
+            )}
+          </div>
 
-                {/* Day cells */}
+          {/* Sucursal */}
+          <div className={styles.sidebarSection}>
+            <div className={styles.sidebarLabel}>Sucursal</div>
+            <select className={styles.sidebarSelect} value={branchId} onChange={(e) => setBranchId(e.target.value)}>
+              <option value="">Todas</option>
+              {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          </div>
+
+          {/* Lugar */}
+          <div className={styles.sidebarSection}>
+            <div className={styles.sidebarLabel}>Lugar</div>
+            <select className={styles.sidebarSelect} value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)}>
+              <option value="">Todos</option>
+              {locations.map((l) => <option key={l} value={l}>{l}</option>)}
+            </select>
+          </div>
+
+          {/* Leyenda */}
+          <div className={styles.sidebarSection}>
+            <div className={styles.sidebarLabel}>Leyenda</div>
+            <div className={styles.legend}>
+              {[
+                { label: 'Petición',   color: 'var(--color-status-peticion)' },
+                { label: 'Confirmada', color: 'var(--color-status-confirmada)' },
+                { label: 'Contratado', color: 'var(--color-status-contratado)' },
+                { label: 'Bloqueado',  color: 'var(--color-status-bloqueado)' },
+              ].map(({ label, color }) => (
+                <div key={label} className={styles.legendItem}>
+                  <div className={styles.legendDot} style={{ background: color }} />
+                  <span>{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom buttons */}
+        <div className={styles.sidebarBottom}>
+          <button className={`${styles.sidebarBtn} ${styles.sidebarBtnPrimary}`} onClick={() => window.print()}>
+            Exportar PDF
+          </button>
+          <button className={styles.sidebarBtn} onClick={() => window.open('/reservas', '_blank')}>
+            Ir a Reservas
+          </button>
+          <button className={styles.sidebarBtn} onClick={() => window.open('/dashboard', '_blank')}>
+            Ir a Dashboard
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Main ── */}
+      <div className={styles.main}>
+        <div className={styles.mainHeader}>
+          <div>
+            <span className={styles.mainTitle}>
+              {from} · {days} días
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <span className={styles.mainMeta}>{vehicleCount} vehículos</span>
+            <span className={styles.mainMeta}>{occupiedToday} ocupados hoy</span>
+            {userRole !== 'LECTOR' && (
+              <span className={styles.mainHint}>Clic en celda libre para bloquear</span>
+            )}
+          </div>
+        </div>
+
+        <div className={styles.mainBody}>
+          {loading ? (
+            <div className={styles.loadingText}>Cargando planning…</div>
+          ) : !data || data.vehicles.length === 0 ? (
+            <div className={styles.emptyText}>No hay vehículos activos para los filtros seleccionados.</div>
+          ) : (
+            <div className={styles.gridWrapper}>
+              <div className={styles.grid} style={{ gridTemplateColumns }}>
+                {/* Header */}
+                <div className={styles.vehicleHeaderCell}>Vehículo</div>
                 {dates.map((d) => {
                   const dow = dayOfWeek(d);
                   const isToday = d === today;
                   const isWeekend = dow === 0 || dow === 6;
-                  const cellInfo = getCellInfo(vehicle.plate, d);
-
-                  let barCls = '';
-                  let barPosCls = '';
-                  if (cellInfo) {
-                    if (cellInfo.type === 'block') {
-                      barCls = styles.barBloqueado ?? '';
-                      const pos = barPosition(d, cellInfo.data.startDate, cellInfo.data.endDate);
-                      barPosCls = barClass(pos, styles);
-                    } else {
-                      barCls = statusBarClass(cellInfo.data.status, cellInfo.data.contractId, styles);
-                      const pos = barPosition(d, cellInfo.data.startDate, cellInfo.data.endDate);
-                      barPosCls = barClass(pos, styles);
-                    }
-                  }
-
                   return (
-                    <div
-                      key={d}
-                      className={[
-                        styles.dayCell,
-                        isToday ? styles.todayCell : '',
-                        isWeekend && !cellInfo ? styles.weekendCell : '',
-                      ].filter(Boolean).join(' ')}
-                      onClick={() => handleCellClick(vehicle.plate, d)}
-                      onMouseEnter={(e) => handleCellMouseEnter(e, vehicle.plate, d)}
-                      onMouseLeave={handleCellMouseLeave}
-                      title={undefined}
-                    >
-                      {cellInfo && (
-                        <div className={`${styles.cellBar} ${barCls} ${barPosCls}`} />
-                      )}
+                    <div key={d} className={`${styles.dayHeader} ${isToday ? styles.todayHeader : ''} ${isWeekend && !isToday ? styles.weekendCol ?? '' : ''}`}>
+                      <span className={styles.dayHeaderNum}>{d.split('-')[2]}</span>
+                      <span className={styles.dayHeaderName}>{DAY_NAMES[dow]}</span>
                     </div>
                   );
                 })}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* Tooltip */}
+                {/* Rows */}
+                {data.vehicles.map((vehicle) => (
+                  <div key={vehicle.plate} className={styles.vehicleRow}>
+                    <div className={styles.vehicleCell}>
+                      <div className={styles.vehiclePlate}>{vehicle.plate}</div>
+                      <div className={styles.vehicleModel}>{vehicle.modelName}</div>
+                      <div className={styles.vehicleCategoryBadge}>{vehicle.categoryName}</div>
+                    </div>
+                    {dates.map((d) => {
+                      const dow = dayOfWeek(d);
+                      const isToday = d === today;
+                      const isWeekend = dow === 0 || dow === 6;
+                      const cellInfo = getCellInfo(vehicle.plate, d);
+                      let barCls = '';
+                      let barPosCls = '';
+                      if (cellInfo) {
+                        if (cellInfo.type === 'block') {
+                          barCls = styles.barBloqueado ?? '';
+                          barPosCls = barClass(barPosition(d, cellInfo.data.startDate, cellInfo.data.endDate), styles);
+                        } else {
+                          barCls = statusBarClass(cellInfo.data.status, cellInfo.data.contractId, styles);
+                          barPosCls = barClass(barPosition(d, cellInfo.data.startDate, cellInfo.data.endDate), styles);
+                        }
+                      }
+                      return (
+                        <div
+                          key={d}
+                          className={[styles.dayCell, isToday ? styles.todayCell : '', isWeekend && !cellInfo ? styles.weekendCell : ''].filter(Boolean).join(' ')}
+                          onClick={() => handleCellClick(vehicle.plate, d)}
+                          onMouseEnter={(e) => handleCellMouseEnter(e, vehicle.plate, d)}
+                          onMouseLeave={handleCellMouseLeave}
+                        >
+                          {cellInfo && <div className={`${styles.cellBar} ${barCls} ${barPosCls}`} />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Tooltip ── */}
       {tooltip && (
-        <div
-          className={styles.tooltip}
-          style={{ left: tooltip.x, top: tooltip.y }}
-        >
+        <div className={styles.tooltip} style={{ left: tooltip.x, top: tooltip.y }}>
           {tooltip.info.type === 'reservation' ? (
             <>
               <div className={styles.tooltipTitle}>{tooltip.info.data.number}</div>
               <div className={styles.tooltipRow}>{tooltip.info.data.clientName}</div>
-              <div className={styles.tooltipRow}>
-                {tooltip.info.data.startDate} — {tooltip.info.data.endDate}
-              </div>
+              <div className={styles.tooltipRow}>{tooltip.info.data.startDate} — {tooltip.info.data.endDate}</div>
               <span
                 className={styles.tooltipStatus}
                 style={{
-                  background: tooltip.info.data.contractId
-                    ? 'rgba(21,128,61,0.15)'
-                    : tooltip.info.data.status === 'PETICION'
-                    ? 'rgba(245,158,11,0.15)'
-                    : 'rgba(37,99,235,0.15)',
-                  color: tooltip.info.data.contractId
-                    ? 'var(--color-status-contratado)'
-                    : tooltip.info.data.status === 'PETICION'
-                    ? 'var(--color-status-peticion)'
-                    : 'var(--color-status-confirmada)',
+                  background: tooltip.info.data.contractId ? 'rgba(21,128,61,0.15)' : tooltip.info.data.status === 'PETICION' ? 'rgba(245,158,11,0.15)' : 'rgba(37,99,235,0.15)',
+                  color: tooltip.info.data.contractId ? 'var(--color-status-contratado)' : tooltip.info.data.status === 'PETICION' ? 'var(--color-status-peticion)' : 'var(--color-status-confirmada)',
                 }}
               >
                 {statusLabel(tooltip.info.data.status, tooltip.info.data.contractId)}
@@ -700,18 +555,14 @@ export default function PlanningPage() {
           ) : (
             <>
               <div className={styles.tooltipTitle}>Bloqueo manual</div>
-              <div className={styles.tooltipRow}>
-                {tooltip.info.data.startDate} — {tooltip.info.data.endDate}
-              </div>
-              {tooltip.info.data.reason && (
-                <div className={styles.tooltipRow}>{tooltip.info.data.reason}</div>
-              )}
+              <div className={styles.tooltipRow}>{tooltip.info.data.startDate} — {tooltip.info.data.endDate}</div>
+              {tooltip.info.data.reason && <div className={styles.tooltipRow}>{tooltip.info.data.reason}</div>}
             </>
           )}
         </div>
       )}
 
-      {/* Info panel */}
+      {/* ── Info panel ── */}
       {selectedInfo && (
         <InfoPanel
           info={selectedInfo}
@@ -721,16 +572,13 @@ export default function PlanningPage() {
         />
       )}
 
-      {/* Block modal */}
+      {/* ── Block modal ── */}
       {blockModal && (
         <BlockModal
           plate={blockModal.plate}
           initialDate={blockModal.date}
           onClose={() => setBlockModal(null)}
-          onCreated={() => {
-            setBlockModal(null);
-            void fetchData();
-          }}
+          onCreated={() => { setBlockModal(null); void fetchData(); }}
         />
       )}
     </div>

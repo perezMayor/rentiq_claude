@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
   const branchId = url.searchParams.get('branchId');
   const categoryId = url.searchParams.get('categoryId');
   const plate = url.searchParams.get('plate')?.toLowerCase();
+  const location = url.searchParams.get('location')?.toLowerCase();
 
   // Compute end date (inclusive) for overlap check
   const fromDate = new Date(from + 'T12:00:00');
@@ -58,6 +59,11 @@ export async function GET(req: NextRequest) {
         if (!r.assignedPlate) return false;
         if (!activePlates.has(r.assignedPlate)) return false;
         if (r.status === 'CANCELADA') return false;
+        if (location) {
+          const pickup = (r.pickupLocation ?? '').toLowerCase();
+          const ret = (r.returnLocation ?? '').toLowerCase();
+          if (!pickup.includes(location) && !ret.includes(location)) return false;
+        }
         // Overlap: startDate <= to AND endDate >= from
         return r.startDate <= to && r.endDate >= from;
       })
@@ -81,6 +87,8 @@ export async function GET(req: NextRequest) {
           status: r.status,
           contractId: r.contractId,
           clientName,
+          pickupLocation: r.pickupLocation,
+          returnLocation: r.returnLocation,
         };
       });
 
