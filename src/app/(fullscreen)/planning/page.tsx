@@ -358,17 +358,15 @@ export default function PlanningPage() {
           {/* Periodo */}
           <div className={styles.sidebarSection}>
             <div className={styles.sidebarLabel}>Periodo</div>
-            <div className={styles.periodGroup}>
-              {([30, 60, 90] as const).map((d) => (
-                <button
-                  key={d}
-                  className={`${styles.periodBtn} ${days === d ? styles.periodBtnActive : ''}`}
-                  onClick={() => setDays(d)}
-                >
-                  {d}d
-                </button>
-              ))}
-            </div>
+            <select
+              className={styles.sidebarSelect}
+              value={days}
+              onChange={(e) => setDays(Number(e.target.value) as 30 | 60 | 90)}
+            >
+              <option value={30}>30 días</option>
+              <option value={60}>60 días</option>
+              <option value={90}>90 días</option>
+            </select>
           </div>
 
           {/* Flota */}
