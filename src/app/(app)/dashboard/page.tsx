@@ -488,10 +488,20 @@ export default function DashboardPage() {
             key={label}
             type="button"
             className={styles.quickBtn}
-            onClick={() => href === '/planning' ? window.open('/planning', '_blank') : router.push(href)}
+            onClick={() => router.push(href)}
           >
             <span className={styles.quickBtnIcon}><Icon /></span>
             {label}
+            {href === '/planning' && (
+              <span
+                role="button"
+                aria-label="Abrir planning en nueva pestaña"
+                onClick={(e) => { e.stopPropagation(); window.open('/planning', '_blank'); }}
+                style={{ marginLeft: 5, opacity: 0.55, fontSize: '0.75em', cursor: 'pointer' }}
+              >
+                ↗
+              </span>
+            )}
           </button>
         ))}
       </div>

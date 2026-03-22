@@ -40,7 +40,7 @@ function TabNav({ active }: { active: string }) {
   const searchParams = useSearchParams();
 
   function go(key: string) {
-    if (key === 'planning') { window.open('/planning', '_blank'); return; }
+    if (key === 'planning') { router.push('/planning'); return; }
     const p = new URLSearchParams(searchParams.toString());
     p.set('tab', key);
     router.push(`${pathname}?${p.toString()}`);
@@ -56,6 +56,16 @@ function TabNav({ active }: { active: string }) {
           onClick={() => go(t.key)}
         >
           {t.label}
+          {t.key === 'planning' && (
+            <span
+              role="button"
+              aria-label="Abrir planning en nueva pestaña"
+              onClick={(e) => { e.stopPropagation(); window.open('/planning', '_blank'); }}
+              style={{ marginLeft: 5, opacity: 0.55, fontSize: '0.75em', cursor: 'pointer', verticalAlign: 'middle' }}
+            >
+              ↗
+            </span>
+          )}
         </button>
       ))}
     </nav>
@@ -381,7 +391,8 @@ function RecogidasTab() {
 // ─── Planning redirect ────────────────────────────────────────────────────────
 
 function PlanningRedirect() {
-  useEffect(() => { window.open('/planning', '_blank'); }, []);
+  const router = useRouter();
+  useEffect(() => { router.replace('/planning'); }, [router]);
   return null;
 }
 
