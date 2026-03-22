@@ -18,6 +18,15 @@
   color: var(--color-sidebar-text);
   border-right: 1px solid rgba(255,255,255,0.07);
   overflow: hidden;
+
+  /* Override CSS vars so los componentes internos (DatePicker, etc.)
+     se rendericen con colores apropiados para fondo oscuro */
+  --color-text-primary:    #f3f4f6;
+  --color-text-muted:      rgba(255, 255, 255, 0.55);
+  --color-border:          rgba(255, 255, 255, 0.22);
+  --color-surface-strong:  #1a3660;
+  --color-surface:         #162d50;
+  --color-primary:         #5b9bd5;
 }
 
 .sidebarHeader {
