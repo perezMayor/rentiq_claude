@@ -40,7 +40,7 @@ function TabNav({ active }: { active: string }) {
   const searchParams = useSearchParams();
 
   function go(key: string) {
-    if (key === 'planning') { router.push('/planning'); return; }
+    if (key === 'planning') { window.open('/planning', '_blank'); return; }
     const p = new URLSearchParams(searchParams.toString());
     p.set('tab', key);
     router.push(`${pathname}?${p.toString()}`);
@@ -381,9 +381,8 @@ function RecogidasTab() {
 // ─── Planning redirect ────────────────────────────────────────────────────────
 
 function PlanningRedirect() {
-  const router = useRouter();
-  useEffect(() => { router.push('/planning'); }, [router]);
-  return <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Redirigiendo al planning…</div>;
+  useEffect(() => { window.open('/planning', '_blank'); }, []);
+  return null;
 }
 
 // ─── Placeholder tab ──────────────────────────────────────────────────────────

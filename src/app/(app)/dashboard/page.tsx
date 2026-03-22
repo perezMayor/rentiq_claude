@@ -488,7 +488,7 @@ export default function DashboardPage() {
             key={label}
             type="button"
             className={styles.quickBtn}
-            onClick={() => router.push(href)}
+            onClick={() => href === '/planning' ? window.open('/planning', '_blank') : router.push(href)}
           >
             <span className={styles.quickBtnIcon}><Icon /></span>
             {label}
