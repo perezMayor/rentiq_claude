@@ -536,7 +536,7 @@ function CanalesTab({ myRole }: { myRole: UserRole }) {
       const res = await fetch(isEdit ? `/api/canales/${edit.id}` : '/api/canales', {
         method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: edit.name, code: edit.code, commissionPercent: edit.commissionPercent ?? 0, active: edit.active }),
+        body: JSON.stringify({ name: edit.name, code: edit.code, active: edit.active }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Error');
@@ -571,7 +571,7 @@ function CanalesTab({ myRole }: { myRole: UserRole }) {
       <div className="page-header" style={{ marginBottom: 16 }}>
         <div />
         {canWriteRole && (
-          <button className="btn btn-primary" onClick={() => { setEdit({ active: true, commissionPercent: 0 }); setModalError(''); setModal('create'); }}>
+          <button className="btn btn-primary" onClick={() => { setEdit({ active: true }); setModalError(''); setModal('create'); }}>
             + Nuevo canal
           </button>
         )}
@@ -584,19 +584,17 @@ function CanalesTab({ myRole }: { myRole: UserRole }) {
               <tr>
                 <th>Nombre</th>
                 <th>Código</th>
-                <th>Comisión</th>
                 <th>Estado</th>
                 {canWriteRole && <th>Acciones</th>}
               </tr>
             </thead>
             <tbody>
               {channels.length === 0 ? (
-                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>No hay canales configurados</td></tr>
+                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>No hay canales configurados</td></tr>
               ) : channels.map((ch) => (
                 <tr key={ch.id}>
                   <td style={{ fontWeight: 500 }}>{ch.name}</td>
                   <td><code style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-primary)' }}>{ch.code}</code></td>
-                  <td>{ch.commissionPercent}%</td>
                   <td>
                     <span className={styles.dot} style={{ background: ch.active ? 'var(--color-status-contratado)' : 'var(--color-status-no-disponible)' }} />
                     {ch.active ? 'Activo' : 'Inactivo'}
@@ -634,11 +632,7 @@ function CanalesTab({ myRole }: { myRole: UserRole }) {
                   <label className="form-label">Código *</label>
                   <input type="text" className="form-input" value={edit.code ?? ''} onChange={(e) => setEdit((s) => ({ ...s, code: e.target.value.toUpperCase() }))} maxLength={6} disabled={modal === 'edit'} placeholder="DIR" />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Comisión (%)</label>
-                  <input type="number" className="form-input" min="0" max="100" step="0.1" value={edit.commissionPercent ?? 0} onChange={(e) => setEdit((s) => ({ ...s, commissionPercent: parseFloat(e.target.value) }))} />
-                </div>
-                <div className="form-group">
+                <div className="form-group col-span-2">
                   <label className="form-label">Estado</label>
                   <select className="form-select" value={edit.active ? 'true' : 'false'} onChange={(e) => setEdit((s) => ({ ...s, active: e.target.value === 'true' }))}>
                     <option value="true">Activo</option>

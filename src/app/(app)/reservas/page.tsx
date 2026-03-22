@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import type { Reservation, Client, VehicleCategory, CompanyBranch, ReservationStatus, Contract } from '@/src/lib/types';
 import DatePicker from '@/src/components/DatePicker';
@@ -399,52 +399,137 @@ function PlaceholderTab({ label }: { label: string }) {
 
 // ─── Canales tab ──────────────────────────────────────────────────────────────
 
-interface SalesChannel { id: string; name: string; code: string; commissionPercent: number; active: boolean; }
+interface SalesChannel { id: string; name: string; code: string; active: boolean; }
+
+const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 function CanalesTab() {
+  const currentYear = new Date().getFullYear();
+  const [year, setYear] = useState(currentYear);
   const [channels, setChannels] = useState<SalesChannel[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetch('/api/canales')
-      .then((r) => r.ok ? r.json() : r.json().then((d: { error?: string }) => Promise.reject(d.error ?? 'Error')))
-      .then((d) => setChannels(d.channels ?? []))
-      .catch((e) => setError(typeof e === 'string' ? e : 'Error al cargar'))
+  const load = useCallback((y: number) => {
+    setLoading(true); setError('');
+    Promise.all([
+      fetch('/api/canales'),
+      fetch(`/api/reservas?startFrom=${y}-01-01&startTo=${y}-12-31`),
+    ])
+      .then(async ([chRes, rvRes]) => {
+        const chData = chRes.ok ? await chRes.json() : { channels: [] };
+        const rvData = rvRes.ok ? await rvRes.json() : { reservations: [] };
+        setChannels(chData.channels ?? []);
+        setReservations(rvData.reservations ?? []);
+      })
+      .catch(() => setError('Error al cargar datos'))
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Cargando canales…</div>;
+  useEffect(() => { load(year); }, [year, load]);
+
+  // Build analytics matrix
+  const rows = useMemo(() => {
+    // map: channelId (or '__none__') → monthly counts [0..11]
+    const matrix: Record<string, number[]> = {};
+    const clientsPerChannel: Record<string, Set<string>> = {};
+
+    for (const r of reservations) {
+      const key = r.salesChannelId ?? '__none__';
+      if (!matrix[key]) { matrix[key] = Array(12).fill(0); clientsPerChannel[key] = new Set(); }
+      const month = new Date(r.startDate).getMonth(); // 0-based
+      matrix[key][month]++;
+      if (r.clientId) clientsPerChannel[key].add(r.clientId);
+    }
+
+    const totalAll = reservations.length;
+
+    const channelRows = channels.map((ch) => {
+      const counts = matrix[ch.id] ?? Array(12).fill(0);
+      const total = counts.reduce((a, b) => a + b, 0);
+      const pct = totalAll > 0 ? ((total / totalAll) * 100).toFixed(1) : '0.0';
+      return { id: ch.id, name: ch.name, counts, total, pct };
+    });
+
+    // Sin canal row
+    const noneCounts = matrix['__none__'] ?? Array(12).fill(0);
+    const noneTotal = noneCounts.reduce((a, b) => a + b, 0);
+    const nonePct = totalAll > 0 ? ((noneTotal / totalAll) * 100).toFixed(1) : '0.0';
+
+    // Totals row
+    const totalCounts = Array(12).fill(0);
+    for (let m = 0; m < 12; m++) {
+      for (const row of channelRows) totalCounts[m] += row.counts[m];
+      totalCounts[m] += noneCounts[m];
+    }
+
+    return { channelRows, noneCounts, noneTotal, nonePct, totalCounts, totalAll };
+  }, [channels, reservations]);
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Cargando…</div>;
   if (error) return <div className="alert alert-danger">{error}</div>;
+
+  const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
   return (
     <div>
-      <div className="table-wrapper">
-        <table className="data-table">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <label style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>Año:</label>
+        <select
+          value={year}
+          onChange={(e) => setYear(Number(e.target.value))}
+          style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface-strong)', color: 'var(--color-text-primary)', fontFamily: 'inherit', fontSize: '0.9rem' }}
+        >
+          {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+        </select>
+        <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+          {rows.totalAll} reservas en {year}
+        </span>
+      </div>
+
+      <div className="table-wrapper" style={{ overflowX: 'auto' }}>
+        <table className="data-table" style={{ minWidth: 900 }}>
           <thead>
             <tr>
-              <th>Nombre</th>
-              <th>Código</th>
-              <th>Comisión</th>
-              <th>Estado</th>
+              <th style={{ minWidth: 160 }}>Canal</th>
+              {MONTHS.map((m) => <th key={m} style={{ textAlign: 'center', minWidth: 48 }}>{m}</th>)}
+              <th style={{ textAlign: 'center', minWidth: 60 }}>Total</th>
+              <th style={{ textAlign: 'center', minWidth: 60 }}>%</th>
             </tr>
           </thead>
           <tbody>
-            {channels.length === 0 ? (
-              <tr><td colSpan={4} style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>No hay canales configurados</td></tr>
-            ) : channels.map((ch) => (
-              <tr key={ch.id}>
-                <td style={{ fontWeight: 500 }}>{ch.name}</td>
-                <td><code style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-primary)' }}>{ch.code}</code></td>
-                <td>{ch.commissionPercent}%</td>
-                <td>
-                  <span className={`badge ${ch.active ? 'badge-confirmada' : 'badge-cancelada'}`}>
-                    {ch.active ? 'Activo' : 'Inactivo'}
-                  </span>
-                </td>
+            {rows.channelRows.map((row) => (
+              <tr key={row.id}>
+                <td style={{ fontWeight: 500 }}>{row.name}</td>
+                {row.counts.map((c, i) => (
+                  <td key={i} style={{ textAlign: 'center', color: c === 0 ? 'var(--color-text-muted)' : 'var(--color-text-primary)' }}>{c === 0 ? '–' : c}</td>
+                ))}
+                <td style={{ textAlign: 'center', fontWeight: 600 }}>{row.total}</td>
+                <td style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>{row.pct}%</td>
               </tr>
             ))}
+            {rows.noneTotal > 0 && (
+              <tr>
+                <td style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Sin canal</td>
+                {rows.noneCounts.map((c, i) => (
+                  <td key={i} style={{ textAlign: 'center', color: c === 0 ? 'var(--color-text-muted)' : 'var(--color-text-primary)' }}>{c === 0 ? '–' : c}</td>
+                ))}
+                <td style={{ textAlign: 'center', fontWeight: 600 }}>{rows.noneTotal}</td>
+                <td style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>{rows.nonePct}%</td>
+              </tr>
+            )}
           </tbody>
+          <tfoot>
+            <tr style={{ borderTop: '2px solid var(--color-border)', background: 'var(--color-surface)' }}>
+              <td style={{ fontWeight: 700 }}>Total</td>
+              {rows.totalCounts.map((c, i) => (
+                <td key={i} style={{ textAlign: 'center', fontWeight: 600, color: c === 0 ? 'var(--color-text-muted)' : 'var(--color-text-primary)' }}>{c === 0 ? '–' : c}</td>
+              ))}
+              <td style={{ textAlign: 'center', fontWeight: 700 }}>{rows.totalAll}</td>
+              <td style={{ textAlign: 'center', fontWeight: 700 }}>100%</td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>
