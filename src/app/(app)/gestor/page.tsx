@@ -29,7 +29,7 @@ const ROLE_CLASS: Record<UserRole, string> = {
 
 // ─── Usuarios y Sucursales ────────────────────────────────────────────────────
 
-type InnerTab = 'usuarios' | 'sucursales';
+type InnerTab = 'usuarios' | 'sucursales' | 'lugares';
 
 function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUserId: string }) {
   const [innerTab, setInnerTab] = useState<InnerTab>('usuarios');
@@ -55,6 +55,13 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
   const [branchSaving, setBranchSaving] = useState(false);
   const [branchError, setBranchError] = useState('');
 
+  // Locations
+  const [locations, setLocations] = useState<string[]>([]);
+  const [locLoading, setLocLoading] = useState(false);
+  const [locError, setLocError] = useState('');
+  const [locSaving, setLocSaving] = useState(false);
+  const [newLoc, setNewLoc] = useState('');
+
   const loadUsers = useCallback(async () => {
     setUsersLoading(true); setUsersError('');
     try {
@@ -75,10 +82,50 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
     finally { setBranchesLoading(false); }
   }, []);
 
+  const loadLocations = useCallback(async () => {
+    setLocLoading(true); setLocError('');
+    try {
+      const res = await fetch('/api/gestor/empresa');
+      if (!res.ok) throw new Error((await res.json()).error ?? 'Error');
+      setLocations((await res.json()).settings?.deliveryLocations ?? []);
+    } catch (e) { setLocError(e instanceof Error ? e.message : 'Error'); }
+    finally { setLocLoading(false); }
+  }, []);
+
+  async function persistLocations(updated: string[]) {
+    setLocSaving(true); setLocError('');
+    try {
+      const res = await fetch('/api/gestor/empresa', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deliveryLocations: updated }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Error');
+      setLocations(data.settings?.deliveryLocations ?? updated);
+    } catch (e) { setLocError(e instanceof Error ? e.message : 'Error'); }
+    finally { setLocSaving(false); }
+  }
+
+  function handleAddLoc() {
+    const trimmed = newLoc.trim();
+    if (!trimmed || locations.includes(trimmed)) return;
+    const updated = [...locations, trimmed];
+    setLocations(updated);
+    setNewLoc('');
+    persistLocations(updated);
+  }
+
+  function handleRemoveLoc(loc: string) {
+    const updated = locations.filter((l) => l !== loc);
+    setLocations(updated);
+    persistLocations(updated);
+  }
+
   useEffect(() => {
     if (innerTab === 'usuarios') loadUsers();
-    else loadBranches();
-  }, [innerTab, loadUsers, loadBranches]);
+    else if (innerTab === 'sucursales') loadBranches();
+    else loadLocations();
+  }, [innerTab, loadUsers, loadBranches, loadLocations]);
 
   async function saveUser() {
     setUserSaving(true); setUserError('');
@@ -139,9 +186,9 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
     <div>
       {/* Inner tabs */}
       <div className={styles.tabs}>
-        {(['usuarios', 'sucursales'] as InnerTab[]).map((t) => (
+        {(['usuarios', 'sucursales', 'lugares'] as InnerTab[]).map((t) => (
           <button key={t} className={`${styles.tab} ${innerTab === t ? styles.tabActive : ''}`} onClick={() => setInnerTab(t)}>
-            {t === 'usuarios' ? 'Usuarios' : 'Sucursales'}
+            {t === 'usuarios' ? 'Usuarios' : t === 'sucursales' ? 'Sucursales' : 'Lugares de entrega'}
           </button>
         ))}
       </div>
@@ -218,6 +265,54 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
               </table>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── Lugares de entrega ── */}
+      {innerTab === 'lugares' && (
+        <div style={{ maxWidth: 560 }}>
+          {locError && <div className="alert alert-danger">{locError}</div>}
+          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: 20, lineHeight: 1.5 }}>
+            Define los lugares de entrega y recogida disponibles. Aparecerán como sugerencias en reservas y contratos, pero el campo también admite texto libre.
+          </p>
+          {canWrite && (
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+              <input
+                type="text"
+                className="form-input"
+                value={newLoc}
+                onChange={(e) => setNewLoc(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddLoc(); } }}
+                placeholder="Ej: Aeropuerto T1, Estación de tren, Oficina central…"
+                disabled={locSaving}
+              />
+              <button type="button" className="btn btn-primary" onClick={handleAddLoc} disabled={locSaving || !newLoc.trim()} style={{ whiteSpace: 'nowrap' }}>
+                + Añadir
+              </button>
+            </div>
+          )}
+          {locLoading ? (
+            <div className={styles.loadingRow}>Cargando lugares…</div>
+          ) : locations.length === 0 ? (
+            <div className="empty-state" style={{ padding: '32px 0' }}>
+              <div className="empty-state__icon">📍</div>
+              <div className="empty-state__text">No hay lugares configurados</div>
+            </div>
+          ) : (
+            <div className={styles.locationList}>
+              {locations.map((loc) => (
+                <div key={loc} className={styles.locationRow}>
+                  <span className={styles.locationName}>📍 {loc}</span>
+                  {canWrite && (
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleRemoveLoc(loc)} disabled={locSaving} style={{ color: 'var(--color-danger)', borderColor: 'transparent' }}>
+                      Eliminar
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {locSaving && <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 12 }}>Guardando…</p>}
         </div>
       )}
 
@@ -407,128 +502,11 @@ function ConfiguracionTab({ myRole }: { myRole: UserRole }) {
   );
 }
 
-// ─── Lugares de entrega ───────────────────────────────────────────────────────
-
-function LugaresTab({ myRole }: { myRole: UserRole }) {
-  const canWrite = myRole === 'SUPER_ADMIN' || myRole === 'ADMIN';
-
-  const [locations, setLocations] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [newLoc, setNewLoc] = useState('');
-
-  useEffect(() => {
-    setLoading(true);
-    fetch('/api/gestor/empresa')
-      .then((r) => r.ok ? r.json() : r.json().then((d) => Promise.reject(d.error ?? 'Error')))
-      .then((d) => setLocations(d.settings?.deliveryLocations ?? []))
-      .catch((e) => setError(typeof e === 'string' ? e : 'Error al cargar'))
-      .finally(() => setLoading(false));
-  }, []);
-
-  async function persist(updated: string[]) {
-    setSaving(true); setError('');
-    try {
-      const res = await fetch('/api/gestor/empresa', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deliveryLocations: updated }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Error');
-      setLocations(data.settings?.deliveryLocations ?? updated);
-    } catch (e) { setError(e instanceof Error ? e.message : 'Error'); }
-    finally { setSaving(false); }
-  }
-
-  function handleAdd() {
-    const trimmed = newLoc.trim();
-    if (!trimmed || locations.includes(trimmed)) return;
-    const updated = [...locations, trimmed];
-    setLocations(updated);
-    setNewLoc('');
-    persist(updated);
-  }
-
-  function handleRemove(loc: string) {
-    const updated = locations.filter((l) => l !== loc);
-    setLocations(updated);
-    persist(updated);
-  }
-
-  if (loading) return <div className={styles.loadingRow}>Cargando lugares…</div>;
-
-  return (
-    <div style={{ maxWidth: 560 }}>
-      {error && <div className="alert alert-danger">{error}</div>}
-
-      <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: 20, lineHeight: 1.5 }}>
-        Define los lugares de entrega y recogida disponibles. Aparecerán como opciones en el desplegable de reservas y contratos, pero el campo también admite texto libre.
-      </p>
-
-      {/* Add form */}
-      {canWrite && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          <input
-            type="text"
-            className="form-input"
-            value={newLoc}
-            onChange={(e) => setNewLoc(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd(); } }}
-            placeholder="Ej: Aeropuerto T1, Estación de tren, Oficina central…"
-            disabled={saving}
-          />
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={handleAdd}
-            disabled={saving || !newLoc.trim()}
-            style={{ whiteSpace: 'nowrap' }}
-          >
-            + Añadir
-          </button>
-        </div>
-      )}
-
-      {/* List */}
-      {locations.length === 0 ? (
-        <div className="empty-state" style={{ padding: '32px 0' }}>
-          <div className="empty-state__icon">📍</div>
-          <div className="empty-state__text">No hay lugares configurados</div>
-        </div>
-      ) : (
-        <div className={styles.locationList}>
-          {locations.map((loc) => (
-            <div key={loc} className={styles.locationRow}>
-              <span className={styles.locationName}>📍 {loc}</span>
-              {canWrite && (
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => handleRemove(loc)}
-                  disabled={saving}
-                  style={{ color: 'var(--color-danger)', borderColor: 'transparent' }}
-                >
-                  Eliminar
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {saving && <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 12 }}>Guardando…</p>}
-    </div>
-  );
-}
-
 // ─── Tab nav (top level) ──────────────────────────────────────────────────────
 
 const GESTOR_TABS = [
   { key: 'gestion',       label: 'Usuarios y Sucursales' },
   { key: 'configuracion', label: 'Configuración' },
-  { key: 'lugares',       label: 'Lugares de entrega' },
   { key: 'tarifas',       label: 'Tarifas' },
   { key: 'plantillas',    label: 'Plantillas' },
   { key: 'backups',       label: 'Backups' },
