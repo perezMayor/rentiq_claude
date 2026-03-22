@@ -104,7 +104,7 @@ export default function DatePicker({
     <div ref={containerRef} className={styles.wrap} style={{ width: style?.width ?? '100%', position: 'relative', display: 'inline-block' }}>
       {/* Trigger */}
       <div
-        className={`${styles.trigger} ${disabled ? styles.triggerDisabled : ''} ${open ? styles.triggerOpen : ''} ${className ?? ''}`}
+        className={`${styles.trigger} ${!className ? styles.triggerBase : ''} ${disabled ? styles.triggerDisabled : ''} ${open ? styles.triggerOpen : ''} ${className ?? ''}`}
         style={style}
         onClick={openCalendar}
         role="button"
