@@ -502,11 +502,169 @@ function ConfiguracionTab({ myRole }: { myRole: UserRole }) {
   );
 }
 
+// ─── Canales de venta ─────────────────────────────────────────────────────────
+
+interface SalesChannel { id: string; name: string; code: string; commissionPercent: number; active: boolean; createdAt: string; }
+
+function CanalesTab({ myRole }: { myRole: UserRole }) {
+  const canWriteRole = myRole === 'SUPER_ADMIN' || myRole === 'ADMIN';
+
+  const [channels, setChannels] = useState<SalesChannel[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [modal, setModal] = useState<'create' | 'edit' | null>(null);
+  const [edit, setEdit] = useState<Partial<SalesChannel>>({});
+  const [saving, setSaving] = useState(false);
+  const [modalError, setModalError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const res = await fetch('/api/canales');
+      if (!res.ok) throw new Error((await res.json()).error ?? 'Error');
+      setChannels((await res.json()).channels ?? []);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Error'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function save() {
+    setSaving(true); setModalError('');
+    try {
+      const isEdit = modal === 'edit';
+      const res = await fetch(isEdit ? `/api/canales/${edit.id}` : '/api/canales', {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: edit.name, code: edit.code, commissionPercent: edit.commissionPercent ?? 0, active: edit.active }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Error');
+      setModal(null);
+      await load();
+    } catch (e) { setModalError(e instanceof Error ? e.message : 'Error'); }
+    finally { setSaving(false); }
+  }
+
+  async function toggleActive(ch: SalesChannel) {
+    try {
+      const res = await fetch(`/api/canales/${ch.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: !ch.active }),
+      });
+      if (!res.ok) { alert((await res.json()).error ?? 'Error'); return; }
+      await load();
+    } catch { alert('Error de red'); }
+  }
+
+  async function deleteChannel(ch: SalesChannel) {
+    if (!confirm(`¿Eliminar el canal "${ch.name}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      const res = await fetch(`/api/canales/${ch.id}`, { method: 'DELETE' });
+      if (!res.ok) { alert((await res.json()).error ?? 'Error'); return; }
+      await load();
+    } catch { alert('Error de red'); }
+  }
+
+  return (
+    <div>
+      <div className="page-header" style={{ marginBottom: 16 }}>
+        <div />
+        {canWriteRole && (
+          <button className="btn btn-primary" onClick={() => { setEdit({ active: true, commissionPercent: 0 }); setModalError(''); setModal('create'); }}>
+            + Nuevo canal
+          </button>
+        )}
+      </div>
+      {error && <div className="alert alert-danger">{error}</div>}
+      <div className="table-wrapper">
+        {loading ? <div className={styles.loadingRow}>Cargando canales…</div> : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Código</th>
+                <th>Comisión</th>
+                <th>Estado</th>
+                {canWriteRole && <th>Acciones</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {channels.length === 0 ? (
+                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>No hay canales configurados</td></tr>
+              ) : channels.map((ch) => (
+                <tr key={ch.id}>
+                  <td style={{ fontWeight: 500 }}>{ch.name}</td>
+                  <td><code style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-primary)' }}>{ch.code}</code></td>
+                  <td>{ch.commissionPercent}%</td>
+                  <td>
+                    <span className={styles.dot} style={{ background: ch.active ? 'var(--color-status-contratado)' : 'var(--color-status-no-disponible)' }} />
+                    {ch.active ? 'Activo' : 'Inactivo'}
+                  </td>
+                  {canWriteRole && (
+                    <td>
+                      <div className={styles.actions}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => { setEdit({ ...ch }); setModalError(''); setModal('edit'); }}>Editar</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => toggleActive(ch)}>{ch.active ? 'Desactivar' : 'Activar'}</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => deleteChannel(ch)} style={{ color: 'var(--color-danger)' }}>Eliminar</button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {modal && (
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <span className="modal__title">{modal === 'create' ? 'Nuevo canal de venta' : 'Editar canal'}</span>
+              <button className="modal__close" onClick={() => setModal(null)}>✕</button>
+            </div>
+            <div className="modal__body">
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Nombre *</label>
+                  <input type="text" className="form-input" value={edit.name ?? ''} onChange={(e) => setEdit((s) => ({ ...s, name: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Código *</label>
+                  <input type="text" className="form-input" value={edit.code ?? ''} onChange={(e) => setEdit((s) => ({ ...s, code: e.target.value.toUpperCase() }))} maxLength={6} disabled={modal === 'edit'} placeholder="DIR" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Comisión (%)</label>
+                  <input type="number" className="form-input" min="0" max="100" step="0.1" value={edit.commissionPercent ?? 0} onChange={(e) => setEdit((s) => ({ ...s, commissionPercent: parseFloat(e.target.value) }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Estado</label>
+                  <select className="form-select" value={edit.active ? 'true' : 'false'} onChange={(e) => setEdit((s) => ({ ...s, active: e.target.value === 'true' }))}>
+                    <option value="true">Activo</option>
+                    <option value="false">Inactivo</option>
+                  </select>
+                </div>
+              </div>
+              {modalError && <div className="alert alert-danger" style={{ marginTop: 16 }}>{modalError}</div>}
+            </div>
+            <div className="modal__footer">
+              <button className="btn btn-ghost" onClick={() => setModal(null)} disabled={saving}>Cancelar</button>
+              <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Tab nav (top level) ──────────────────────────────────────────────────────
 
 const GESTOR_TABS = [
   { key: 'gestion',       label: 'Usuarios y Sucursales' },
   { key: 'configuracion', label: 'Configuración' },
+  { key: 'canales',       label: 'Canales de venta' },
   { key: 'tarifas',       label: 'Tarifas' },
   { key: 'plantillas',    label: 'Plantillas' },
   { key: 'backups',       label: 'Backups' },
@@ -573,7 +731,7 @@ function GestorInner() {
 
       {tab === 'gestion'       && <UsuariosYSucursalesTab myRole={myRole} myUserId={myUserId} />}
       {tab === 'configuracion' && <ConfiguracionTab myRole={myRole} />}
-      {tab === 'lugares'       && <LugaresTab myRole={myRole} />}
+      {tab === 'canales'       && <CanalesTab myRole={myRole} />}
       {(tab === 'tarifas' || tab === 'plantillas' || tab === 'backups') && (
         <div className="empty-state" style={{ marginTop: 32 }}>
           <div className="empty-state__icon">🚧</div>

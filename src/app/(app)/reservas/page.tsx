@@ -40,6 +40,7 @@ function TabNav({ active }: { active: string }) {
   const searchParams = useSearchParams();
 
   function go(key: string) {
+    if (key === 'planning') { router.push('/planning'); return; }
     const p = new URLSearchParams(searchParams.toString());
     p.set('tab', key);
     router.push(`${pathname}?${p.toString()}`);
@@ -377,6 +378,14 @@ function RecogidasTab() {
   );
 }
 
+// ─── Planning redirect ────────────────────────────────────────────────────────
+
+function PlanningRedirect() {
+  const router = useRouter();
+  useEffect(() => { router.push('/planning'); }, [router]);
+  return <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Redirigiendo al planning…</div>;
+}
+
 // ─── Placeholder tab ──────────────────────────────────────────────────────────
 
 function PlaceholderTab({ label }: { label: string }) {
@@ -384,6 +393,153 @@ function PlaceholderTab({ label }: { label: string }) {
     <div className="empty-state" style={{ marginTop: 32 }}>
       <div className="empty-state__icon">🚧</div>
       <div className="empty-state__text">{label} — Próximamente</div>
+    </div>
+  );
+}
+
+// ─── Canales tab ──────────────────────────────────────────────────────────────
+
+interface SalesChannel { id: string; name: string; code: string; commissionPercent: number; active: boolean; }
+
+function CanalesTab() {
+  const [channels, setChannels] = useState<SalesChannel[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetch('/api/canales')
+      .then((r) => r.ok ? r.json() : r.json().then((d: { error?: string }) => Promise.reject(d.error ?? 'Error')))
+      .then((d) => setChannels(d.channels ?? []))
+      .catch((e) => setError(typeof e === 'string' ? e : 'Error al cargar'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Cargando canales…</div>;
+  if (error) return <div className="alert alert-danger">{error}</div>;
+
+  return (
+    <div>
+      <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: 16 }}>
+        Canales de venta configurados. Para crear o editar canales, ve a <strong>Gestor → Canales de venta</strong>.
+      </p>
+      <div className="table-wrapper">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Código</th>
+              <th>Comisión</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {channels.length === 0 ? (
+              <tr><td colSpan={4} style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>No hay canales configurados</td></tr>
+            ) : channels.map((ch) => (
+              <tr key={ch.id}>
+                <td style={{ fontWeight: 500 }}>{ch.name}</td>
+                <td><code style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-primary)' }}>{ch.code}</code></td>
+                <td>{ch.commissionPercent}%</td>
+                <td>
+                  <span className={`badge ${ch.active ? 'badge-confirmada' : 'badge-cancelada'}`}>
+                    {ch.active ? 'Activo' : 'Inactivo'}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Log confirmaciones tab ───────────────────────────────────────────────────
+
+function LogConfirmacionesTab() {
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [dateFrom, setDateFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().slice(0, 10);
+  });
+  const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
+
+  useEffect(() => {
+    setLoading(true); setError('');
+    Promise.all([
+      fetch(`/api/reservas?status=CONFIRMADA&startFrom=${dateFrom}&startTo=${dateTo}`),
+      fetch('/api/clientes'),
+    ])
+      .then(async ([rRes, cRes]) => {
+        const rData = rRes.ok ? await rRes.json() : { reservations: [] };
+        const cData = cRes.ok ? await cRes.json() : { clients: [] };
+        setReservations(rData.reservations ?? []);
+        setClients(cData.clients ?? []);
+      })
+      .catch(() => setError('Error al cargar los datos'))
+      .finally(() => setLoading(false));
+  }, [dateFrom, dateTo]);
+
+  const clientMap = Object.fromEntries(clients.map((c) => [c.id, c]));
+
+  return (
+    <div>
+      <div className="filters-bar">
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Desde</label>
+          <DatePicker value={dateFrom} onChange={setDateFrom} style={{ width: 150 }} />
+        </div>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label className="form-label">Hasta</label>
+          <DatePicker value={dateTo} onChange={setDateTo} style={{ width: 150 }} />
+        </div>
+      </div>
+
+      {error && <div className="alert alert-danger">{error}</div>}
+
+      <div className="table-wrapper">
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Cargando…</div>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Número</th>
+                <th>Cliente</th>
+                <th>Entrada</th>
+                <th>Salida</th>
+                <th>Total</th>
+                <th>Confirmación enviada</th>
+                <th>Destinatario</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reservations.length === 0 ? (
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>Sin reservas confirmadas en el periodo</td></tr>
+              ) : reservations.map((r) => {
+                const client = clientMap[r.clientId];
+                return (
+                  <tr key={r.id}>
+                    <td><span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.85rem' }}>{r.number}</span></td>
+                    <td>{client ? `${client.name}${client.surname ? ' ' + client.surname : ''}` : <span className="text-muted">{r.clientId}</span>}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{formatDate(r.startDate)} <span className="text-muted" style={{ fontSize: '0.75rem' }}>{r.startTime}</span></td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{formatDate(r.endDate)} <span className="text-muted" style={{ fontSize: '0.75rem' }}>{r.endTime}</span></td>
+                    <td style={{ fontWeight: 600 }}>{r.total.toFixed(2)} €</td>
+                    <td style={{ fontSize: '0.82rem', color: r.confirmationSentAt ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}>
+                      {r.confirmationSentAt ? new Date(r.confirmationSentAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                    </td>
+                    <td style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>{r.confirmationSentTo ?? '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }
@@ -615,10 +771,10 @@ function ReservasPageInner() {
       {tab === 'gestion'     && <GestionReservaTab reservationId={reservationId} />}
       {tab === 'entregas'    && <EntregasTab />}
       {tab === 'recogidas'   && <RecogidasTab />}
-      {tab === 'listado'     && <ListadoTab autoOpenNew={false} />}
-      {tab === 'canales'     && <PlaceholderTab label="Canales de venta" />}
-      {tab === 'log'         && <PlaceholderTab label="Log de confirmaciones" />}
-      {tab === 'planning'    && <PlaceholderTab label="Planning de reservas" />}
+      {tab === 'listado'     && <ListadoTab />}
+      {tab === 'canales'     && <CanalesTab />}
+      {tab === 'log'         && <LogConfirmacionesTab />}
+      {tab === 'planning'    && <PlanningRedirect />}
       {tab === 'informes'    && <PlaceholderTab label="Informes de reservas" />}
       {tab === 'presupuesto' && <PlaceholderTab label="Presupuestos" />}
     </div>
