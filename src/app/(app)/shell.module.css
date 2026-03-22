@@ -59,16 +59,18 @@
   gap: 10px;
   padding: 7px 12px;
   border-radius: 6px;
-  font-size: 0.875rem;
+  font-size: 0.975rem;
   font-weight: 400;
   color: rgba(243, 244, 246, 0.7);
-  transition: background 0.12s, color 0.12s;
+  transition: background 0.12s, color 0.12s, transform 0.12s, padding 0.12s;
   text-decoration: none;
 }
 
 .navItem:hover {
   background: rgba(255, 255, 255, 0.07);
   color: var(--color-sidebar-text);
+  transform: scaleX(1.03);
+  padding-left: 16px;
 }
 
 .navItemActive {
