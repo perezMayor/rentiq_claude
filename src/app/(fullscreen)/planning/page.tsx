@@ -346,7 +346,18 @@ export default function PlanningPage() {
     } catch { /* silent */ }
   }
 
-  const gridTemplateColumns = `170px repeat(${dates.length}, 36px)`;
+  const COL_PLATE = 95;
+  const COL_GROUP = 110;
+  const COL_MODEL = 140;
+  const gridTemplateColumns = `${COL_PLATE}px ${COL_GROUP}px ${COL_MODEL}px repeat(${dates.length}, 36px)`;
+
+  // Sort vehicles alphabetically by group name, then plate
+  const sortedVehicles = data
+    ? [...data.vehicles].sort((a, b) => {
+        const g = a.categoryName.localeCompare(b.categoryName, 'es');
+        return g !== 0 ? g : a.plate.localeCompare(b.plate, 'es');
+      })
+    : [];
 
   // Active vehicle + reservation counts for header
   const vehicleCount = data?.vehicles.length ?? 0;
@@ -498,7 +509,9 @@ export default function PlanningPage() {
             <div className={styles.gridWrapper}>
               <div className={styles.grid} style={{ gridTemplateColumns }}>
                 {/* Header */}
-                <div className={styles.vehicleHeaderCell}>Vehículo</div>
+                <div className={styles.vehicleHeaderCell} style={{ left: 0 }}>Matrícula</div>
+                <div className={styles.vehicleHeaderCell} style={{ left: COL_PLATE }}>Grupo</div>
+                <div className={styles.vehicleHeaderCell} style={{ left: COL_PLATE + COL_GROUP, borderRight: '2px solid var(--color-border)' }}>Modelo</div>
                 {dates.map((d) => {
                   const dow = dayOfWeek(d);
                   const isToday = d === today;
@@ -512,12 +525,16 @@ export default function PlanningPage() {
                 })}
 
                 {/* Rows */}
-                {data.vehicles.map((vehicle) => (
+                {sortedVehicles.map((vehicle) => (
                   <div key={vehicle.plate} className={styles.vehicleRow}>
-                    <div className={styles.vehicleCell}>
+                    <div className={styles.vehicleCellPlate} style={{ left: 0 }}>
                       <div className={styles.vehiclePlate}>{vehicle.plate}</div>
-                      <div className={styles.vehicleModel}>{vehicle.modelName}</div>
+                    </div>
+                    <div className={styles.vehicleCellGroup} style={{ left: COL_PLATE }}>
                       <div className={styles.vehicleCategoryBadge}>{vehicle.categoryName}</div>
+                    </div>
+                    <div className={styles.vehicleCellModel} style={{ left: COL_PLATE + COL_GROUP }}>
+                      <div className={styles.vehicleModel}>{vehicle.modelName}</div>
                     </div>
                     {dates.map((d) => {
                       const dow = dayOfWeek(d);
@@ -553,20 +570,21 @@ export default function PlanningPage() {
                 {/* ── Huérfanas ── */}
                 {orphans.length > 0 && (
                   <>
-                    {/* Separator row */}
-                    <div className={styles.orphanSeparator}>
+                    {/* Separator row — spans the 3 fixed cols + all day cols */}
+                    <div className={styles.orphanSeparator} style={{ gridColumn: `1 / span ${3 + dates.length}` }}>
                       Sin matrícula asignada ({orphans.length})
                     </div>
-                    {Array.from({ length: dates.length }).map((_, i) => (
-                      <div key={i} className={styles.orphanSeparatorCell} />
-                    ))}
 
                     {orphans.map((orph) => (
                       <div key={orph.id} className={styles.vehicleRow}>
-                        <div className={`${styles.vehicleCell} ${styles.orphanVehicleCell}`}>
-                          <div className={styles.vehiclePlate} style={{ color: 'var(--color-status-huerfana)' }}>{orph.number}</div>
-                          <div className={styles.vehicleModel}>{orph.clientName}</div>
+                        <div className={`${styles.vehicleCellPlate} ${styles.orphanVehicleCell}`} style={{ left: 0 }}>
+                          <div className={styles.vehiclePlate} style={{ color: 'var(--color-status-huerfana)', fontSize: '0.78rem' }}>{orph.number}</div>
+                        </div>
+                        <div className={`${styles.vehicleCellGroup} ${styles.orphanVehicleCell}`} style={{ left: COL_PLATE }}>
                           <div className={styles.vehicleCategoryBadge} style={{ background: 'rgba(220,38,38,0.1)', color: 'var(--color-status-huerfana)', borderColor: 'rgba(220,38,38,0.25)' }}>Sin matrícula</div>
+                        </div>
+                        <div className={`${styles.vehicleCellModel} ${styles.orphanVehicleCell}`} style={{ left: COL_PLATE + COL_GROUP }}>
+                          <div className={styles.vehicleModel}>{orph.clientName}</div>
                         </div>
                         {dates.map((d) => {
                           const inRange = d >= orph.startDate && d <= orph.endDate;
