@@ -419,9 +419,6 @@ function CanalesTab() {
 
   return (
     <div>
-      <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: 16 }}>
-        Canales de venta configurados. Para crear o editar canales, ve a <strong>Gestor → Canales de venta</strong>.
-      </p>
       <div className="table-wrapper">
         <table className="data-table">
           <thead>
