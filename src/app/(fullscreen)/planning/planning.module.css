@@ -421,8 +421,12 @@
   display: flex;
   align-items: center;
   overflow: hidden;
+  user-select: none;
+  -webkit-user-drag: element;
+  cursor: grab;
 }
 
+.cellBar:active { cursor: grabbing; }
 .cellBar:hover { opacity: 1; }
 
 .barPeticion   { background: var(--color-status-peticion); }
