@@ -349,7 +349,7 @@ export default function PlanningPage() {
   const COL_PLATE = 95;
   const COL_GROUP = 110;
   const COL_MODEL = 140;
-  const gridTemplateColumns = `${COL_PLATE}px ${COL_GROUP}px ${COL_MODEL}px repeat(${dates.length}, 36px)`;
+  const gridTemplateColumns = `${COL_PLATE}px ${COL_GROUP}px ${COL_MODEL}px repeat(${dates.length}, minmax(32px, 1fr))`;
 
   // Sort vehicles alphabetically by group name, then plate
   const sortedVehicles = data
