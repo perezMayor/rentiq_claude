@@ -329,12 +329,12 @@
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);
-  padding: 6px 10px;
+  padding: 4px 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  min-height: 52px;
+  min-height: 36px;
 }
 
 /* Last of the three gets a stronger right border */
@@ -343,7 +343,7 @@
 }
 
 .vehiclePlate {
-  font-size: 0.88rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: var(--color-text-primary);
   letter-spacing: 0.04em;
@@ -360,9 +360,9 @@
 
 .vehicleCategoryBadge {
   display: inline-block;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 0.6rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -377,7 +377,7 @@
 .dayCell {
   border-bottom: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);
-  height: 52px;
+  height: 36px;
   position: relative;
   cursor: pointer;
   transition: background 0.1s;
@@ -414,10 +414,13 @@
 
 .cellBar {
   position: absolute;
-  inset: 6px 2px;
-  border-radius: 3px;
+  inset: 4px 0;
+  border-radius: 0;
   opacity: 0.9;
   transition: opacity 0.1s;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
 }
 
 .cellBar:hover { opacity: 1; }
@@ -428,14 +431,34 @@
 .barBloqueado  { background: var(--color-status-bloqueado); }
 .barHuerfana   { background: var(--color-status-huerfana); }
 
-.barStart    { border-radius: 3px 0 0 3px; left: 4px; }
-.barEnd      {
-  right: 4px;
-  border-radius: 0;
-  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%);
+/* Arrow shapes — punta izquierda en inicio, punta derecha en fin */
+.barStart {
+  left: 3px; right: 0;
+  clip-path: polygon(6px 0%, 100% 0%, 100% 100%, 6px 100%, 0% 50%);
 }
-.barStartEnd { border-radius: 3px; left: 4px; right: 4px; }
-.barMiddle   { border-radius: 0; left: 0; right: 0; }
+.barEnd {
+  left: 0; right: 3px;
+  clip-path: polygon(0% 0%, calc(100% - 6px) 0%, 100% 50%, calc(100% - 6px) 100%, 0% 100%);
+}
+.barStartEnd {
+  left: 3px; right: 3px;
+  clip-path: polygon(6px 0%, calc(100% - 6px) 0%, 100% 50%, calc(100% - 6px) 100%, 6px 100%, 0% 50%);
+}
+.barMiddle { left: 0; right: 0; }
+
+/* Etiqueta de texto dentro de la barra (huérfanas) */
+.cellBarLabel {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 8px 0 12px;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
 
 /* Overlap: striped pattern on the first cell of an overlapping reservation */
 .barOverlapStart {

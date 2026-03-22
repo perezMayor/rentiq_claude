@@ -642,7 +642,7 @@ export default function PlanningPage() {
     return (
       <div key={orph.id} className={styles.vehicleRow}>
         <div className={`${styles.vehicleCellPlate} ${styles.orphanVehicleCell}`} style={{ left: 0 }}>
-          <div className={styles.vehiclePlate} style={{ color: 'var(--color-status-huerfana)', fontSize: '0.78rem' }}>{orph.number}</div>
+          <div className={styles.vehiclePlate} style={{ color: 'var(--color-status-huerfana)', fontSize: '0.72rem', opacity: 0.7 }}>—</div>
         </div>
         <div className={`${styles.vehicleCellGroup} ${styles.orphanVehicleCell}`} style={{ left: COL_PLATE }}>
           <div className={styles.vehicleCategoryBadge} style={{ background: 'rgba(220,38,38,0.1)', color: 'var(--color-status-huerfana)', borderColor: 'rgba(220,38,38,0.25)' }}>
@@ -650,13 +650,14 @@ export default function PlanningPage() {
           </div>
         </div>
         <div className={`${styles.vehicleCellModel} ${styles.orphanVehicleCell}`} style={{ left: COL_PLATE + COL_GROUP }}>
-          <div className={styles.vehicleModel}>{orph.clientName}</div>
+          <div className={styles.vehicleModel} style={{ fontSize: '0.72rem' }}>{orph.clientName}</div>
         </div>
         {dates.map((d) => {
           const dow = dayOfWeek(d);
           const isToday = d === today;
           const inRange = d >= orph.startDate && d <= orph.endDate;
           const pos = inRange ? barPosition(d, orph.startDate, orph.endDate) : null;
+          const isLabelCell = pos === 'start' || pos === 'startEnd';
 
           const bar = inRange ? (
             <div
@@ -666,7 +667,11 @@ export default function PlanningPage() {
               onDoubleClick={(e) => { e.stopPropagation(); window.open(`/reservas?tab=gestion&id=${orph.id}`, '_blank'); }}
               onMouseEnter={(e) => { e.stopPropagation(); showTooltipFor(e, { type: 'orphan', data: orph }); }}
               onMouseLeave={hideTooltip}
-            />
+            >
+              {isLabelCell && (
+                <span className={styles.cellBarLabel}>{orph.number}</span>
+              )}
+            </div>
           ) : null;
 
           return renderDayCell(
