@@ -362,7 +362,7 @@ export default function PlanningPage() {
   // Active vehicle + reservation counts for header
   const vehicleCount = data?.vehicles.length ?? 0;
   const occupiedToday = data ? data.reservations.filter((r) => today >= r.startDate && today <= r.endDate).length : 0;
-  const orphans = (showOrphans && data?.orphans) ? data.orphans : [];
+  const orphans = showOrphans ? (data?.orphans ?? []) : [];
 
   return (
     <div className={styles.layout}>
