@@ -517,7 +517,7 @@ export default function PlanningPage() {
                   const isToday = d === today;
                   const isWeekend = dow === 0 || dow === 6;
                   return (
-                    <div key={d} className={`${styles.dayHeader} ${isToday ? styles.todayHeader : ''} ${isWeekend && !isToday ? styles.weekendCol ?? '' : ''}`}>
+                    <div key={d} className={[styles.dayHeader, isToday ? styles.todayHeader : '', !isToday && dow === 0 ? styles.sundayHeader : ''].filter(Boolean).join(' ')}>
                       <span className={styles.dayHeaderNum}>{d.split('-')[2]}</span>
                       <span className={styles.dayHeaderName}>{DAY_NAMES[dow]}</span>
                     </div>
@@ -555,7 +555,7 @@ export default function PlanningPage() {
                       return (
                         <div
                           key={d}
-                          className={[styles.dayCell, isToday ? styles.todayCell : '', isWeekend && !cellInfo ? styles.weekendCell : ''].filter(Boolean).join(' ')}
+                          className={[styles.dayCell, isToday ? styles.todayCell : '', !isToday && dow === 0 ? styles.sundayCell : (!isToday && isWeekend && !cellInfo ? styles.weekendCell : '')].filter(Boolean).join(' ')}
                           onClick={() => handleCellClick(vehicle.plate, d)}
                           onMouseEnter={(e) => handleCellMouseEnter(e, vehicle.plate, d)}
                           onMouseLeave={handleCellMouseLeave}
@@ -595,7 +595,7 @@ export default function PlanningPage() {
                           return (
                             <div
                               key={d}
-                              className={[styles.dayCell, isWeekend && !inRange ? styles.weekendCell : ''].filter(Boolean).join(' ')}
+                              className={[styles.dayCell, dow === 0 ? styles.sundayCell : (isWeekend && !inRange ? styles.weekendCell : '')].filter(Boolean).join(' ')}
                               onClick={() => inRange && setSelectedInfo({ type: 'orphan' as never, data: orph as never })}
                               onMouseEnter={(e) => {
                                 if (!inRange) return;
