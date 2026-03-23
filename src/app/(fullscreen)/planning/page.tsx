@@ -365,13 +365,16 @@ export default function PlanningPage() {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; item: SelectedItem } | null>(null);
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Drag state
+  // Drag state — mouse-event based (HTML5 drag API no funciona con clip-path)
   const dragRef = useRef<{
     reservationId: string;
     sourcePlate: string | null;
     sourceCategoryId: string;
     sourceCategoryName: string;
     isOrphan: boolean;
+    startX: number;
+    startY: number;
+    moved: boolean;
   } | null>(null);
   const [dragOverPlate, setDragOverPlate] = useState<string | null>(null);
 
@@ -412,6 +415,75 @@ export default function PlanningPage() {
   }, [from, days, branchId, fleetFilter, categoryId, plateSearch, locationFilter]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
+
+  // ── Drag via mouse events (más fiable que HTML5 drag API con clip-path) ──
+  useEffect(() => {
+    const DRAG_THRESHOLD = 5; // px mínimos para considerar que es un drag
+
+    function getTargetFromPoint(x: number, y: number): { plate: string; categoryId: string; categoryName: string } | null {
+      const elements = document.elementsFromPoint(x, y);
+      for (const el of elements) {
+        const plate = (el as HTMLElement).dataset.plate;
+        if (plate) {
+          return {
+            plate,
+            categoryId: (el as HTMLElement).dataset.categoryId ?? '',
+            categoryName: (el as HTMLElement).dataset.categoryName ?? '',
+          };
+        }
+      }
+      return null;
+    }
+
+    function onMouseMove(e: MouseEvent) {
+      const drag = dragRef.current;
+      if (!drag) return;
+      const dx = Math.abs(e.clientX - drag.startX);
+      const dy = Math.abs(e.clientY - drag.startY);
+      if (!drag.moved && dx < DRAG_THRESHOLD && dy < DRAG_THRESHOLD) return;
+      drag.moved = true;
+      document.body.style.cursor = 'grabbing';
+      const target = getTargetFromPoint(e.clientX, e.clientY);
+      setDragOverPlate(target?.plate ?? null);
+    }
+
+    function onMouseUp(e: MouseEvent) {
+      const drag = dragRef.current;
+      if (!drag) return;
+      dragRef.current = null;
+      document.body.style.cursor = '';
+      if (!drag.moved) { setDragOverPlate(null); return; }
+      setDragOverPlate(null);
+      const target = getTargetFromPoint(e.clientX, e.clientY);
+      if (!target || target.plate === drag.sourcePlate) return;
+
+      const doAssign = async () => {
+        try {
+          const res = await fetch(`/api/reservas/${drag.reservationId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ assignedPlate: target.plate }),
+          });
+          if (!res.ok) { const j = (await res.json()) as { error?: string }; alert(j.error ?? 'Error al reasignar'); return; }
+          void fetchData();
+        } catch { alert('Error de red al reasignar'); }
+      };
+
+      if (drag.sourceCategoryId !== target.categoryId) {
+        const ok = window.confirm(`Cambio de grupo\n\nEsta reserva es del grupo "${drag.sourceCategoryName}" y la vas a mover a "${target.categoryName}".\n\n¿Continuar?`);
+        if (!ok) return;
+      }
+      void doAssign();
+    }
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+    };
+  }, [fetchData]);
 
   const dates = useMemo(() => data ? dateRange(data.from, data.days) : [], [data]);
 
@@ -497,52 +569,24 @@ export default function PlanningPage() {
     } catch { /* silent */ }
   }
 
-  // ── Drag & Drop ──
+  // ── Drag — inicia con mousedown en la barra ──
 
-  function handleDragStart(
-    e: React.DragEvent,
+  function handleBarMouseDown(
+    e: React.MouseEvent,
     reservationId: string,
     sourcePlate: string | null,
     sourceCategoryId: string,
     sourceCategoryName: string,
     isOrphan: boolean
   ) {
-    dragRef.current = { reservationId, sourcePlate, sourceCategoryId, sourceCategoryName, isOrphan };
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', reservationId);
+    if (userRole === 'LECTOR') return;
+    e.preventDefault(); // evita selección de texto
+    e.stopPropagation(); // no propagar al dayCell (evita click)
     hideTooltip();
-  }
-
-  async function handleDrop(targetPlate: string, targetCategoryId: string, targetCategoryName: string) {
-    const drag = dragRef.current;
-    dragRef.current = null;
-    setDragOverPlate(null);
-    if (!drag) return;
-    if (drag.sourcePlate === targetPlate) return;
-
-    const doAssign = async () => {
-      try {
-        const res = await fetch(`/api/reservas/${drag.reservationId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ assignedPlate: targetPlate }),
-        });
-        if (!res.ok) {
-          const j = (await res.json()) as { error?: string };
-          alert(j.error ?? 'Error al reasignar');
-          return;
-        }
-        void fetchData();
-      } catch { alert('Error de red al reasignar'); }
+    dragRef.current = {
+      reservationId, sourcePlate, sourceCategoryId, sourceCategoryName, isOrphan,
+      startX: e.clientX, startY: e.clientY, moved: false,
     };
-
-    if (drag.sourceCategoryId !== targetCategoryId) {
-      const ok = window.confirm(
-        `Cambio de grupo\n\nEsta reserva es del grupo "${drag.sourceCategoryName}" y la vas a mover a "${targetCategoryName}".\n\n¿Continuar?`
-      );
-      if (!ok) return;
-    }
-    await doAssign();
   }
 
   // ── Grid layout ──
@@ -558,17 +602,7 @@ export default function PlanningPage() {
 
   // ── Render helpers ──
 
-  function renderDayCell(
-    d: string,
-    hasBar: boolean,
-    isToday: boolean,
-    dow: number,
-    onClick: () => void,
-    bar?: React.ReactNode,
-    dragHandlers?: object,
-    isDraggable?: boolean,
-    onDragStartCell?: (e: React.DragEvent) => void,
-  ) {
+  function renderDayCell(d: string, hasBar: boolean, isToday: boolean, dow: number, onClick: () => void, bar?: React.ReactNode) {
     const isWeekend = dow === 0 || dow === 6;
     return (
       <div
@@ -578,10 +612,7 @@ export default function PlanningPage() {
           isToday ? styles.todayCell : '',
           !isToday && dow === 0 ? styles.sundayCell : (!isToday && isWeekend && !hasBar ? styles.weekendCell : ''),
         ].filter(Boolean).join(' ')}
-        draggable={isDraggable ?? false}
-        onDragStart={onDragStartCell}
         onClick={onClick}
-        {...dragHandlers}
       >
         {bar}
       </div>
@@ -590,15 +621,20 @@ export default function PlanningPage() {
 
   function renderVehicleRow(vehicle: PlanningVehicle) {
     const isDragOver = dragOverPlate === vehicle.plate;
+    const dragData = {
+      'data-plate': vehicle.plate,
+      'data-category-id': vehicle.categoryId,
+      'data-category-name': vehicle.categoryName,
+    };
     return (
       <div key={vehicle.plate} className={styles.vehicleRow}>
-        <div className={styles.vehicleCellPlate} style={{ left: 0 }}>
+        <div className={styles.vehicleCellPlate} style={{ left: 0 }} {...dragData}>
           <div className={styles.vehiclePlate}>{vehicle.plate}</div>
         </div>
-        <div className={styles.vehicleCellGroup} style={{ left: COL_PLATE }}>
+        <div className={styles.vehicleCellGroup} style={{ left: COL_PLATE }} {...dragData}>
           <div className={styles.vehicleCategoryBadge}>{vehicle.categoryName}</div>
         </div>
-        <div className={`${styles.vehicleCellModel} ${isDragOver ? styles.dragOverRow : ''}`} style={{ left: COL_PLATE + COL_GROUP }}>
+        <div className={`${styles.vehicleCellModel} ${isDragOver ? styles.dragOverRow : ''}`} style={{ left: COL_PLATE + COL_GROUP }} {...dragData}>
           <div className={styles.vehicleModel}>{vehicle.modelName}</div>
         </div>
         {dates.map((d) => {
@@ -620,6 +656,7 @@ export default function PlanningPage() {
               bar = (
                 <div
                   className={`${styles.cellBar} ${colorCls} ${posCls} ${isOverlap ? styles.barOverlapStart : ''}`}
+                  onMouseDown={(e) => handleBarMouseDown(e, r.id, vehicle.plate, vehicle.categoryId, vehicle.categoryName, false)}
                   onDoubleClick={(e) => { e.stopPropagation(); window.open(`/reservas?tab=gestion&id=${r.id}`, '_blank'); }}
                   onMouseEnter={(e) => { e.stopPropagation(); showTooltipFor(e, { type: 'reservation', data: r }); }}
                   onMouseLeave={hideTooltip}
@@ -628,26 +665,15 @@ export default function PlanningPage() {
             }
           }
 
-          const canDrag = userRole !== 'LECTOR' && cellInfo?.type === 'reservation';
-          const dropHandlers = userRole !== 'LECTOR' ? {
-            onDragOver: (e: React.DragEvent) => { e.preventDefault(); setDragOverPlate(vehicle.plate); },
-            onDragLeave: () => setDragOverPlate(null),
-            onDrop: (e: React.DragEvent) => { e.preventDefault(); void handleDrop(vehicle.plate, vehicle.categoryId, vehicle.categoryName); },
-          } : {};
-
           return renderDayCell(
             d, !!cellInfo, isToday, dow,
-            () => cellInfo?.type === 'reservation'
-              ? setSelectedItem({ type: 'reservation', data: cellInfo.data })
-              : cellInfo?.type === 'block'
-              ? setSelectedItem({ type: 'block', data: cellInfo.data })
-              : handleEmptyCellClick(vehicle.plate, d),
+            () => {
+              if (dragRef.current?.moved) return; // ignorar click si fue un drag
+              if (cellInfo?.type === 'reservation') setSelectedItem({ type: 'reservation', data: cellInfo.data });
+              else if (cellInfo?.type === 'block') setSelectedItem({ type: 'block', data: cellInfo.data });
+              else handleEmptyCellClick(vehicle.plate, d);
+            },
             bar,
-            dropHandlers,
-            canDrag,
-            canDrag && cellInfo?.type === 'reservation'
-              ? (e: React.DragEvent) => handleDragStart(e, cellInfo.data.id, vehicle.plate, vehicle.categoryId, vehicle.categoryName, false)
-              : undefined,
           );
         })}
       </div>
@@ -680,26 +706,19 @@ export default function PlanningPage() {
           const bar = inRange ? (
             <div
               className={`${styles.cellBar} ${styles.barHuerfana} ${pos ? barClass(pos, styles) : ''}`}
+              onMouseDown={(e) => handleBarMouseDown(e, orph.id, null, orph.categoryId, orph.categoryName, true)}
               onDoubleClick={(e) => { e.stopPropagation(); window.open(`/reservas?tab=gestion&id=${orph.id}`, '_blank'); }}
               onMouseEnter={(e) => { e.stopPropagation(); showTooltipFor(e, { type: 'orphan', data: orph }); }}
               onMouseLeave={hideTooltip}
             >
-              {isLabelCell && (
-                <span className={styles.cellBarLabel}>{orph.number}</span>
-              )}
+              {isLabelCell && <span className={styles.cellBarLabel}>{orph.number}</span>}
             </div>
           ) : null;
 
-          const orphanDragHandlers = inRange && userRole !== 'LECTOR' ? {
-            draggable: true,
-            onDragStart: (e: React.DragEvent) => handleDragStart(e, orph.id, null, orph.categoryId, orph.categoryName, true),
-          } : {};
-
           return renderDayCell(
             d, inRange, isToday, dow,
-            () => inRange ? setSelectedItem({ type: 'orphan', data: orph }) : undefined,
+            () => { if (!dragRef.current?.moved && inRange) setSelectedItem({ type: 'orphan', data: orph }); },
             bar,
-            orphanDragHandlers
           );
         })}
       </div>
