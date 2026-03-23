@@ -558,7 +558,17 @@ export default function PlanningPage() {
 
   // ── Render helpers ──
 
-  function renderDayCell(d: string, hasBar: boolean, isToday: boolean, dow: number, onClick: () => void, bar?: React.ReactNode, dragHandlers?: object) {
+  function renderDayCell(
+    d: string,
+    hasBar: boolean,
+    isToday: boolean,
+    dow: number,
+    onClick: () => void,
+    bar?: React.ReactNode,
+    dragHandlers?: object,
+    isDraggable?: boolean,
+    onDragStartCell?: (e: React.DragEvent) => void,
+  ) {
     const isWeekend = dow === 0 || dow === 6;
     return (
       <div
@@ -568,6 +578,8 @@ export default function PlanningPage() {
           isToday ? styles.todayCell : '',
           !isToday && dow === 0 ? styles.sundayCell : (!isToday && isWeekend && !hasBar ? styles.weekendCell : ''),
         ].filter(Boolean).join(' ')}
+        draggable={isDraggable ?? false}
+        onDragStart={onDragStartCell}
         onClick={onClick}
         {...dragHandlers}
       >
@@ -616,11 +628,8 @@ export default function PlanningPage() {
             }
           }
 
-          const dragHandlers = userRole !== 'LECTOR' ? {
-            ...(cellInfo?.type === 'reservation' ? {
-              draggable: true,
-              onDragStart: (e: React.DragEvent) => handleDragStart(e, cellInfo.data.id, vehicle.plate, vehicle.categoryId, vehicle.categoryName, false),
-            } : {}),
+          const canDrag = userRole !== 'LECTOR' && cellInfo?.type === 'reservation';
+          const dropHandlers = userRole !== 'LECTOR' ? {
             onDragOver: (e: React.DragEvent) => { e.preventDefault(); setDragOverPlate(vehicle.plate); },
             onDragLeave: () => setDragOverPlate(null),
             onDrop: (e: React.DragEvent) => { e.preventDefault(); void handleDrop(vehicle.plate, vehicle.categoryId, vehicle.categoryName); },
@@ -634,7 +643,11 @@ export default function PlanningPage() {
               ? setSelectedItem({ type: 'block', data: cellInfo.data })
               : handleEmptyCellClick(vehicle.plate, d),
             bar,
-            dragHandlers
+            dropHandlers,
+            canDrag,
+            canDrag && cellInfo?.type === 'reservation'
+              ? (e: React.DragEvent) => handleDragStart(e, cellInfo.data.id, vehicle.plate, vehicle.categoryId, vehicle.categoryName, false)
+              : undefined,
           );
         })}
       </div>
