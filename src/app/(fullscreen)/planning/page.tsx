@@ -602,7 +602,11 @@ export default function PlanningPage() {
 
   // ── Render helpers ──
 
-  function renderDayCell(d: string, hasBar: boolean, isToday: boolean, dow: number, onClick: () => void, bar?: React.ReactNode) {
+  function renderDayCell(
+    d: string, hasBar: boolean, isToday: boolean, dow: number,
+    onClick: () => void, bar?: React.ReactNode,
+    plateData?: { 'data-plate': string; 'data-category-id': string; 'data-category-name': string },
+  ) {
     const isWeekend = dow === 0 || dow === 6;
     return (
       <div
@@ -613,6 +617,7 @@ export default function PlanningPage() {
           !isToday && dow === 0 ? styles.sundayCell : (!isToday && isWeekend && !hasBar ? styles.weekendCell : ''),
         ].filter(Boolean).join(' ')}
         onClick={onClick}
+        {...plateData}
       >
         {bar}
       </div>
@@ -674,6 +679,7 @@ export default function PlanningPage() {
               else handleEmptyCellClick(vehicle.plate, d);
             },
             bar,
+            { 'data-plate': vehicle.plate, 'data-category-id': vehicle.categoryId, 'data-category-name': vehicle.categoryName },
           );
         })}
       </div>
