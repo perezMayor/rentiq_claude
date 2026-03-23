@@ -365,17 +365,15 @@ export default function PlanningPage() {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; item: SelectedItem } | null>(null);
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Drag state — mouse-event based (HTML5 drag API no funciona con clip-path)
-  const dragRef = useRef<{
+  // Drag state — overlay pattern (más fiable que document listeners con clip-path)
+  const [dragging, setDragging] = useState<{
     reservationId: string;
     sourcePlate: string | null;
     sourceCategoryId: string;
     sourceCategoryName: string;
     isOrphan: boolean;
-    startX: number;
-    startY: number;
-    moved: boolean;
   } | null>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const [dragOverPlate, setDragOverPlate] = useState<string | null>(null);
 
   // Load reference data once
@@ -416,74 +414,6 @@ export default function PlanningPage() {
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
-  // ── Drag via mouse events (más fiable que HTML5 drag API con clip-path) ──
-  useEffect(() => {
-    const DRAG_THRESHOLD = 5; // px mínimos para considerar que es un drag
-
-    function getTargetFromPoint(x: number, y: number): { plate: string; categoryId: string; categoryName: string } | null {
-      const elements = document.elementsFromPoint(x, y);
-      for (const el of elements) {
-        const plate = (el as HTMLElement).dataset.plate;
-        if (plate) {
-          return {
-            plate,
-            categoryId: (el as HTMLElement).dataset.categoryId ?? '',
-            categoryName: (el as HTMLElement).dataset.categoryName ?? '',
-          };
-        }
-      }
-      return null;
-    }
-
-    function onMouseMove(e: MouseEvent) {
-      const drag = dragRef.current;
-      if (!drag) return;
-      const dx = Math.abs(e.clientX - drag.startX);
-      const dy = Math.abs(e.clientY - drag.startY);
-      if (!drag.moved && dx < DRAG_THRESHOLD && dy < DRAG_THRESHOLD) return;
-      drag.moved = true;
-      document.body.style.cursor = 'grabbing';
-      const target = getTargetFromPoint(e.clientX, e.clientY);
-      setDragOverPlate(target?.plate ?? null);
-    }
-
-    function onMouseUp(e: MouseEvent) {
-      const drag = dragRef.current;
-      if (!drag) return;
-      dragRef.current = null;
-      document.body.style.cursor = '';
-      if (!drag.moved) { setDragOverPlate(null); return; }
-      setDragOverPlate(null);
-      const target = getTargetFromPoint(e.clientX, e.clientY);
-      if (!target || target.plate === drag.sourcePlate) return;
-
-      const doAssign = async () => {
-        try {
-          const res = await fetch(`/api/reservas/${drag.reservationId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ assignedPlate: target.plate }),
-          });
-          if (!res.ok) { const j = (await res.json()) as { error?: string }; alert(j.error ?? 'Error al reasignar'); return; }
-          void fetchData();
-        } catch { alert('Error de red al reasignar'); }
-      };
-
-      if (drag.sourceCategoryId !== target.categoryId) {
-        const ok = window.confirm(`Cambio de grupo\n\nEsta reserva es del grupo "${drag.sourceCategoryName}" y la vas a mover a "${target.categoryName}".\n\n¿Continuar?`);
-        if (!ok) return;
-      }
-      void doAssign();
-    }
-
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-    return () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.body.style.cursor = '';
-    };
-  }, [fetchData]);
 
   const dates = useMemo(() => data ? dateRange(data.from, data.days) : [], [data]);
 
@@ -580,13 +510,10 @@ export default function PlanningPage() {
     isOrphan: boolean
   ) {
     if (userRole === 'LECTOR') return;
-    e.preventDefault(); // evita selección de texto
-    e.stopPropagation(); // no propagar al dayCell (evita click)
+    e.preventDefault();
+    e.stopPropagation();
     hideTooltip();
-    dragRef.current = {
-      reservationId, sourcePlate, sourceCategoryId, sourceCategoryName, isOrphan,
-      startX: e.clientX, startY: e.clientY, moved: false,
-    };
+    setDragging({ reservationId, sourcePlate, sourceCategoryId, sourceCategoryName, isOrphan });
   }
 
   // ── Grid layout ──
@@ -673,7 +600,6 @@ export default function PlanningPage() {
           return renderDayCell(
             d, !!cellInfo, isToday, dow,
             () => {
-              if (dragRef.current?.moved) return; // ignorar click si fue un drag
               if (cellInfo?.type === 'reservation') setSelectedItem({ type: 'reservation', data: cellInfo.data });
               else if (cellInfo?.type === 'block') setSelectedItem({ type: 'block', data: cellInfo.data });
               else handleEmptyCellClick(vehicle.plate, d);
@@ -723,7 +649,7 @@ export default function PlanningPage() {
 
           return renderDayCell(
             d, inRange, isToday, dow,
-            () => { if (!dragRef.current?.moved && inRange) setSelectedItem({ type: 'orphan', data: orph }); },
+            () => { if (inRange) setSelectedItem({ type: 'orphan', data: orph }); },
             bar,
           );
         })}
@@ -907,6 +833,63 @@ export default function PlanningPage() {
           initialDate={blockModal.date}
           onClose={() => setBlockModal(null)}
           onCreated={() => { setBlockModal(null); void fetchData(); }}
+        />
+      )}
+
+      {/* ── Drag overlay — captura todos los eventos de ratón durante el drag ── */}
+      {dragging && (
+        <div
+          ref={overlayRef}
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, cursor: 'grabbing' }}
+          onMouseMove={(e) => {
+            const overlay = overlayRef.current;
+            if (!overlay) return;
+            overlay.style.pointerEvents = 'none';
+            const elements = document.elementsFromPoint(e.clientX, e.clientY);
+            overlay.style.pointerEvents = '';
+            for (const el of elements) {
+              const plate = (el as HTMLElement).dataset.plate;
+              if (plate) { setDragOverPlate(plate); return; }
+            }
+            setDragOverPlate(null);
+          }}
+          onMouseUp={(e) => {
+            const overlay = overlayRef.current;
+            if (overlay) overlay.style.pointerEvents = 'none';
+            const elements = document.elementsFromPoint(e.clientX, e.clientY);
+            if (overlay) overlay.style.pointerEvents = '';
+
+            const drag = dragging;
+            setDragging(null);
+            setDragOverPlate(null);
+
+            let target: { plate: string; categoryId: string; categoryName: string } | null = null;
+            for (const el of elements) {
+              const plate = (el as HTMLElement).dataset.plate;
+              if (plate) {
+                target = { plate, categoryId: (el as HTMLElement).dataset.categoryId ?? '', categoryName: (el as HTMLElement).dataset.categoryName ?? '' };
+                break;
+              }
+            }
+
+            if (!target || target.plate === drag.sourcePlate) return;
+
+            void (async () => {
+              if (drag.sourceCategoryId !== target!.categoryId) {
+                const ok = window.confirm(`Cambio de grupo\n\nEsta reserva es del grupo "${drag.sourceCategoryName}" y la vas a mover a "${target!.categoryName}".\n\n¿Continuar?`);
+                if (!ok) return;
+              }
+              try {
+                const res = await fetch(`/api/reservas/${drag.reservationId}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ assignedPlate: target!.plate }),
+                });
+                if (!res.ok) { const j = (await res.json()) as { error?: string }; alert(j.error ?? 'Error al reasignar'); return; }
+                void fetchData();
+              } catch { alert('Error de red al reasignar'); }
+            })();
+          }}
         />
       )}
     </div>
