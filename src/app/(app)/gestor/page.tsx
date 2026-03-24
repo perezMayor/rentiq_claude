@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
-import type { UserRole, CompanyBranch, CompanySettings } from '@/src/lib/types';
+import type { UserRole, CompanyBranch } from '@/src/lib/types';
 import styles from './gestor.module.css';
 
 type SafeUser = {
@@ -411,102 +411,6 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
   );
 }
 
-// ─── Configuración (Empresa) ──────────────────────────────────────────────────
-
-function ConfiguracionTab({ myRole }: { myRole: UserRole }) {
-  const isSuperAdmin = myRole === 'SUPER_ADMIN';
-
-  const [settings, setSettings] = useState<CompanySettings | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [edit, setEdit] = useState<Partial<CompanySettings>>({});
-
-  useEffect(() => {
-    setLoading(true); setError('');
-    fetch('/api/gestor/empresa')
-      .then((r) => r.ok ? r.json() : r.json().then((d) => Promise.reject(d.error ?? 'Error')))
-      .then((d) => { setSettings(d.settings); setEdit(d.settings); })
-      .catch((e) => setError(typeof e === 'string' ? e : 'Error al cargar'))
-      .finally(() => setLoading(false));
-  }, []);
-
-  async function save() {
-    setSaving(true); setError(''); setSuccess(false);
-    try {
-      const res = await fetch('/api/gestor/empresa', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: edit.name, nif: edit.nif, address: edit.address,
-          phone: edit.phone, email: edit.email,
-          invoiceSeries: edit.invoiceSeries, ivaPercent: edit.ivaPercent,
-          overlapMinHours: edit.overlapMinHours,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Error');
-      setSettings(data.settings);
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (e) { setError(e instanceof Error ? e.message : 'Error'); }
-    finally { setSaving(false); }
-  }
-
-  if (loading) return <div className={styles.loadingRow}>Cargando configuración…</div>;
-
-  return (
-    <div className={styles.settingsForm}>
-      {error && <div className="alert alert-danger">{error}</div>}
-      {success && <div className="alert alert-info">Configuración guardada correctamente.</div>}
-      {settings && (
-        <>
-          <div className={styles.settingsGrid}>
-            <div className="form-group">
-              <label className="form-label">Nombre empresa *</label>
-              <input type="text" className="form-input" value={edit.name ?? ''} onChange={(e) => setEdit((s) => ({ ...s, name: e.target.value }))} disabled={!isSuperAdmin} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">NIF</label>
-              <input type="text" className="form-input" value={edit.nif ?? ''} onChange={(e) => setEdit((s) => ({ ...s, nif: e.target.value }))} disabled={!isSuperAdmin} />
-            </div>
-            <div className="form-group col-span-2">
-              <label className="form-label">Dirección</label>
-              <input type="text" className="form-input" value={edit.address ?? ''} onChange={(e) => setEdit((s) => ({ ...s, address: e.target.value }))} disabled={!isSuperAdmin} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Teléfono</label>
-              <input type="text" className="form-input" value={edit.phone ?? ''} onChange={(e) => setEdit((s) => ({ ...s, phone: e.target.value }))} disabled={!isSuperAdmin} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Email</label>
-              <input type="email" className="form-input" value={edit.email ?? ''} onChange={(e) => setEdit((s) => ({ ...s, email: e.target.value }))} disabled={!isSuperAdmin} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Serie de facturas</label>
-              <input type="text" className="form-input" value={edit.invoiceSeries ?? ''} onChange={(e) => setEdit((s) => ({ ...s, invoiceSeries: e.target.value }))} disabled={!isSuperAdmin} maxLength={3} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">IVA (%)</label>
-              <input type="number" className="form-input" min="0" max="100" step="0.1" value={edit.ivaPercent ?? ''} onChange={(e) => setEdit((s) => ({ ...s, ivaPercent: parseFloat(e.target.value) }))} disabled={!isSuperAdmin} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Tiempo de solape planning (h)</label>
-              <input type="number" className="form-input" min="0" max="48" step="1" value={edit.overlapMinHours ?? 2} onChange={(e) => setEdit((s) => ({ ...s, overlapMinHours: parseInt(e.target.value, 10) }))} disabled={!isSuperAdmin} />
-            </div>
-          </div>
-          {isSuperAdmin ? (
-            <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Guardando…' : 'Guardar configuración'}</button>
-          ) : (
-            <p className="text-muted" style={{ fontSize: '0.85rem' }}>Solo SUPER_ADMIN puede modificar la configuración de empresa.</p>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
 // ─── Canales de venta ─────────────────────────────────────────────────────────
 
 interface SalesChannel { id: string; name: string; code: string; commissionPercent: number; active: boolean; createdAt: string; }
@@ -662,7 +566,6 @@ function CanalesTab({ myRole }: { myRole: UserRole }) {
 
 const GESTOR_TABS = [
   { key: 'gestion',       label: 'Usuarios y Sucursales' },
-  { key: 'configuracion', label: 'Configuración' },
   { key: 'canales',       label: 'Canales de venta' },
   { key: 'tarifas',       label: 'Tarifas' },
   { key: 'plantillas',    label: 'Plantillas' },
@@ -729,7 +632,6 @@ function GestorInner() {
       <GestorTabNav active={tab} />
 
       {tab === 'gestion'       && <UsuariosYSucursalesTab myRole={myRole} myUserId={myUserId} />}
-      {tab === 'configuracion' && <ConfiguracionTab myRole={myRole} />}
       {tab === 'canales'       && <CanalesTab myRole={myRole} />}
       {(tab === 'tarifas' || tab === 'plantillas' || tab === 'backups') && (
         <div className="empty-state" style={{ marginTop: 32 }}>
