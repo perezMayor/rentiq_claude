@@ -423,6 +423,9 @@
   overflow: hidden;
   user-select: none;
   cursor: grab;
+  /* Fuerza la impresión de colores de fondo en PDF */
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .cellBar:active { cursor: grabbing; }
