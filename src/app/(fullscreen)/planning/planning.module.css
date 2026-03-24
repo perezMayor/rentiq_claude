@@ -431,7 +431,8 @@
 .barPeticion   { background: var(--color-status-peticion); }
 .barConfirmada { background: var(--color-status-confirmada); }
 .barContratado { background: var(--color-status-contratado); }
-.barBloqueado  { background: var(--color-status-bloqueado); }
+.barBloqueado    { background: #7048e8; } /* matrícula bloqueada — reservado intencionalmente */
+.barNodisponible { background: #212529; } /* bloqueo manual — no disponible / fuera de servicio */
 .barHuerfana   { background: var(--color-status-huerfana); }
 
 /* Arrow shapes — punta izquierda en inicio, punta derecha en fin */

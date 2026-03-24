@@ -73,6 +73,15 @@ type CellInfo =
   | { type: 'reservation'; data: PlanningReservation }
   | { type: 'block'; data: VehicleBlock };
 
+// Payload del drag
+interface DragPayload {
+  id: string;
+  sourcePlate: string;
+  categoryId: string;
+  categoryName: string;
+  isOrphan: boolean;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function dateRange(from: string, days: number): string[] {
@@ -134,6 +143,16 @@ function statusFg(status: ReservationStatus, contractId?: string): string {
   return 'var(--color-status-confirmada)';
 }
 
+/** Clase de barra para un bloque según su tipo */
+function blockBarClass(block: VehicleBlock, s: Record<string, string>): string {
+  return block.blockType === 'PLATE' ? (s.barBloqueado ?? '') : (s.barNodisponible ?? '');
+}
+
+/** Etiqueta legible del tipo de bloqueo */
+function blockTypeLabel(block: VehicleBlock): string {
+  return block.blockType === 'PLATE' ? 'Matrícula bloqueada' : 'Bloqueo manual';
+}
+
 // ─── Block modal ──────────────────────────────────────────────────────────────
 
 interface ConflictInfo { contractId: string; contractNumber: string; startDate: string; endDate: string; }
@@ -144,6 +163,7 @@ function BlockModal({ plate, initialDate, onClose, onCreated }: {
   const [startDate, setStartDate] = useState(initialDate);
   const [endDate, setEndDate] = useState(initialDate);
   const [reason, setReason] = useState('');
+  const [blockType, setBlockType] = useState<'MANUAL' | 'PLATE'>('MANUAL');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conflicts, setConflicts] = useState<ConflictInfo[] | null>(null);
@@ -154,7 +174,7 @@ function BlockModal({ plate, initialDate, onClose, onCreated }: {
       const res = await fetch('/api/planning/bloquear', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plate, startDate, endDate, reason: reason || undefined, override }),
+        body: JSON.stringify({ plate, startDate, endDate, reason: reason || undefined, override, blockType }),
       });
       const json = (await res.json()) as { error?: string; conflicts?: ConflictInfo[] };
       if (res.status === 409 && json.conflicts) { setConflicts(json.conflicts); setSaving(false); return; }
@@ -184,6 +204,38 @@ function BlockModal({ plate, initialDate, onClose, onCreated }: {
             <div className="form-group col-span-2">
               <label className="form-label">Matrícula</label>
               <input className="form-input" value={plate} readOnly />
+            </div>
+            {/* Tipo de bloqueo */}
+            <div className="form-group col-span-2">
+              <label className="form-label">Tipo de bloqueo</label>
+              <div style={{ display: 'flex', gap: 10, marginTop: 2 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.88rem' }}>
+                  <input
+                    type="radio"
+                    name="blockType"
+                    value="MANUAL"
+                    checked={blockType === 'MANUAL'}
+                    onChange={() => setBlockType('MANUAL')}
+                  />
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 2, background: '#212529', flexShrink: 0, display: 'inline-block' }} />
+                    Bloqueo manual <span style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>(no disponible / taller)</span>
+                  </span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.88rem' }}>
+                  <input
+                    type="radio"
+                    name="blockType"
+                    value="PLATE"
+                    checked={blockType === 'PLATE'}
+                    onChange={() => setBlockType('PLATE')}
+                  />
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 2, background: '#7048e8', flexShrink: 0, display: 'inline-block' }} />
+                    Matrícula bloqueada <span style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>(reservado)</span>
+                  </span>
+                </label>
+              </div>
             </div>
             <div className="form-group">
               <label className="form-label">Fecha inicio</label>
@@ -279,10 +331,13 @@ function InfoPanel({ item, onClose, onDeleteBlock, canWrite }: {
   }
 
   const b = item.data;
+  const isPlate = b.blockType === 'PLATE';
   return (
     <div className={styles.infoPanel}>
       <div className={styles.infoPanelHeader}>
-        <span className={styles.infoPanelTitle}>Bloqueo manual</span>
+        <span className={styles.infoPanelTitle} style={{ color: isPlate ? '#7048e8' : undefined }}>
+          {blockTypeLabel(b)}
+        </span>
         <button className={styles.infoPanelClose} onClick={onClose}>×</button>
       </div>
       <div className={styles.infoPanelRow}><span className={styles.infoPanelRowLabel}>Matrícula</span>{b.plate}</div>
@@ -302,9 +357,12 @@ function InfoPanel({ item, onClose, onDeleteBlock, canWrite }: {
 
 function TooltipContent({ item }: { item: SelectedItem }) {
   if (item.type === 'block') {
+    const isPlate = item.data.blockType === 'PLATE';
     return (
       <>
-        <div className={styles.tooltipTitle}>Bloqueo manual</div>
+        <div className={styles.tooltipTitle} style={{ color: isPlate ? '#7048e8' : undefined }}>
+          {blockTypeLabel(item.data)}
+        </div>
         <div className={styles.tooltipRow}>{item.data.startDate} — {item.data.endDate}</div>
         {item.data.reason && <div className={styles.tooltipRow}>{item.data.reason}</div>}
       </>
@@ -365,16 +423,10 @@ export default function PlanningPage() {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; item: SelectedItem } | null>(null);
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Drag state — overlay pattern (más fiable que document listeners con clip-path)
-  const [dragging, setDragging] = useState<{
-    reservationId: string;
-    sourcePlate: string | null;
-    sourceCategoryId: string;
-    sourceCategoryName: string;
-    isOrphan: boolean;
-  } | null>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
+  // Drag state — HTML5 DnD
   const [dragOverPlate, setDragOverPlate] = useState<string | null>(null);
+  // Usamos ref para evitar que el onClick se dispare al soltar tras un drag real
+  const didDragRef = useRef(false);
 
   // Load reference data once
   useEffect(() => {
@@ -414,7 +466,6 @@ export default function PlanningPage() {
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
-
   const dates = useMemo(() => data ? dateRange(data.from, data.days) : [], [data]);
 
   // Lookup maps
@@ -442,6 +493,7 @@ export default function PlanningPage() {
     return map;
   }, [data, dates]);
 
+  // Overlap: reservas que solapan con la anterior (por tiempo insuficiente entre entregas)
   const overlapSet = useMemo(() => new Set(data?.overlapIds ?? []), [data]);
 
   // Category groups: vehicles + orphans grouped by category, sorted alphabetically
@@ -499,21 +551,90 @@ export default function PlanningPage() {
     } catch { /* silent */ }
   }
 
-  // ── Drag — inicia con mousedown en la barra ──
+  // ── Drag — HTML5 DnD ──
 
-  function handleBarMouseDown(
-    e: React.MouseEvent,
-    reservationId: string,
-    sourcePlate: string | null,
-    sourceCategoryId: string,
-    sourceCategoryName: string,
-    isOrphan: boolean
-  ) {
-    if (userRole === 'LECTOR') return;
-    e.preventDefault();
-    e.stopPropagation();
+  function isDraggable(r: PlanningReservation): boolean {
+    return !r.contractId && userRole !== 'LECTOR';
+  }
+
+  function onDragStart(e: React.DragEvent, r: PlanningReservation, vehicle: PlanningVehicle) {
+    if (!isDraggable(r)) { e.preventDefault(); return; }
+    didDragRef.current = true;
     hideTooltip();
-    setDragging({ reservationId, sourcePlate, sourceCategoryId, sourceCategoryName, isOrphan });
+    const payload: DragPayload = {
+      id: r.id,
+      sourcePlate: vehicle.plate,
+      categoryId: vehicle.categoryId,
+      categoryName: vehicle.categoryName,
+      isOrphan: false,
+    };
+    e.dataTransfer.setData('application/rentiq-planning', JSON.stringify(payload));
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function onOrphanDragStart(e: React.DragEvent, o: OrphanReservation) {
+    if (userRole === 'LECTOR') { e.preventDefault(); return; }
+    didDragRef.current = true;
+    hideTooltip();
+    const payload: DragPayload = {
+      id: o.id,
+      sourcePlate: '',
+      categoryId: o.categoryId,
+      categoryName: o.categoryName,
+      isOrphan: true,
+    };
+    e.dataTransfer.setData('application/rentiq-planning', JSON.stringify(payload));
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function onCellDragOver(e: React.DragEvent, targetPlate: string) {
+    if (!e.dataTransfer.types.includes('application/rentiq-planning')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverPlate !== targetPlate) setDragOverPlate(targetPlate);
+  }
+
+  function onCellDragLeave() {
+    setDragOverPlate(null);
+  }
+
+  async function onCellDrop(
+    e: React.DragEvent,
+    targetPlate: string,
+    targetCategoryId: string,
+    targetCategoryName: string,
+  ) {
+    e.preventDefault();
+    setDragOverPlate(null);
+    const raw = e.dataTransfer.getData('application/rentiq-planning');
+    if (!raw) return;
+
+    let payload: DragPayload;
+    try { payload = JSON.parse(raw) as DragPayload; } catch { return; }
+
+    if (payload.sourcePlate === targetPlate) return;
+
+    // Confirmación si cambia de categoría
+    if (payload.categoryId !== targetCategoryId) {
+      const ok = window.confirm(
+        `Cambio de grupo\n\nEsta reserva es del grupo "${payload.categoryName}" y la vas a mover a "${targetCategoryName}".\n\n¿Continuar?`
+      );
+      if (!ok) return;
+    }
+
+    try {
+      const res = await fetch(`/api/reservas/${payload.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignedPlate: targetPlate }),
+      });
+      if (!res.ok) {
+        const j = (await res.json()) as { error?: string };
+        alert(j.error ?? 'Error al reasignar');
+        return;
+      }
+      void fetchData();
+    } catch { alert('Error de red al reasignar'); }
   }
 
   // ── Grid layout ──
@@ -529,44 +650,17 @@ export default function PlanningPage() {
 
   // ── Render helpers ──
 
-  function renderDayCell(
-    d: string, hasBar: boolean, isToday: boolean, dow: number,
-    onClick: () => void, bar?: React.ReactNode,
-    plateData?: { 'data-plate': string; 'data-category-id': string; 'data-category-name': string },
-  ) {
-    const isWeekend = dow === 0 || dow === 6;
-    return (
-      <div
-        key={d}
-        className={[
-          styles.dayCell,
-          isToday ? styles.todayCell : '',
-          !isToday && dow === 0 ? styles.sundayCell : (!isToday && isWeekend && !hasBar ? styles.weekendCell : ''),
-        ].filter(Boolean).join(' ')}
-        onClick={onClick}
-        {...plateData}
-      >
-        {bar}
-      </div>
-    );
-  }
-
   function renderVehicleRow(vehicle: PlanningVehicle) {
     const isDragOver = dragOverPlate === vehicle.plate;
-    const dragData = {
-      'data-plate': vehicle.plate,
-      'data-category-id': vehicle.categoryId,
-      'data-category-name': vehicle.categoryName,
-    };
     return (
       <div key={vehicle.plate} className={styles.vehicleRow}>
-        <div className={styles.vehicleCellPlate} style={{ left: 0 }} {...dragData}>
+        <div className={styles.vehicleCellPlate} style={{ left: 0 }}>
           <div className={styles.vehiclePlate}>{vehicle.plate}</div>
         </div>
-        <div className={styles.vehicleCellGroup} style={{ left: COL_PLATE }} {...dragData}>
+        <div className={styles.vehicleCellGroup} style={{ left: COL_PLATE }}>
           <div className={styles.vehicleCategoryBadge}>{vehicle.categoryName}</div>
         </div>
-        <div className={`${styles.vehicleCellModel} ${isDragOver ? styles.dragOverRow : ''}`} style={{ left: COL_PLATE + COL_GROUP }} {...dragData}>
+        <div className={`${styles.vehicleCellModel} ${isDragOver ? styles.dragOverRow : ''}`} style={{ left: COL_PLATE + COL_GROUP }}>
           <div className={styles.vehicleModel}>{vehicle.modelName}</div>
         </div>
         {dates.map((d) => {
@@ -575,20 +669,29 @@ export default function PlanningPage() {
           const cellInfo = getCellInfo(vehicle.plate, d);
           const isStart = cellInfo?.type === 'reservation' && d === cellInfo.data.startDate;
           const isOverlap = isStart && cellInfo?.type === 'reservation' && overlapSet.has(cellInfo.data.id);
+          const isWeekend = dow === 0 || dow === 6;
 
           let bar: React.ReactNode = null;
           if (cellInfo) {
             const pos = barPosition(d, cellInfo.data.startDate, cellInfo.data.endDate);
             const posCls = barClass(pos, styles);
             if (cellInfo.type === 'block') {
-              bar = <div className={`${styles.cellBar} ${styles.barBloqueado} ${posCls}`} />;
+              bar = (
+                <div
+                  className={`${styles.cellBar} ${blockBarClass(cellInfo.data, styles)} ${posCls}`}
+                  onMouseEnter={(e) => { e.stopPropagation(); showTooltipFor(e, { type: 'block', data: cellInfo.data }); }}
+                  onMouseLeave={hideTooltip}
+                />
+              );
             } else {
-              const colorCls = statusBarClass(cellInfo.data.status, cellInfo.data.contractId, styles);
               const r = cellInfo.data;
+              const colorCls = statusBarClass(r.status, r.contractId, styles);
               bar = (
                 <div
                   className={`${styles.cellBar} ${colorCls} ${posCls} ${isOverlap ? styles.barOverlapStart : ''}`}
-                  onMouseDown={(e) => handleBarMouseDown(e, r.id, vehicle.plate, vehicle.categoryId, vehicle.categoryName, false)}
+                  draggable={isDraggable(r)}
+                  onDragStart={(e) => { e.stopPropagation(); onDragStart(e, r, vehicle); }}
+                  onDragEnd={() => { setTimeout(() => { didDragRef.current = false; }, 50); }}
                   onDoubleClick={(e) => { e.stopPropagation(); window.open(`/reservas?tab=gestion&id=${r.id}`, '_blank'); }}
                   onMouseEnter={(e) => { e.stopPropagation(); showTooltipFor(e, { type: 'reservation', data: r }); }}
                   onMouseLeave={hideTooltip}
@@ -597,15 +700,27 @@ export default function PlanningPage() {
             }
           }
 
-          return renderDayCell(
-            d, !!cellInfo, isToday, dow,
-            () => {
-              if (cellInfo?.type === 'reservation') setSelectedItem({ type: 'reservation', data: cellInfo.data });
-              else if (cellInfo?.type === 'block') setSelectedItem({ type: 'block', data: cellInfo.data });
-              else handleEmptyCellClick(vehicle.plate, d);
-            },
-            bar,
-            { 'data-plate': vehicle.plate, 'data-category-id': vehicle.categoryId, 'data-category-name': vehicle.categoryName },
+          return (
+            <div
+              key={d}
+              className={[
+                styles.dayCell,
+                isToday ? styles.todayCell : '',
+                !isToday && dow === 0 ? styles.sundayCell : (!isToday && isWeekend && !cellInfo ? styles.weekendCell : ''),
+                isDragOver ? styles.dragOverRow : '',
+              ].filter(Boolean).join(' ')}
+              onClick={() => {
+                if (didDragRef.current) return;
+                if (cellInfo?.type === 'reservation') setSelectedItem({ type: 'reservation', data: cellInfo.data });
+                else if (cellInfo?.type === 'block') setSelectedItem({ type: 'block', data: cellInfo.data });
+                else handleEmptyCellClick(vehicle.plate, d);
+              }}
+              onDragOver={(e) => onCellDragOver(e, vehicle.plate)}
+              onDragLeave={onCellDragLeave}
+              onDrop={(e) => { void onCellDrop(e, vehicle.plate, vehicle.categoryId, vehicle.categoryName); }}
+            >
+              {bar}
+            </div>
           );
         })}
       </div>
@@ -634,11 +749,14 @@ export default function PlanningPage() {
           const inRange = d >= orph.startDate && d <= orph.endDate;
           const pos = inRange ? barPosition(d, orph.startDate, orph.endDate) : null;
           const isLabelCell = pos === 'start' || pos === 'startEnd';
+          const isWeekend = dow === 0 || dow === 6;
 
           const bar = inRange ? (
             <div
               className={`${styles.cellBar} ${styles.barHuerfana} ${pos ? barClass(pos, styles) : ''}`}
-              onMouseDown={(e) => handleBarMouseDown(e, orph.id, null, orph.categoryId, orph.categoryName, true)}
+              draggable={userRole !== 'LECTOR'}
+              onDragStart={(e) => { e.stopPropagation(); onOrphanDragStart(e, orph); }}
+              onDragEnd={() => { setTimeout(() => { didDragRef.current = false; }, 50); }}
               onDoubleClick={(e) => { e.stopPropagation(); window.open(`/reservas?tab=gestion&id=${orph.id}`, '_blank'); }}
               onMouseEnter={(e) => { e.stopPropagation(); showTooltipFor(e, { type: 'orphan', data: orph }); }}
               onMouseLeave={hideTooltip}
@@ -647,10 +765,21 @@ export default function PlanningPage() {
             </div>
           ) : null;
 
-          return renderDayCell(
-            d, inRange, isToday, dow,
-            () => { if (inRange) setSelectedItem({ type: 'orphan', data: orph }); },
-            bar,
+          return (
+            <div
+              key={d}
+              className={[
+                styles.dayCell,
+                isToday ? styles.todayCell : '',
+                !isToday && dow === 0 ? styles.sundayCell : (!isToday && isWeekend && !inRange ? styles.weekendCell : ''),
+              ].filter(Boolean).join(' ')}
+              onClick={() => {
+                if (didDragRef.current) return;
+                if (inRange) setSelectedItem({ type: 'orphan', data: orph });
+              }}
+            >
+              {bar}
+            </div>
           );
         })}
       </div>
@@ -719,11 +848,12 @@ export default function PlanningPage() {
             <div className={styles.sidebarLabel}>Leyenda</div>
             <div className={styles.legend}>
               {[
-                { label: 'Petición',   color: 'var(--color-status-peticion)' },
-                { label: 'Confirmada', color: 'var(--color-status-confirmada)' },
-                { label: 'Contratado', color: 'var(--color-status-contratado)' },
-                { label: 'Bloqueado',  color: 'var(--color-status-bloqueado)' },
-                { label: 'Solape',     color: 'var(--color-status-peticion)', stripe: true },
+                { label: 'Petición',             color: 'var(--color-status-peticion)' },
+                { label: 'Confirmada',            color: 'var(--color-status-confirmada)' },
+                { label: 'Contratado',            color: 'var(--color-status-contratado)' },
+                { label: 'Matrícula bloqueada',   color: '#7048e8' },
+                { label: 'Bloqueo manual',        color: '#212529' },
+                { label: 'Solape',                color: 'var(--color-status-peticion)', stripe: true },
               ].map(({ label, color, stripe }) => (
                 <div key={label} className={styles.legendItem}>
                   <div className={styles.legendDot} style={stripe
@@ -794,7 +924,6 @@ export default function PlanningPage() {
                 {/* ── Category groups ── */}
                 {categoryGroups.map((group) => (
                   <div key={group.id} className={styles.vehicleRow}>
-                    {/* Category separator spanning all columns */}
                     <div className={styles.categoryRow} style={{ gridColumn: `1 / span ${totalCols}` }}>
                       {group.name}
                       <span className={styles.categoryRowCount}>{group.vehicles.length} vehículo{group.vehicles.length !== 1 ? 's' : ''}{group.orphans.length > 0 ? ` · ${group.orphans.length} sin asignar` : ''}</span>
@@ -833,63 +962,6 @@ export default function PlanningPage() {
           initialDate={blockModal.date}
           onClose={() => setBlockModal(null)}
           onCreated={() => { setBlockModal(null); void fetchData(); }}
-        />
-      )}
-
-      {/* ── Drag overlay — captura todos los eventos de ratón durante el drag ── */}
-      {dragging && (
-        <div
-          ref={overlayRef}
-          style={{ position: 'fixed', inset: 0, zIndex: 9999, cursor: 'grabbing' }}
-          onMouseMove={(e) => {
-            const overlay = overlayRef.current;
-            if (!overlay) return;
-            overlay.style.pointerEvents = 'none';
-            const elements = document.elementsFromPoint(e.clientX, e.clientY);
-            overlay.style.pointerEvents = '';
-            for (const el of elements) {
-              const plate = (el as HTMLElement).dataset.plate;
-              if (plate) { setDragOverPlate(plate); return; }
-            }
-            setDragOverPlate(null);
-          }}
-          onMouseUp={(e) => {
-            const overlay = overlayRef.current;
-            if (overlay) overlay.style.pointerEvents = 'none';
-            const elements = document.elementsFromPoint(e.clientX, e.clientY);
-            if (overlay) overlay.style.pointerEvents = '';
-
-            const drag = dragging;
-            setDragging(null);
-            setDragOverPlate(null);
-
-            let target: { plate: string; categoryId: string; categoryName: string } | null = null;
-            for (const el of elements) {
-              const plate = (el as HTMLElement).dataset.plate;
-              if (plate) {
-                target = { plate, categoryId: (el as HTMLElement).dataset.categoryId ?? '', categoryName: (el as HTMLElement).dataset.categoryName ?? '' };
-                break;
-              }
-            }
-
-            if (!target || target.plate === drag.sourcePlate) return;
-
-            void (async () => {
-              if (drag.sourceCategoryId !== target!.categoryId) {
-                const ok = window.confirm(`Cambio de grupo\n\nEsta reserva es del grupo "${drag.sourceCategoryName}" y la vas a mover a "${target!.categoryName}".\n\n¿Continuar?`);
-                if (!ok) return;
-              }
-              try {
-                const res = await fetch(`/api/reservas/${drag.reservationId}`, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ assignedPlate: target!.plate }),
-                });
-                if (!res.ok) { const j = (await res.json()) as { error?: string }; alert(j.error ?? 'Error al reasignar'); return; }
-                void fetchData();
-              } catch { alert('Error de red al reasignar'); }
-            })();
-          }}
         />
       )}
     </div>

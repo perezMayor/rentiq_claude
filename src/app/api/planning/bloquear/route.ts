@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
     endDate?: string;
     reason?: string;
     override?: boolean;
+    blockType?: 'MANUAL' | 'PLATE';
   };
   try {
     body = (await req.json()) as typeof body;
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
   }
 
-  const { plate, startDate, endDate, reason, override = false } = body;
+  const { plate, startDate, endDate, reason, override = false, blockType = 'MANUAL' } = body;
 
   if (!plate || !startDate || !endDate) {
     return NextResponse.json(
@@ -113,6 +114,7 @@ export async function POST(req: NextRequest) {
       startDate,
       endDate,
       reason: reason ?? undefined,
+      blockType: blockType === 'PLATE' ? 'PLATE' : 'MANUAL',
       createdBy: session.userId,
       createdAt: new Date().toISOString(),
     };

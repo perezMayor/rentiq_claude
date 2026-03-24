@@ -128,6 +128,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // vehicleBlocks pasan tal cual — blockType incluido ('MANUAL' | 'PLATE' | undefined → default MANUAL)
     const blocksOut = (store.vehicleBlocks ?? []).filter((b) => {
       if (!activePlates.has(b.plate)) return false;
       return b.startDate <= to && b.endDate >= from;

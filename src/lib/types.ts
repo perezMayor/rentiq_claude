@@ -444,6 +444,8 @@ export interface VehicleBlock {
   startDate: string; // YYYY-MM-DD
   endDate: string;   // YYYY-MM-DD
   reason?: string;
+  /** MANUAL = no disponible/fuera de servicio (oscuro) · PLATE = matrícula bloqueada/reservado (morado) */
+  blockType?: 'MANUAL' | 'PLATE';
   createdBy: string;
   createdAt: string;
 }
