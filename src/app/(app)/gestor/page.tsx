@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import type { UserRole, CompanyBranch } from '@/src/lib/types';
+import TarifasPage from '@/src/app/(app)/tarifas/page';
 import styles from './gestor.module.css';
 
 type SafeUser = {
@@ -567,6 +568,7 @@ function CanalesTab({ myRole }: { myRole: UserRole }) {
 const GESTOR_TABS = [
   { key: 'gestion',       label: 'Usuarios y Sucursales' },
   { key: 'canales',       label: 'Canales de venta' },
+  { key: 'tarifas',       label: 'Tarifas' },
   { key: 'plantillas',    label: 'Plantillas' },
   { key: 'backups',       label: 'Backups' },
 ];
@@ -632,6 +634,7 @@ function GestorInner() {
 
       {tab === 'gestion'       && <UsuariosYSucursalesTab myRole={myRole} myUserId={myUserId} />}
       {tab === 'canales'       && <CanalesTab myRole={myRole} />}
+      {tab === 'tarifas'       && <TarifasPage />}
       {(tab === 'plantillas' || tab === 'backups') && (
         <div className="empty-state" style={{ marginTop: 32 }}>
           <div className="empty-state__icon">🚧</div>
