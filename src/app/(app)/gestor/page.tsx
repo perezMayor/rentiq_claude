@@ -567,7 +567,6 @@ function CanalesTab({ myRole }: { myRole: UserRole }) {
 const GESTOR_TABS = [
   { key: 'gestion',       label: 'Usuarios y Sucursales' },
   { key: 'canales',       label: 'Canales de venta' },
-  { key: 'tarifas',       label: 'Tarifas' },
   { key: 'plantillas',    label: 'Plantillas' },
   { key: 'backups',       label: 'Backups' },
 ];
@@ -633,7 +632,7 @@ function GestorInner() {
 
       {tab === 'gestion'       && <UsuariosYSucursalesTab myRole={myRole} myUserId={myUserId} />}
       {tab === 'canales'       && <CanalesTab myRole={myRole} />}
-      {(tab === 'tarifas' || tab === 'plantillas' || tab === 'backups') && (
+      {(tab === 'plantillas' || tab === 'backups') && (
         <div className="empty-state" style={{ marginTop: 32 }}>
           <div className="empty-state__icon">🚧</div>
           <div className="empty-state__text">{tabLabel} — Próximamente</div>
