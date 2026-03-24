@@ -25,13 +25,17 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   try {
     const body = await req.json();
-    const { label, minDays, maxDays } = body as {
+    const { label, minDays, maxDays, isExtraDay } = body as {
       label: string;
-      minDays: number;
-      maxDays: number | null;
+      minDays?: number;
+      maxDays?: number | null;
+      isExtraDay?: boolean;
     };
 
-    if (!label || typeof minDays !== 'number' || minDays < 1) {
+    if (!label) {
+      return NextResponse.json({ error: 'Falta el campo: label' }, { status: 400 });
+    }
+    if (!isExtraDay && (typeof minDays !== 'number' || minDays < 1)) {
       return NextResponse.json(
         { error: 'Faltan campos: label, minDays (>=1)' },
         { status: 400 }
@@ -42,6 +46,11 @@ export async function POST(req: NextRequest, { params }: Params) {
       const plan = store.tariffPlans.find((p) => p.id === planId);
       if (!plan) throw Object.assign(new Error('Plan no encontrado'), { statusCode: 404 });
 
+      if (isExtraDay) {
+        const already = store.tariffBrackets.find((b) => b.planId === planId && b.isExtraDay);
+        if (already) throw Object.assign(new Error('Ya existe un tramo de día extra para este plan'), { statusCode: 400 });
+      }
+
       const existing = store.tariffBrackets.filter((b) => b.planId === planId);
       const order = existing.length + 1;
 
@@ -49,9 +58,10 @@ export async function POST(req: NextRequest, { params }: Params) {
         id: generateId(),
         planId,
         label,
-        minDays,
-        maxDays: maxDays ?? null,
+        minDays: isExtraDay ? 0 : (minDays ?? 1),
+        maxDays: isExtraDay ? null : (maxDays ?? null),
         order,
+        isExtraDay: isExtraDay ?? false,
       };
       store.tariffBrackets.push(newBracket);
       return newBracket;

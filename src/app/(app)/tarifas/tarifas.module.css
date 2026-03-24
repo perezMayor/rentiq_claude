@@ -225,6 +225,40 @@ table.priceTable {
   border-color: var(--color-primary);
 }
 
+.addExtraBtn {
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #92400e;
+}
+
+[data-theme="dark"] .addExtraBtn {
+  color: #fbbf24;
+}
+
+.addExtraBtn:hover {
+  color: #b45309;
+  border-color: #f59e0b;
+}
+
+.thExtra {
+  background: rgba(245, 158, 11, 0.06);
+  border-left: 2px solid rgba(245, 158, 11, 0.4) !important;
+}
+
+.thExtraLabel {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: #92400e;
+}
+
+[data-theme="dark"] .thExtraLabel {
+  color: #fbbf24;
+}
+
+.tdExtra {
+  background: rgba(245, 158, 11, 0.04);
+  border-left: 2px solid rgba(245, 158, 11, 0.25) !important;
+}
+
 .td {
   border-bottom: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);

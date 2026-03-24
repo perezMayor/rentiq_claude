@@ -241,10 +241,11 @@ function BracketModal({
   const [form, setForm] = useState<Partial<TariffBracket>>(initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const isExtra = !!form.isExtraDay;
 
   async function submit() {
     if (!form.label?.trim()) { setError('La etiqueta es obligatoria'); return; }
-    if (!form.minDays || form.minDays < 1) { setError('Días mínimo debe ser ≥ 1'); return; }
+    if (!isExtra && (!form.minDays || form.minDays < 1)) { setError('Días mínimo debe ser ≥ 1'); return; }
     setSaving(true); setError('');
     try { await onSave(form); } catch (e) { setError(e instanceof Error ? e.message : 'Error'); setSaving(false); }
   }
@@ -253,23 +254,39 @@ function BracketModal({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal__header">
-          <span className="modal__title">{mode === 'create' ? 'Añadir período' : 'Editar período'}</span>
+          <span className="modal__title">
+            {isExtra ? (mode === 'create' ? 'Definir día extra' : 'Editar día extra') : (mode === 'create' ? 'Añadir período' : 'Editar período')}
+          </span>
           <button className="modal__close" onClick={onClose}>✕</button>
         </div>
         <div className="modal__body">
+          {isExtra && mode === 'create' && (
+            <div className="alert alert-info" style={{ marginBottom: 16, fontSize: '0.83rem' }}>
+              El día extra aplica cuando la duración supera el último período definido. Se usa como tarifa de fallback por día.
+            </div>
+          )}
           <div className="form-grid">
             <div className="form-group" style={{ gridColumn: '1 / 3' }}>
               <label className="form-label">Etiqueta *</label>
-              <input className="form-input" value={form.label ?? ''} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))} placeholder="Ej: Fin de semana, Semanal, Mensual…" />
+              <input
+                className="form-input"
+                value={form.label ?? ''}
+                onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+                placeholder={isExtra ? 'Día extra' : 'Ej: Fin de semana, Semanal, Mensual…'}
+              />
             </div>
-            <div className="form-group">
-              <label className="form-label">Días mínimo *</label>
-              <input type="number" className="form-input" min="1" value={form.minDays ?? ''} onChange={(e) => setForm((f) => ({ ...f, minDays: Number(e.target.value) }))} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Días máximo</label>
-              <input type="number" className="form-input" min="1" value={form.maxDays ?? ''} placeholder="Sin límite" onChange={(e) => setForm((f) => ({ ...f, maxDays: e.target.value ? Number(e.target.value) : null }))} />
-            </div>
+            {!isExtra && (
+              <>
+                <div className="form-group">
+                  <label className="form-label">Días mínimo *</label>
+                  <input type="number" className="form-input" min="1" value={form.minDays ?? ''} onChange={(e) => setForm((f) => ({ ...f, minDays: Number(e.target.value) }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Días máximo</label>
+                  <input type="number" className="form-input" min="1" value={form.maxDays ?? ''} placeholder="Sin límite" onChange={(e) => setForm((f) => ({ ...f, maxDays: e.target.value ? Number(e.target.value) : null }))} />
+                </div>
+              </>
+            )}
           </div>
           {error && <div className="alert alert-danger" style={{ marginTop: 12 }}>{error}</div>}
         </div>
@@ -402,7 +419,12 @@ export default function TarifasPage() {
     const res = await fetch(url, {
       method: isEdit ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ label: data.label, minDays: Number(data.minDays), maxDays: data.maxDays ? Number(data.maxDays) : null }),
+      body: JSON.stringify({
+        label: data.label,
+        isExtraDay: data.isExtraDay ?? false,
+        minDays: data.isExtraDay ? 0 : Number(data.minDays),
+        maxDays: data.isExtraDay ? null : (data.maxDays ? Number(data.maxDays) : null),
+      }),
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? 'Error');
@@ -496,79 +518,104 @@ export default function TarifasPage() {
                 </div>
 
                 {/* Tabla estilo Excel */}
-                <div className={styles.tableWrap}>
-                  <table className={styles.priceTable}>
-                    <thead>
-                      <tr>
-                        <th className={`${styles.th} ${styles.thGroup}`}>Grupo</th>
-                        {detail.brackets.map((b) => (
-                          <th key={b.id} className={styles.th}>
-                            <div className={styles.thContent}>
-                              <span className={styles.thLabel}>{b.label}</span>
-                              <span className={styles.thDays}>
-                                {b.minDays}{b.maxDays ? `–${b.maxDays}` : '+'} días
-                              </span>
-                              {canWrite && (
-                                <div className={styles.thActions}>
-                                  <button
-                                    className={styles.thBtn}
-                                    title="Editar período"
-                                    onClick={() => { setBracketEdit({ ...b }); setBracketModal('edit'); }}
-                                  >✏</button>
-                                  <button
-                                    className={styles.thBtn}
-                                    title="Eliminar período"
-                                    onClick={() => deleteBracket(b.id)}
-                                  >✕</button>
+                {(() => {
+                  const regularBrackets = detail.brackets.filter((b) => !b.isExtraDay);
+                  const extraBracket = detail.brackets.find((b) => b.isExtraDay);
+                  const hasExtra = !!extraBracket;
+                  const totalCols = regularBrackets.length + (hasExtra ? 1 : 0) + (canWrite ? 2 : 1);
+
+                  return (
+                    <div className={styles.tableWrap}>
+                      <table className={styles.priceTable}>
+                        <thead>
+                          <tr>
+                            <th className={`${styles.th} ${styles.thGroup}`}>Grupo / Período</th>
+                            {regularBrackets.map((b) => (
+                              <th key={b.id} className={styles.th}>
+                                <div className={styles.thContent}>
+                                  <span className={styles.thLabel}>{b.label}</span>
+                                  <span className={styles.thDays}>
+                                    {b.minDays}{b.maxDays ? `–${b.maxDays}` : '+'} días
+                                  </span>
+                                  {canWrite && (
+                                    <div className={styles.thActions}>
+                                      <button className={styles.thBtn} title="Editar" onClick={() => { setBracketEdit({ ...b }); setBracketModal('edit'); }}>✏</button>
+                                      <button className={styles.thBtn} title="Eliminar" onClick={() => deleteBracket(b.id)}>✕</button>
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          </th>
-                        ))}
-                        {canWrite && (
-                          <th className={`${styles.th} ${styles.thAdd}`}>
-                            <button
-                              className={styles.addColBtn}
-                              onClick={() => { setBracketEdit({}); setBracketModal('create'); }}
-                              title="Añadir período"
-                            >
-                              + Período
-                            </button>
-                          </th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detail.categories.length === 0 ? (
-                        <tr>
-                          <td colSpan={detail.brackets.length + 2} className={styles.emptyRow}>
-                            No hay grupos de vehículos definidos.
-                          </td>
-                        </tr>
-                      ) : detail.categories.map((cat) => (
-                        <tr key={cat.id}>
-                          <td className={`${styles.td} ${styles.tdGroup}`}>
-                            <span className={styles.groupName}>{cat.name}</span>
-                          </td>
-                          {detail.brackets.map((b) => {
-                            const key = cellKey(b.id, cat.id);
-                            const val = cellMap[key] ?? defaultCell();
-                            return (
-                              <td key={b.id} className={styles.td}>
-                                <TariffCell
-                                  value={val}
-                                  onChange={(v) => updateCell(b.id, cat.id, v)}
-                                  readOnly={!canWrite}
-                                />
+                              </th>
+                            ))}
+                            {canWrite && (
+                              <th className={`${styles.th} ${styles.thAdd}`}>
+                                <button className={styles.addColBtn} onClick={() => { setBracketEdit({}); setBracketModal('create'); }}>+ Período</button>
+                              </th>
+                            )}
+                            {hasExtra && (
+                              <th className={`${styles.th} ${styles.thExtra}`}>
+                                <div className={styles.thContent}>
+                                  <span className={styles.thExtraLabel}>⚡ {extraBracket.label}</span>
+                                  <span className={styles.thDays}>Fallback &gt; último período</span>
+                                  {canWrite && (
+                                    <div className={styles.thActions}>
+                                      <button className={styles.thBtn} title="Editar" onClick={() => { setBracketEdit({ ...extraBracket }); setBracketModal('edit'); }}>✏</button>
+                                      <button className={styles.thBtn} title="Eliminar" onClick={() => deleteBracket(extraBracket.id)}>✕</button>
+                                    </div>
+                                  )}
+                                </div>
+                              </th>
+                            )}
+                            {canWrite && !hasExtra && (
+                              <th className={`${styles.th} ${styles.thAdd}`}>
+                                <button
+                                  className={`${styles.addColBtn} ${styles.addExtraBtn}`}
+                                  onClick={() => { setBracketEdit({ isExtraDay: true, label: 'Día extra' }); setBracketModal('create'); }}
+                                >
+                                  + Día extra
+                                </button>
+                              </th>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {detail.categories.length === 0 ? (
+                            <tr>
+                              <td colSpan={totalCols} className={styles.emptyRow}>
+                                No hay grupos de vehículos definidos.
                               </td>
-                            );
-                          })}
-                          {canWrite && <td className={styles.td} />}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                            </tr>
+                          ) : detail.categories.map((cat) => (
+                            <tr key={cat.id}>
+                              <td className={`${styles.td} ${styles.tdGroup}`}>
+                                <span className={styles.groupName}>{cat.name}</span>
+                              </td>
+                              {regularBrackets.map((b) => {
+                                const key = cellKey(b.id, cat.id);
+                                const val = cellMap[key] ?? defaultCell();
+                                return (
+                                  <td key={b.id} className={styles.td}>
+                                    <TariffCell value={val} onChange={(v) => updateCell(b.id, cat.id, v)} readOnly={!canWrite} />
+                                  </td>
+                                );
+                              })}
+                              {canWrite && <td className={styles.td} />}
+                              {extraBracket && (
+                                <td className={`${styles.td} ${styles.tdExtra}`}>
+                                  <TariffCell
+                                    value={cellMap[cellKey(extraBracket.id, cat.id)] ?? defaultCell()}
+                                    onChange={(v) => updateCell(extraBracket.id, cat.id, v)}
+                                    readOnly={!canWrite}
+                                  />
+                                </td>
+                              )}
+                              {canWrite && !hasExtra && <td className={styles.td} />}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
 
                 {/* Barra inferior */}
                 {canWrite && (

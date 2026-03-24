@@ -370,6 +370,7 @@ export interface TariffBracket {
   maxDays: number | null;
   maxKmPerDay?: number;
   order: number;
+  isExtraDay?: boolean;
 }
 
 export interface TariffPrice {
