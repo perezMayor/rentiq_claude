@@ -557,36 +557,6 @@ export default function PlanningPage() {
     return !r.contractId && userRole !== 'LECTOR';
   }
 
-  function onDragStart(e: React.DragEvent, r: PlanningReservation, vehicle: PlanningVehicle) {
-    if (!isDraggable(r)) { e.preventDefault(); return; }
-    didDragRef.current = true;
-    hideTooltip();
-    const payload: DragPayload = {
-      id: r.id,
-      sourcePlate: vehicle.plate,
-      categoryId: vehicle.categoryId,
-      categoryName: vehicle.categoryName,
-      isOrphan: false,
-    };
-    e.dataTransfer.setData('application/rentiq-planning', JSON.stringify(payload));
-    e.dataTransfer.effectAllowed = 'move';
-  }
-
-  function onOrphanDragStart(e: React.DragEvent, o: OrphanReservation) {
-    if (userRole === 'LECTOR') { e.preventDefault(); return; }
-    didDragRef.current = true;
-    hideTooltip();
-    const payload: DragPayload = {
-      id: o.id,
-      sourcePlate: '',
-      categoryId: o.categoryId,
-      categoryName: o.categoryName,
-      isOrphan: true,
-    };
-    e.dataTransfer.setData('application/rentiq-planning', JSON.stringify(payload));
-    e.dataTransfer.effectAllowed = 'move';
-  }
-
   function onCellDragOver(e: React.DragEvent, targetPlate: string) {
     if (!e.dataTransfer.types.includes('application/rentiq-planning')) return;
     e.preventDefault();
@@ -671,34 +641,30 @@ export default function PlanningPage() {
           const isOverlap = isStart && cellInfo?.type === 'reservation' && overlapSet.has(cellInfo.data.id);
           const isWeekend = dow === 0 || dow === 6;
 
+          // Reserva arrastrable en esta celda
+          const resInCell = cellInfo?.type === 'reservation' ? cellInfo.data : null;
+          const canDragCell = resInCell !== null && isDraggable(resInCell);
+
+          // Barra — puramente visual, sin eventos
           let bar: React.ReactNode = null;
           if (cellInfo) {
             const pos = barPosition(d, cellInfo.data.startDate, cellInfo.data.endDate);
             const posCls = barClass(pos, styles);
             if (cellInfo.type === 'block') {
-              bar = (
-                <div
-                  className={`${styles.cellBar} ${blockBarClass(cellInfo.data, styles)} ${posCls}`}
-                  onMouseEnter={(e) => { e.stopPropagation(); showTooltipFor(e, { type: 'block', data: cellInfo.data }); }}
-                  onMouseLeave={hideTooltip}
-                />
-              );
+              bar = <div className={`${styles.cellBar} ${blockBarClass(cellInfo.data, styles)} ${posCls}`} />;
             } else {
               const r = cellInfo.data;
               const colorCls = statusBarClass(r.status, r.contractId, styles);
-              bar = (
-                <div
-                  className={`${styles.cellBar} ${colorCls} ${posCls} ${isOverlap ? styles.barOverlapStart : ''}`}
-                  draggable={isDraggable(r)}
-                  onDragStart={(e) => { e.stopPropagation(); onDragStart(e, r, vehicle); }}
-                  onDragEnd={() => { setTimeout(() => { didDragRef.current = false; }, 50); }}
-                  onDoubleClick={(e) => { e.stopPropagation(); window.open(`/reservas?tab=gestion&id=${r.id}`, '_blank'); }}
-                  onMouseEnter={(e) => { e.stopPropagation(); showTooltipFor(e, { type: 'reservation', data: r }); }}
-                  onMouseLeave={hideTooltip}
-                />
-              );
+              bar = <div className={`${styles.cellBar} ${colorCls} ${posCls} ${isOverlap ? styles.barOverlapStart : ''}`} />;
             }
           }
+
+          // Tooltip item para esta celda
+          const tooltipItem: SelectedItem | null = cellInfo?.type === 'reservation'
+            ? { type: 'reservation', data: cellInfo.data }
+            : cellInfo?.type === 'block'
+            ? { type: 'block', data: cellInfo.data }
+            : null;
 
           return (
             <div
@@ -708,16 +674,44 @@ export default function PlanningPage() {
                 isToday ? styles.todayCell : '',
                 !isToday && dow === 0 ? styles.sundayCell : (!isToday && isWeekend && !cellInfo ? styles.weekendCell : ''),
                 isDragOver ? styles.dragOverRow : '',
+                canDragCell ? styles.draggableCell : '',
               ].filter(Boolean).join(' ')}
+              // La CELDA es el elemento arrastrable (no la barra)
+              draggable={canDragCell || undefined}
+              onDragStart={canDragCell ? (e) => {
+                didDragRef.current = true;
+                hideTooltip();
+                const payload: DragPayload = {
+                  id: resInCell!.id,
+                  sourcePlate: vehicle.plate,
+                  categoryId: vehicle.categoryId,
+                  categoryName: vehicle.categoryName,
+                  isOrphan: false,
+                };
+                e.dataTransfer.setData('application/rentiq-planning', JSON.stringify(payload));
+                e.dataTransfer.effectAllowed = 'move';
+              } : undefined}
+              onDragEnd={canDragCell ? () => { setTimeout(() => { didDragRef.current = false; }, 50); } : undefined}
+              // Drop target
+              onDragOver={(e) => onCellDragOver(e, vehicle.plate)}
+              onDragLeave={(e) => {
+                // Solo limpiar si el ratón sale de verdad de la celda (no hacia un hijo)
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) onCellDragLeave();
+              }}
+              onDrop={(e) => { void onCellDrop(e, vehicle.plate, vehicle.categoryId, vehicle.categoryName); }}
+              // Click / doble clic
               onClick={() => {
                 if (didDragRef.current) return;
                 if (cellInfo?.type === 'reservation') setSelectedItem({ type: 'reservation', data: cellInfo.data });
                 else if (cellInfo?.type === 'block') setSelectedItem({ type: 'block', data: cellInfo.data });
                 else handleEmptyCellClick(vehicle.plate, d);
               }}
-              onDragOver={(e) => onCellDragOver(e, vehicle.plate)}
-              onDragLeave={onCellDragLeave}
-              onDrop={(e) => { void onCellDrop(e, vehicle.plate, vehicle.categoryId, vehicle.categoryName); }}
+              onDoubleClick={() => {
+                if (resInCell) window.open(`/reservas?tab=gestion&id=${resInCell.id}`, '_blank');
+              }}
+              // Tooltip
+              onMouseEnter={tooltipItem ? (e) => showTooltipFor(e, tooltipItem) : undefined}
+              onMouseLeave={tooltipItem ? hideTooltip : undefined}
             >
               {bar}
             </div>
@@ -751,19 +745,14 @@ export default function PlanningPage() {
           const isLabelCell = pos === 'start' || pos === 'startEnd';
           const isWeekend = dow === 0 || dow === 6;
 
+          // Barra — puramente visual
           const bar = inRange ? (
-            <div
-              className={`${styles.cellBar} ${styles.barHuerfana} ${pos ? barClass(pos, styles) : ''}`}
-              draggable={userRole !== 'LECTOR'}
-              onDragStart={(e) => { e.stopPropagation(); onOrphanDragStart(e, orph); }}
-              onDragEnd={() => { setTimeout(() => { didDragRef.current = false; }, 50); }}
-              onDoubleClick={(e) => { e.stopPropagation(); window.open(`/reservas?tab=gestion&id=${orph.id}`, '_blank'); }}
-              onMouseEnter={(e) => { e.stopPropagation(); showTooltipFor(e, { type: 'orphan', data: orph }); }}
-              onMouseLeave={hideTooltip}
-            >
+            <div className={`${styles.cellBar} ${styles.barHuerfana} ${pos ? barClass(pos, styles) : ''}`}>
               {isLabelCell && <span className={styles.cellBarLabel}>{orph.number}</span>}
             </div>
           ) : null;
+
+          const canDragOrphan = inRange && userRole !== 'LECTOR';
 
           return (
             <div
@@ -772,11 +761,33 @@ export default function PlanningPage() {
                 styles.dayCell,
                 isToday ? styles.todayCell : '',
                 !isToday && dow === 0 ? styles.sundayCell : (!isToday && isWeekend && !inRange ? styles.weekendCell : ''),
+                canDragOrphan ? styles.draggableCell : '',
               ].filter(Boolean).join(' ')}
+              // La CELDA es la arrastrable
+              draggable={canDragOrphan || undefined}
+              onDragStart={canDragOrphan ? (e) => {
+                didDragRef.current = true;
+                hideTooltip();
+                const payload: DragPayload = {
+                  id: orph.id,
+                  sourcePlate: '',
+                  categoryId: orph.categoryId,
+                  categoryName: orph.categoryName,
+                  isOrphan: true,
+                };
+                e.dataTransfer.setData('application/rentiq-planning', JSON.stringify(payload));
+                e.dataTransfer.effectAllowed = 'move';
+              } : undefined}
+              onDragEnd={canDragOrphan ? () => { setTimeout(() => { didDragRef.current = false; }, 50); } : undefined}
               onClick={() => {
                 if (didDragRef.current) return;
                 if (inRange) setSelectedItem({ type: 'orphan', data: orph });
               }}
+              onDoubleClick={() => {
+                if (inRange) window.open(`/reservas?tab=gestion&id=${orph.id}`, '_blank');
+              }}
+              onMouseEnter={inRange ? (e) => showTooltipFor(e, { type: 'orphan', data: orph }) : undefined}
+              onMouseLeave={inRange ? hideTooltip : undefined}
             >
               {bar}
             </div>

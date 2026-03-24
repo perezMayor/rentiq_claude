@@ -604,6 +604,16 @@
   letter-spacing: 0;
 }
 
+/* ─── Drag cursor ─────────────────────────────────────────────────────────── */
+
+.draggableCell {
+  cursor: grab !important;
+}
+
+.draggableCell:active {
+  cursor: grabbing !important;
+}
+
 /* ─── Drag over ───────────────────────────────────────────────────────────── */
 
 .dragOverRow {
