@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest, isAdminOrAbove, canWrite } from '@/src/lib/auth';
 import { withStore, withStoreWrite } from '@/src/lib/store';
 import { appendEvent } from '@/src/lib/audit';
-import type { PricingMode } from '@/src/lib/types';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -52,9 +51,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   try {
     const body = await req.json();
-    const { name, pricingMode, validFrom, validTo, active } = body as {
+    const { name, code, validFrom, validTo, active } = body as {
       name?: string;
-      pricingMode?: PricingMode;
+      code?: string;
       validFrom?: string;
       validTo?: string;
       active?: boolean;
@@ -65,7 +64,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
       if (idx === -1) throw Object.assign(new Error('Plan no encontrado'), { statusCode: 404 });
       const plan = store.tariffPlans[idx];
       if (name) plan.name = name;
-      if (pricingMode) plan.pricingMode = pricingMode;
+      if (code) plan.code = code;
       if (validFrom) plan.validFrom = validFrom;
       if (validTo) plan.validTo = validTo;
       if (active !== undefined) plan.active = active;

@@ -1,21 +1,32 @@
+/* ─── Layout ─────────────────────────────────────────────────────────────────── */
+
 .layout {
   display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 24px;
+  grid-template-columns: 260px 1fr;
+  gap: 20px;
   align-items: start;
 }
+
+.loadingRow {
+  padding: 40px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+/* ─── Plan list ──────────────────────────────────────────────────────────────── */
 
 .planList {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .planCard {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 14px 16px;
+  padding: 12px 14px;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
@@ -29,126 +40,359 @@
   background: rgba(43, 108, 189, 0.06);
 }
 
-.planName {
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--color-text-primary);
+.planCardHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 4px;
 }
 
-.planMeta {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
+.planName {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--color-text-primary);
 }
 
-/* Plan detail */
-.detailCard {
-  background: var(--color-surface);
+.planCode {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  background: var(--color-surface-strong);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
+  border-radius: 4px;
+  padding: 1px 6px;
+  flex-shrink: 0;
+}
+
+.planMeta {
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+/* ─── Detail area ────────────────────────────────────────────────────────────── */
+
+.detailArea {
+  min-width: 0;
 }
 
 .detailHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface-strong);
+  gap: 16px;
+  padding: 14px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-bottom: none;
 }
 
-.detailTitle {
-  font-size: 1.05rem;
-  font-weight: 600;
-}
-
-.detailActions {
+.detailMeta {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.detailBody {
-  padding: 20px;
+.detailName {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
 }
 
-/* Price grid */
-.priceGrid {
+.detailCode {
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  background: var(--color-surface-strong);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+.detailDates {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.detailHeaderActions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ─── Table ──────────────────────────────────────────────────────────────────── */
+
+.tableWrap {
   overflow-x: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0 0 0 0;
 }
 
 table.priceTable {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
 }
 
-table.priceTable th {
-  padding: 8px 12px;
-  text-align: center;
-  font-weight: 600;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted);
-  border-bottom: 1px solid var(--color-border);
+.th {
+  background: var(--color-surface-strong);
+  border-bottom: 2px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  padding: 0;
+  min-width: 180px;
+  vertical-align: top;
+}
+
+.th:last-child {
+  border-right: none;
+}
+
+.thGroup {
+  min-width: 140px;
+  width: 140px;
+  position: sticky;
+  left: 0;
+  z-index: 2;
   background: var(--color-surface-strong);
 }
 
-table.priceTable th:first-child {
-  text-align: left;
-}
-
-table.priceTable td {
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--color-border);
+.thAdd {
+  min-width: 100px;
+  width: 100px;
   text-align: center;
-  vertical-align: middle;
 }
 
-table.priceTable td:first-child {
-  text-align: left;
-  font-weight: 500;
+.thContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px 8px;
+}
+
+.thLabel {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--color-text-primary);
+}
+
+.thDays {
+  font-size: 0.73rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.thActions {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.thBtn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: 1px 5px;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.thBtn:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-text-muted);
+}
+
+.addColBtn {
+  background: none;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  margin: 10px 8px;
   white-space: nowrap;
-  padding-left: 12px;
+  transition: color 0.12s, border-color 0.12s;
 }
 
-table.priceTable tbody tr:last-child td {
+.addColBtn:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.td {
+  border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  padding: 0;
+  vertical-align: top;
+}
+
+.td:last-child {
+  border-right: none;
+}
+
+.tdGroup {
+  background: var(--color-surface-strong);
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+table.priceTable tbody tr:last-child .td {
   border-bottom: none;
 }
 
-.priceInput {
-  width: 80px;
+table.priceTable tbody tr:hover .td {
+  background: rgba(43, 108, 189, 0.03);
+}
+
+table.priceTable tbody tr:hover .tdGroup {
+  background: var(--color-surface-strong);
+}
+
+.groupName {
+  display: block;
+  padding: 12px 14px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.emptyRow {
+  padding: 32px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+/* ─── Cell ───────────────────────────────────────────────────────────────────── */
+
+.cell {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cellReadOnly {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cellTypeSelect {
+  width: 100%;
   padding: 4px 6px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface-strong);
   color: var(--color-text-primary);
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-family: inherit;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+  cursor: pointer;
 }
 
-.priceInput:focus {
+.cellTypeSelect:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(43, 108, 189, 0.15);
 }
 
-.bracketActions {
+.cellInputs {
   display: flex;
-  gap: 6px;
-  justify-content: flex-end;
-  margin-top: 16px;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.loadingRow {
-  padding: 40px;
-  text-align: center;
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
+.cellInputRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
+
+.cellInput {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-strong);
+  color: var(--color-text-primary);
+  font-size: 0.82rem;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.cellInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(43, 108, 189, 0.12);
+}
+
+.cellUnit {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cellTypeTag {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.cellPriceDisplay {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cellPriceDisplay span {
+  font-size: 0.83rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+.cellSub {
+  font-size: 0.73rem !important;
+  color: var(--color-text-muted) !important;
+}
+
+/* ─── Table footer ───────────────────────────────────────────────────────────── */
+
+.tableFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+.saveError {
+  font-size: 0.82rem;
+  color: var(--color-danger);
+}
+
+.btnDisabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {
   .layout {

@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest, isAdminOrAbove, canWrite } from '@/src/lib/auth';
 import { withStore, withStoreWrite, generateId } from '@/src/lib/store';
 import { appendEvent } from '@/src/lib/audit';
-import type { PricingMode, TariffPlan } from '@/src/lib/types';
+import type { TariffPlan } from '@/src/lib/types';
 
-const VALID_PRICING_MODES: PricingMode[] = ['PRECIO_A', 'PRECIO_B', 'PRECIO_C'];
 
 // GET /api/tarifas
 export async function GET(req: NextRequest) {
@@ -42,22 +41,19 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { name, pricingMode, validFrom, validTo, active } = body as {
+    const { name, code, validFrom, validTo, active } = body as {
       name: string;
-      pricingMode: PricingMode;
+      code: string;
       validFrom: string;
       validTo: string;
       active?: boolean;
     };
 
-    if (!name || !pricingMode || !validFrom || !validTo) {
+    if (!name || !code || !validFrom || !validTo) {
       return NextResponse.json(
-        { error: 'Faltan campos: name, pricingMode, validFrom, validTo' },
+        { error: 'Faltan campos: name, code, validFrom, validTo' },
         { status: 400 }
       );
-    }
-    if (!VALID_PRICING_MODES.includes(pricingMode)) {
-      return NextResponse.json({ error: `pricingMode inválido: ${pricingMode}` }, { status: 400 });
     }
     if (validFrom >= validTo) {
       return NextResponse.json({ error: 'validFrom debe ser anterior a validTo' }, { status: 400 });
@@ -68,7 +64,7 @@ export async function POST(req: NextRequest) {
       const newPlan: TariffPlan = {
         id: generateId(),
         name,
-        pricingMode,
+        code,
         validFrom,
         validTo,
         active: active ?? true,

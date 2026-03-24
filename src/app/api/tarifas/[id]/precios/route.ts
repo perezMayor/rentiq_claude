@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest, canWrite } from '@/src/lib/auth';
 import { withStoreWrite, generateId } from '@/src/lib/store';
+import type { TariffCellType } from '@/src/lib/types';
 import { appendEvent } from '@/src/lib/audit';
 
 type Params = { params: Promise<{ id: string }> };
@@ -27,7 +28,14 @@ export async function PUT(req: NextRequest, { params }: Params) {
   try {
     const body = await req.json();
     const { prices } = body as {
-      prices: { bracketId: string; categoryId: string; price: number }[];
+      prices: {
+        bracketId: string;
+        categoryId: string;
+        pricingType: TariffCellType;
+        price: number;
+        priceKm?: number;
+        kmIncluidos?: number;
+      }[];
     };
 
     if (!Array.isArray(prices)) {
@@ -38,23 +46,26 @@ export async function PUT(req: NextRequest, { params }: Params) {
       const plan = store.tariffPlans.find((p) => p.id === planId);
       if (!plan) throw Object.assign(new Error('Plan no encontrado'), { statusCode: 404 });
 
-      for (const { bracketId, categoryId, price } of prices) {
-        if (typeof price !== 'number' || price < 0) continue;
-
+      for (const { bracketId, categoryId, pricingType, price, priceKm, kmIncluidos } of prices) {
         const idx = store.tariffPrices.findIndex(
           (tp) => tp.planId === planId && tp.bracketId === bracketId && tp.categoryId === categoryId
         );
 
+        const entry = {
+          id: idx !== -1 ? store.tariffPrices[idx].id : generateId(),
+          planId,
+          bracketId,
+          categoryId,
+          pricingType: pricingType ?? 'DIA',
+          price: typeof price === 'number' ? price : 0,
+          priceKm: priceKm ?? undefined,
+          kmIncluidos: kmIncluidos ?? undefined,
+        };
+
         if (idx !== -1) {
-          store.tariffPrices[idx].price = price;
+          store.tariffPrices[idx] = entry;
         } else {
-          store.tariffPrices.push({
-            id: generateId(),
-            planId,
-            bracketId,
-            categoryId,
-            price,
-          });
+          store.tariffPrices.push(entry);
         }
       }
 

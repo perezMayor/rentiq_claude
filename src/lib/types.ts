@@ -17,6 +17,7 @@ export type AuditAction =
   | 'SYSTEM'
   | 'AUDIT_SUPPRESS';
 export type PricingMode = 'PRECIO_A' | 'PRECIO_B' | 'PRECIO_C';
+export type TariffCellType = 'FIJO' | 'DIA' | 'KM' | 'DIA_KM' | 'LIBRE';
 
 // ─── User ────────────────────────────────────────────────────────────────────
 
@@ -353,7 +354,8 @@ export interface Invoice {
 export interface TariffPlan {
   id: string;
   name: string;
-  pricingMode: PricingMode;
+  code: string;
+  pricingMode?: PricingMode;
   validFrom: string;
   validTo: string;
   active: boolean;
@@ -375,7 +377,10 @@ export interface TariffPrice {
   planId: string;
   bracketId: string;
   categoryId: string;
+  pricingType: TariffCellType;
   price: number;
+  priceKm?: number;
+  kmIncluidos?: number;
 }
 
 // ─── Expenses ────────────────────────────────────────────────────────────────

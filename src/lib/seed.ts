@@ -619,7 +619,7 @@ export function createSeedStore(): RentalStore {
       {
         id: 'tariff-1',
         name: 'Tarifa Estándar 2026',
-        pricingMode: 'PRECIO_A',
+        code: 'EST-26',
         validFrom: '2026-01-01',
         validTo: '2026-12-31',
         active: true,
@@ -654,17 +654,17 @@ export function createSeedStore(): RentalStore {
     ],
     tariffPrices: [
       // bracket-1
-      { id: 'tp-1', planId: 'tariff-1', bracketId: 'bracket-1', categoryId: 'cat-mini', price: 35 },
-      { id: 'tp-2', planId: 'tariff-1', bracketId: 'bracket-1', categoryId: 'cat-compacto', price: 45 },
-      { id: 'tp-3', planId: 'tariff-1', bracketId: 'bracket-1', categoryId: 'cat-suv', price: 65 },
+      { id: 'tp-1', planId: 'tariff-1', bracketId: 'bracket-1', categoryId: 'cat-mini',     pricingType: 'DIA' as const, price: 35 },
+      { id: 'tp-2', planId: 'tariff-1', bracketId: 'bracket-1', categoryId: 'cat-compacto', pricingType: 'DIA' as const, price: 45 },
+      { id: 'tp-3', planId: 'tariff-1', bracketId: 'bracket-1', categoryId: 'cat-suv',      pricingType: 'DIA' as const, price: 65 },
       // bracket-2
-      { id: 'tp-4', planId: 'tariff-1', bracketId: 'bracket-2', categoryId: 'cat-mini', price: 30 },
-      { id: 'tp-5', planId: 'tariff-1', bracketId: 'bracket-2', categoryId: 'cat-compacto', price: 40 },
-      { id: 'tp-6', planId: 'tariff-1', bracketId: 'bracket-2', categoryId: 'cat-suv', price: 58 },
+      { id: 'tp-4', planId: 'tariff-1', bracketId: 'bracket-2', categoryId: 'cat-mini',     pricingType: 'DIA' as const, price: 30 },
+      { id: 'tp-5', planId: 'tariff-1', bracketId: 'bracket-2', categoryId: 'cat-compacto', pricingType: 'DIA' as const, price: 40 },
+      { id: 'tp-6', planId: 'tariff-1', bracketId: 'bracket-2', categoryId: 'cat-suv',      pricingType: 'DIA' as const, price: 58 },
       // bracket-3
-      { id: 'tp-7', planId: 'tariff-1', bracketId: 'bracket-3', categoryId: 'cat-mini', price: 25 },
-      { id: 'tp-8', planId: 'tariff-1', bracketId: 'bracket-3', categoryId: 'cat-compacto', price: 35 },
-      { id: 'tp-9', planId: 'tariff-1', bracketId: 'bracket-3', categoryId: 'cat-suv', price: 50 },
+      { id: 'tp-7', planId: 'tariff-1', bracketId: 'bracket-3', categoryId: 'cat-mini',     pricingType: 'DIA' as const, price: 25 },
+      { id: 'tp-8', planId: 'tariff-1', bracketId: 'bracket-3', categoryId: 'cat-compacto', pricingType: 'DIA' as const, price: 35 },
+      { id: 'tp-9', planId: 'tariff-1', bracketId: 'bracket-3', categoryId: 'cat-suv',      pricingType: 'DIA' as const, price: 50 },
     ],
     expenses: [],
     salesChannels: [
