@@ -428,26 +428,68 @@
 .cellBar:active { cursor: grabbing; }
 .cellBar:hover { opacity: 1; }
 
-.barPeticion   { background: var(--color-status-peticion); }
-.barConfirmada { background: var(--color-status-confirmada); }
-.barContratado { background: var(--color-status-contratado); }
-.barBloqueado    { background: #7048e8; } /* matrícula bloqueada — reservado intencionalmente */
-.barNodisponible { background: #212529; } /* bloqueo manual — no disponible / fuera de servicio */
-.barHuerfana   { background: var(--color-status-huerfana); }
+/* color debe coincidir con background para que currentColor funcione en las flechas */
+.barPeticion   { background: var(--color-status-peticion);   color: var(--color-status-peticion); }
+.barConfirmada { background: var(--color-status-confirmada); color: var(--color-status-confirmada); }
+.barContratado { background: var(--color-status-contratado); color: var(--color-status-contratado); }
+.barBloqueado    { background: #7048e8; color: #7048e8; } /* matrícula bloqueada — reservado intencionalmente */
+.barNodisponible { background: #212529; color: #212529; } /* bloqueo manual — no disponible / fuera de servicio */
+.barHuerfana   { background: var(--color-status-huerfana);   color: var(--color-status-huerfana); }
 
-/* Arrow shapes — punta izquierda en inicio, punta derecha en fin */
-.barStart {
-  left: 3px; right: 0;
-  clip-path: polygon(6px 0%, 100% 0%, 100% 100%, 6px 100%, 0% 50%);
+/* Flechas con pseudo-elementos (print-safe — clip-path no funciona en PDF) */
+/* barStart: barra empieza aquí, flecha ▶ a la izquierda apuntando hacia dentro */
+.barStart { left: 7px; right: 0; overflow: visible; }
+.barStart::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-top: 14px solid transparent;
+  border-bottom: 14px solid transparent;
+  border-left: 7px solid currentColor; /* ▶ apunta hacia la derecha (interior de la barra) */
 }
-.barEnd {
-  left: 0; right: 3px;
-  clip-path: polygon(0% 0%, calc(100% - 6px) 0%, 100% 50%, calc(100% - 6px) 100%, 0% 100%);
+
+/* barEnd: barra termina aquí, flecha ◀ a la derecha apuntando hacia dentro */
+.barEnd { left: 0; right: 7px; overflow: visible; }
+.barEnd::after {
+  content: "";
+  position: absolute;
+  right: -7px;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-top: 14px solid transparent;
+  border-bottom: 14px solid transparent;
+  border-right: 7px solid currentColor; /* ◀ apunta hacia la izquierda (interior de la barra) */
 }
-.barStartEnd {
-  left: 3px; right: 3px;
-  clip-path: polygon(6px 0%, calc(100% - 6px) 0%, 100% 50%, calc(100% - 6px) 100%, 6px 100%, 0% 50%);
+
+/* barStartEnd: empieza y termina en el mismo día */
+.barStartEnd { left: 7px; right: 7px; overflow: visible; }
+.barStartEnd::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-top: 14px solid transparent;
+  border-bottom: 14px solid transparent;
+  border-left: 7px solid currentColor;
 }
+.barStartEnd::after {
+  content: "";
+  position: absolute;
+  right: -7px;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-top: 14px solid transparent;
+  border-bottom: 14px solid transparent;
+  border-right: 7px solid currentColor;
+}
+
 .barMiddle { left: 0; right: 0; }
 
 /* Etiqueta de texto dentro de la barra (huérfanas) */
