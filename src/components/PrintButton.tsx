@@ -10,7 +10,11 @@ export default function PrintButton({ label = 'Imprimir / PDF', style }: PrintBu
     <button
       type="button"
       className="btn btn-ghost btn-sm"
-      onClick={() => window.print()}
+      onClick={() => {
+        document.body.classList.add('is-printing-list');
+        window.print();
+        document.body.classList.remove('is-printing-list');
+      }}
       style={{ display: 'flex', alignItems: 'center', gap: 6, ...style }}
     >
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

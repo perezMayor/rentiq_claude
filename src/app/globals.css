@@ -609,95 +609,88 @@ table.data-table tbody tr:hover {
   animation: pageIn 0.28s ease both;
 }
 
-/* ── Print / PDF ─────────────────────────────────────────────────────────── */
+/* ── Print / PDF — solo activo desde PrintButton (listados) ───────────────── */
 
 @media print {
-  /* Hide navigation and UI chrome */
-  aside,
-  nav,
-  .sidebar,
-  [class*="sidebar"],
-  [class*="Sidebar"],
-  header:not(.print-header),
-  .page-header .btn,
-  .page-header button,
-  .btn,
-  button:not(.print-show),
-  [class*="modal"],
-  [class*="toast"],
-  [class*="tooltip"],
-  [class*="dropdown"],
-  [class*="overlay"],
-  [class*="tabNav"],
-  [class*="tabs"],
-  input,
-  select {
+  body.is-printing-list aside,
+  body.is-printing-list nav,
+  body.is-printing-list .sidebar,
+  body.is-printing-list [class*="sidebar"],
+  body.is-printing-list [class*="Sidebar"],
+  body.is-printing-list header:not(.print-header),
+  body.is-printing-list .page-header .btn,
+  body.is-printing-list .page-header button,
+  body.is-printing-list .btn,
+  body.is-printing-list button:not(.print-show),
+  body.is-printing-list [class*="modal"],
+  body.is-printing-list [class*="toast"],
+  body.is-printing-list [class*="tooltip"],
+  body.is-printing-list [class*="dropdown"],
+  body.is-printing-list [class*="overlay"],
+  body.is-printing-list [class*="tabNav"],
+  body.is-printing-list [class*="tabs"],
+  body.is-printing-list input,
+  body.is-printing-list select {
     display: none !important;
   }
 
-  /* Show full width content */
-  body {
+  body.is-printing-list {
     background: white !important;
     color: black !important;
     font-size: 11pt;
   }
 
-  main,
-  [class*="main"],
-  [class*="content"],
-  [class*="pageContent"],
-  [class*="innerContent"] {
+  body.is-printing-list main,
+  body.is-printing-list [class*="main"],
+  body.is-printing-list [class*="content"],
+  body.is-printing-list [class*="pageContent"],
+  body.is-printing-list [class*="innerContent"] {
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
     max-width: none !important;
   }
 
-  /* Page header: keep title, hide buttons */
-  .page-header {
+  body.is-printing-list .page-header {
     display: flex !important;
     margin-bottom: 12pt !important;
   }
 
-  /* Tables */
-  table {
+  body.is-printing-list table {
     width: 100% !important;
     border-collapse: collapse !important;
     font-size: 9pt;
   }
 
-  table th,
-  table td {
+  body.is-printing-list table th,
+  body.is-printing-list table td {
     border: 1px solid #ccc !important;
     padding: 4pt 6pt !important;
     background: white !important;
     color: black !important;
   }
 
-  table thead th {
+  body.is-printing-list table thead th {
     background: #f5f5f5 !important;
     font-weight: 600 !important;
   }
 
-  /* Page breaks */
-  tr {
+  body.is-printing-list tr {
     page-break-inside: avoid;
   }
 
-  thead {
+  body.is-printing-list thead {
     display: table-header-group;
   }
 
-  /* Print-specific title */
-  .print-title {
+  body.is-printing-list .print-title {
     display: block !important;
     font-size: 14pt;
     font-weight: 700;
     margin-bottom: 8pt;
   }
 
-  /* Hide print button itself */
-  .no-print {
+  body.is-printing-list .no-print {
     display: none !important;
   }
 }
