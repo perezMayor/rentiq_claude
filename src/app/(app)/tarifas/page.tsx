@@ -213,6 +213,22 @@ function PlanModal({
               <label className="form-label">Válida hasta *</label>
               <DatePicker className="form-input" value={form.validTo ?? ''} onChange={(v) => setForm((f) => ({ ...f, validTo: v }))} />
             </div>
+            <div className="form-group" style={{ gridColumn: '1 / 3' }}>
+              <label className="form-label">Período de cortesía (horas)</label>
+              <input
+                type="number"
+                className="form-input"
+                value={form.graceHours ?? ''}
+                min={0}
+                max={72}
+                step={1}
+                placeholder="Ej: 2 — a partir de 2h extra se cobra un día más"
+                onChange={(e) => setForm((f) => ({ ...f, graceHours: e.target.value === '' ? undefined : parseInt(e.target.value, 10) }))}
+              />
+              <span className="form-hint" style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
+                Horas de exceso a partir de las cuales se suma un día adicional al cálculo. Dejar vacío para no aplicar.
+              </span>
+            </div>
           </div>
           {error && <div className="alert alert-danger" style={{ marginTop: 12 }}>{error}</div>}
         </div>
@@ -391,7 +407,7 @@ export default function TarifasPage() {
     const res = await fetch(url, {
       method: isEdit ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: data.name, code: data.code, validFrom: data.validFrom, validTo: data.validTo, active: data.active }),
+      body: JSON.stringify({ name: data.name, code: data.code, validFrom: data.validFrom, validTo: data.validTo, active: data.active, graceHours: data.graceHours ?? null }),
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error ?? 'Error');
@@ -508,6 +524,11 @@ export default function TarifasPage() {
                     <span className={`badge ${detail.plan.active ? 'badge-cerrado' : 'badge-cancelada'}`}>
                       {detail.plan.active ? 'Activa' : 'Inactiva'}
                     </span>
+                    {detail.plan.graceHours != null && (
+                      <span style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        ⏱ Cortesía: <strong style={{ color: 'var(--color-text-primary)' }}>{detail.plan.graceHours}h</strong>
+                      </span>
+                    )}
                   </div>
                   {canWrite && (
                     <div className={styles.detailHeaderActions}>

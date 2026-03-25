@@ -359,6 +359,7 @@ export interface TariffPlan {
   validFrom: string;
   validTo: string;
   active: boolean;
+  graceHours?: number;
   createdAt: string;
 }
 
