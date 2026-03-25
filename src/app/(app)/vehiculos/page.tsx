@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import DatePicker from '@/src/components/DatePicker';
 import styles from './vehiculos.module.css';
+import PrintButton from '@/src/components/PrintButton';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -629,6 +630,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
             + Nuevo Seguro
           </button>
         )}
+        <PrintButton />
       </div>
 
       {/* ── TAB: FLOTA ─────────────────────────────────────────────────────── */}
@@ -1697,6 +1699,7 @@ function VehiculosInner() {
           <h1 className="page-title">Vehículos</h1>
           <p className="page-subtitle">{VEHICULOS_TABS.find((t) => t.key === tab)?.label ?? 'Flota'}</p>
         </div>
+        <PrintButton />
       </div>
       <VehiculosTabNav active={tab} />
       {innerTab ? (

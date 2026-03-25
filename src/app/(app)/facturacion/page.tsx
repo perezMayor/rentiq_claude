@@ -11,6 +11,7 @@ import type {
 } from '@/src/lib/types';
 import DatePicker from '@/src/components/DatePicker';
 import styles from './facturacion.module.css';
+import PrintButton from '@/src/components/PrintButton';
 
 const STATUS_LABELS: Record<InvoiceStatus, string> = {
   BORRADOR: 'Borrador',
@@ -490,6 +491,7 @@ function FacturacionInner() {
           <h1 className="page-title">Facturación</h1>
           <p className="page-subtitle">{FACTURACION_TABS.find((t) => t.key === tab)?.label ?? tab}</p>
         </div>
+        <PrintButton />
       </div>
       <FacturacionTabNav active={tab} />
       {tab === 'diario' && <FacturacionContent />}

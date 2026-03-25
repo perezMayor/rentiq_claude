@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { DailyExpense, ExpenseCategory, FleetVehicle } from '@/src/lib/types';
 import DatePicker from '@/src/components/DatePicker';
 import styles from './gastos.module.css';
+import PrintButton from '@/src/components/PrintButton';
 
 const CATEGORIES: ExpenseCategory[] = ['GASOLINA', 'PEAJE', 'COMIDA', 'PARKING', 'LAVADO', 'OTRO'];
 const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
@@ -591,6 +592,7 @@ export default function GastosPage() {
           <h1 className="page-title">Gastos internos</h1>
           <p className="page-subtitle">Gastos operativos diarios — no facturables, asignados a vehículos</p>
         </div>
+        <PrintButton />
       </div>
 
       <nav className={styles.tabNav}>
