@@ -24,6 +24,7 @@ interface PlanDetail {
 
 interface FormState {
   clientName: string;
+  clientEmail: string;
   startDate: string;
   startTime: string;
   endDate: string;
@@ -87,6 +88,7 @@ function blankForm(): FormState {
   const end   = tomorrow();
   return {
     clientName:     '',
+    clientEmail:    '',
     startDate:      start,
     startTime:      '09:00',
     endDate:        end,
@@ -306,13 +308,24 @@ export default function PresupuestosTab() {
             <div className={styles.cardBody}>
               <div className={styles.grid2}>
 
-                <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1' }}>
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Nombre del cliente</label>
                   <input
                     className="form-input"
                     value={form.clientName}
                     onChange={(e) => set('clientName', e.target.value)}
                     placeholder="Nombre del solicitante (opcional)"
+                  />
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">Email del cliente</label>
+                  <input
+                    type="email"
+                    className="form-input"
+                    value={form.clientEmail}
+                    onChange={(e) => set('clientEmail', e.target.value)}
+                    placeholder="correo@ejemplo.com"
                   />
                 </div>
 
@@ -565,8 +578,15 @@ export default function PresupuestosTab() {
           <button
             type="button"
             className="btn btn-ghost"
-            title="Próximamente"
-            onClick={() => alert('Envío por email: próximamente')}
+            disabled={!form.clientEmail}
+            title={form.clientEmail ? `Enviar a ${form.clientEmail}` : 'Introduce el email del cliente primero'}
+            onClick={() => {
+              const subject = encodeURIComponent('Presupuesto de alquiler de vehículo');
+              const body = encodeURIComponent(
+                `${form.clientName ? `Estimado/a ${form.clientName},\n\n` : ''}Adjuntamos el presupuesto de alquiler de vehículo solicitado.\n\nTotal estimado: ${parseFloat(form.total).toFixed(2)} €\n\nQuedamos a su disposición para cualquier consulta.`
+              );
+              window.open(`mailto:${form.clientEmail}?subject=${subject}&body=${body}`);
+            }}
           >
             Enviar por email
           </button>
