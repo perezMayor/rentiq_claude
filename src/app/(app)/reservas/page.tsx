@@ -105,6 +105,7 @@ function EntregasTab() {
   const [filterLocation, setFilterLocation] = useState('');
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
     Promise.all([fetch('/api/clientes'), fetch('/api/sucursales'), fetch('/api/locations')]).then(async ([cr, br, lr]) => {
@@ -191,14 +192,14 @@ function EntregasTab() {
   return (
     <div>
       <div className="filters-bar" style={{ marginBottom: 16 }}>
-        <DatePicker className="form-input" value={dateFrom} onChange={(v) => setDateFrom(v)} style={{ width: 'auto' }} />
-        <DatePicker className="form-input" value={dateTo}   onChange={(v) => setDateTo(v)}   style={{ width: 'auto' }} />
-        <select className="form-select" value={filtro} onChange={(e) => setFiltro(e.target.value as EntregaFiltro)} style={{ width: 'auto' }}>
+        <DatePicker className="form-input" value={dateFrom} onChange={(v) => { setDateFrom(v); setHasSearched(true); }} style={{ width: 'auto' }} />
+        <DatePicker className="form-input" value={dateTo}   onChange={(v) => { setDateTo(v); setHasSearched(true); }}   style={{ width: 'auto' }} />
+        <select className="form-select" value={filtro} onChange={(e) => { setFiltro(e.target.value as EntregaFiltro); setHasSearched(true); }} style={{ width: 'auto' }}>
           <option value="todas">Todas</option>
           <option value="contratadas">Contratadas</option>
           <option value="sin_matricula">Sin matrícula</option>
         </select>
-        <select className="form-select" value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ width: 'auto' }}>
+        <select className="form-select" value={filterLocation} onChange={(e) => { setFilterLocation(e.target.value); setHasSearched(true); }} style={{ width: 'auto' }}>
           <option value="">Todos los lugares</option>
           {locations.map((l) => <option key={l} value={l}>{l}</option>)}
         </select>
@@ -210,7 +211,9 @@ function EntregasTab() {
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="table-wrapper">
-        {loading ? (
+        {!hasSearched ? (
+          <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', padding: '24px 0', textAlign: 'center' }}>Aplica los filtros para ver el listado.</div>
+        ) : loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Cargando…</div>
         ) : filtered.length === 0 ? (
           <div className="empty-state">
@@ -274,6 +277,7 @@ function RecogidasTab() {
   const [locations, setLocations]                 = useState<string[]>([]);
   const [loading, setLoading]                     = useState(true);
   const [error, setError]                         = useState('');
+  const [hasSearched, setHasSearched]             = useState(false);
 
   useEffect(() => {
     Promise.all([fetch('/api/clientes'), fetch('/api/sucursales'), fetch('/api/locations')]).then(async ([cr, br, lr]) => {
@@ -318,14 +322,14 @@ function RecogidasTab() {
   return (
     <div>
       <div className="filters-bar" style={{ marginBottom: 16 }}>
-        <DatePicker className="form-input" value={dateFrom} onChange={(v) => setDateFrom(v)} style={{ width: 'auto' }} />
-        <DatePicker className="form-input" value={dateTo}   onChange={(v) => setDateTo(v)}   style={{ width: 'auto' }} />
-        <select className="form-select" value={filtro} onChange={(e) => setFiltro(e.target.value as RecogidaFiltro)} style={{ width: 'auto' }}>
+        <DatePicker className="form-input" value={dateFrom} onChange={(v) => { setDateFrom(v); setHasSearched(true); }} style={{ width: 'auto' }} />
+        <DatePicker className="form-input" value={dateTo}   onChange={(v) => { setDateTo(v); setHasSearched(true); }}   style={{ width: 'auto' }} />
+        <select className="form-select" value={filtro} onChange={(e) => { setFiltro(e.target.value as RecogidaFiltro); setHasSearched(true); }} style={{ width: 'auto' }}>
           <option value="todas">Todas</option>
           <option value="sin_checkin">Sin checkin</option>
           <option value="vencidas">Vencidas</option>
         </select>
-        <select className="form-select" value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)} style={{ width: 'auto' }}>
+        <select className="form-select" value={filterLocation} onChange={(e) => { setFilterLocation(e.target.value); setHasSearched(true); }} style={{ width: 'auto' }}>
           <option value="">Todos los lugares</option>
           {locations.map((l) => <option key={l} value={l}>{l}</option>)}
         </select>
@@ -337,7 +341,9 @@ function RecogidasTab() {
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="table-wrapper">
-        {loading ? (
+        {!hasSearched ? (
+          <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', padding: '24px 0', textAlign: 'center' }}>Aplica los filtros para ver el listado.</div>
+        ) : loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Cargando…</div>
         ) : filtered.length === 0 ? (
           <div className="empty-state">
@@ -422,6 +428,7 @@ function CanalesTab() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
 
   const load = useCallback((y: number) => {
     setLoading(true); setError('');
@@ -490,7 +497,7 @@ function CanalesTab() {
         <label style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>Año:</label>
         <select
           value={year}
-          onChange={(e) => setYear(Number(e.target.value))}
+          onChange={(e) => { setYear(Number(e.target.value)); setHasSearched(true); }}
           style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'var(--color-surface-strong)', color: 'var(--color-text-primary)', fontFamily: 'inherit', fontSize: '0.9rem' }}
         >
           {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
@@ -500,7 +507,9 @@ function CanalesTab() {
         </span>
       </div>
 
-      <div className="table-wrapper" style={{ overflowX: 'auto' }}>
+      {!hasSearched ? (
+        <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', padding: '24px 0', textAlign: 'center' }}>Selecciona un año para ver el resumen de canales.</div>
+      ) : <div className="table-wrapper" style={{ overflowX: 'auto' }}>
         <table className="data-table" style={{ minWidth: 900 }}>
           <thead>
             <tr>
@@ -543,7 +552,7 @@ function CanalesTab() {
             </tr>
           </tfoot>
         </table>
-      </div>
+      </div>}
     </div>
   );
 }
@@ -555,6 +564,7 @@ function LogConfirmacionesTab() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
@@ -585,18 +595,20 @@ function LogConfirmacionesTab() {
       <div className="filters-bar">
         <div className="form-group" style={{ margin: 0 }}>
           <label className="form-label">Desde</label>
-          <DatePicker value={dateFrom} onChange={setDateFrom} style={{ width: 150 }} />
+          <DatePicker value={dateFrom} onChange={(v) => { setDateFrom(v); setHasSearched(true); }} style={{ width: 150 }} />
         </div>
         <div className="form-group" style={{ margin: 0 }}>
           <label className="form-label">Hasta</label>
-          <DatePicker value={dateTo} onChange={setDateTo} style={{ width: 150 }} />
+          <DatePicker value={dateTo} onChange={(v) => { setDateTo(v); setHasSearched(true); }} style={{ width: 150 }} />
         </div>
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="table-wrapper">
-        {loading ? (
+        {!hasSearched ? (
+          <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', padding: '24px 0', textAlign: 'center' }}>Aplica los filtros para ver el listado.</div>
+        ) : loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Cargando…</div>
         ) : (
           <table className="data-table">

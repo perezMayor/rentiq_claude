@@ -789,7 +789,6 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
         <button type="button" className="btn btn-ghost" onClick={handleClear}>Limpiar campos</button>
         <button type="button" className="btn btn-ghost">Bloquear precios</button>
         <div className={styles.actionBarRight}>
-          <button type="button" className="btn btn-ghost">Disponibilidad</button>
           <button type="button" className="btn btn-ghost">Auditoría</button>
         </div>
       </div>
