@@ -28,42 +28,11 @@ const ROLE_CLASS: Record<UserRole, string> = {
   LECTOR: styles.roleLector,
 };
 
-// ─── Usuarios y Sucursales ────────────────────────────────────────────────────
+// ─── Config. operativa ────────────────────────────────────────────────────────
 
-type InnerTab = 'usuarios' | 'sucursales' | 'lugares' | 'configuracion';
-
-function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUserId: string }) {
-  const [innerTab, setInnerTab] = useState<InnerTab>('usuarios');
-
-  const canWrite = myRole === 'SUPER_ADMIN' || myRole === 'ADMIN';
+function ConfigOperativaTab({ myRole }: { myRole: UserRole }) {
   const isSuperAdmin = myRole === 'SUPER_ADMIN';
 
-  // Users
-  const [users, setUsers] = useState<SafeUser[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [usersError, setUsersError] = useState('');
-  const [userModal, setUserModal] = useState<'create' | 'edit' | null>(null);
-  const [userEdit, setUserEdit] = useState<Partial<SafeUser>>({});
-  const [userSaving, setUserSaving] = useState(false);
-  const [userError, setUserError] = useState('');
-
-  // Branches
-  const [branches, setBranches] = useState<CompanyBranch[]>([]);
-  const [branchesLoading, setBranchesLoading] = useState(false);
-  const [branchesError, setBranchesError] = useState('');
-  const [branchModal, setBranchModal] = useState<'create' | 'edit' | null>(null);
-  const [branchEdit, setBranchEdit] = useState<Partial<CompanyBranch>>({});
-  const [branchSaving, setBranchSaving] = useState(false);
-  const [branchError, setBranchError] = useState('');
-
-  // Locations
-  const [locations, setLocations] = useState<string[]>([]);
-  const [locLoading, setLocLoading] = useState(false);
-  const [locError, setLocError] = useState('');
-  const [locSaving, setLocSaving] = useState(false);
-  const [newLoc, setNewLoc] = useState('');
-
-  // Configuración global
   const [graceHours, setGraceHours] = useState('');
   const [overlapMinHours, setOverlapMinHours] = useState('');
   const [dayChangeCutoffHour, setDayChangeCutoffHour] = useState('');
@@ -78,36 +47,6 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
   const [cfgSaving, setCfgSaving] = useState(false);
   const [cfgError, setCfgError] = useState('');
   const [cfgOk, setCfgOk] = useState(false);
-
-  const loadUsers = useCallback(async () => {
-    setUsersLoading(true); setUsersError('');
-    try {
-      const res = await fetch('/api/gestor/usuarios');
-      if (!res.ok) throw new Error((await res.json()).error ?? 'Error');
-      setUsers((await res.json()).users ?? []);
-    } catch (e) { setUsersError(e instanceof Error ? e.message : 'Error'); }
-    finally { setUsersLoading(false); }
-  }, []);
-
-  const loadBranches = useCallback(async () => {
-    setBranchesLoading(true); setBranchesError('');
-    try {
-      const res = await fetch('/api/gestor/sucursales');
-      if (!res.ok) throw new Error((await res.json()).error ?? 'Error');
-      setBranches((await res.json()).branches ?? []);
-    } catch (e) { setBranchesError(e instanceof Error ? e.message : 'Error'); }
-    finally { setBranchesLoading(false); }
-  }, []);
-
-  const loadLocations = useCallback(async () => {
-    setLocLoading(true); setLocError('');
-    try {
-      const res = await fetch('/api/gestor/empresa');
-      if (!res.ok) throw new Error((await res.json()).error ?? 'Error');
-      setLocations((await res.json()).settings?.deliveryLocations ?? []);
-    } catch (e) { setLocError(e instanceof Error ? e.message : 'Error'); }
-    finally { setLocLoading(false); }
-  }, []);
 
   const loadConfig = useCallback(async () => {
     setCfgLoading(true); setCfgError('');
@@ -129,6 +68,8 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
     } catch (e) { setCfgError(e instanceof Error ? e.message : 'Error'); }
     finally { setCfgLoading(false); }
   }, []);
+
+  useEffect(() => { loadConfig(); }, [loadConfig]);
 
   async function saveConfig() {
     setCfgSaving(true); setCfgError(''); setCfgOk(false);
@@ -165,6 +106,161 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
     finally { setCfgSaving(false); }
   }
 
+  if (cfgLoading) return <div className={styles.loadingRow}>Cargando…</div>;
+
+  return (
+    <div style={{ maxWidth: 600 }}>
+      {cfgError && <div className="alert alert-danger" style={{ marginBottom: 16 }}>{cfgError}</div>}
+      {cfgOk && <div className="alert alert-success" style={{ marginBottom: 16 }}>Configuración guardada</div>}
+
+      {/* Reservas */}
+      <div className={styles.cfgSection}>
+        <div className={styles.cfgSectionTitle}>Reservas</div>
+        <div className="form-grid">
+          <div className="form-group">
+            <label className="form-label">Días mínimos de reserva</label>
+            <input type="number" className="form-input" value={minReservationDays} min={1} step={1} placeholder="Sin mínimo" disabled={!isSuperAdmin} onChange={(e) => setMinReservationDays(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Antelación mínima (horas)</label>
+            <input type="number" className="form-input" value={minAdvanceHours} min={0} step={1} placeholder="Sin límite" disabled={!isSuperAdmin} onChange={(e) => setMinAdvanceHours(e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      {/* Presupuestos y contratos */}
+      <div className={styles.cfgSection}>
+        <div className={styles.cfgSectionTitle}>Presupuestos y contratos</div>
+        <div className="form-grid">
+          <div className="form-group">
+            <label className="form-label">Validez del presupuesto (días)</label>
+            <input type="number" className="form-input" value={quoteValidityDays} min={1} step={1} placeholder="Sin caducidad" disabled={!isSuperAdmin} onChange={(e) => setQuoteValidityDays(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Depósito por defecto (€)</label>
+            <input type="number" className="form-input" value={defaultDeposit} min={0} step={0.01} placeholder="0.00" disabled={!isSuperAdmin} onChange={(e) => setDefaultDeposit(e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      {/* Cálculo de días */}
+      <div className={styles.cfgSection}>
+        <div className={styles.cfgSectionTitle}>Cálculo de días</div>
+        <div className="form-grid">
+          <div className="form-group">
+            <label className="form-label">Hora de corte de día (0–23)</label>
+            <input type="number" className="form-input" value={dayChangeCutoffHour} min={0} max={23} step={1} placeholder="Sin corte" disabled={!isSuperAdmin} onChange={(e) => setDayChangeCutoffHour(e.target.value)} />
+            <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Entregas/recogidas después de esta hora cuentan como día siguiente.</p>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Período de cortesía (horas)</label>
+            <input type="number" className="form-input" value={graceHours} min={0} max={72} step={1} placeholder="Sin cortesía" disabled={!isSuperAdmin} onChange={(e) => setGraceHours(e.target.value)} />
+            <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Horas de exceso a partir de las cuales se suma un día adicional al precio.</p>
+          </div>
+          <div className="form-group col-span-2">
+            <label className="form-label">Tiempo de solape en planning (horas)</label>
+            <input type="number" className="form-input" value={overlapMinHours} min={0} max={48} step={1} placeholder="2" disabled={!isSuperAdmin} onChange={(e) => setOverlapMinHours(e.target.value)} style={{ maxWidth: 160 }} />
+            <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Margen mínimo entre fin de una reserva e inicio de la siguiente antes de marcarla como solape en el planning.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Tarifa nocturna */}
+      <div className={styles.cfgSection}>
+        <div className={styles.cfgSectionTitle}>Tarifa nocturna</div>
+        <div className="form-grid">
+          <div className="form-group">
+            <label className="form-label">Hora de inicio (0–23)</label>
+            <input type="number" className="form-input" value={nightFeeFromHour} min={0} max={23} step={1} placeholder="Ej: 22" disabled={!isSuperAdmin} onChange={(e) => setNightFeeFromHour(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Hora de fin (0–23)</label>
+            <input type="number" className="form-input" value={nightFeeToHour} min={0} max={23} step={1} placeholder="Ej: 8" disabled={!isSuperAdmin} onChange={(e) => setNightFeeToHour(e.target.value)} />
+          </div>
+          <div className="form-group col-span-2">
+            <label className="form-label">Precio tarifa nocturna (€)</label>
+            <input type="number" className="form-input" value={nightFeePrice} min={0} step={0.01} placeholder="0.00 — vacío = no aplica" disabled={!isSuperAdmin} onChange={(e) => setNightFeePrice(e.target.value)} style={{ maxWidth: 200 }} />
+            <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Recargo aplicable a entregas y recogidas fuera del horario habitual. Dejar vacío para desactivar.</p>
+          </div>
+        </div>
+      </div>
+
+      {isSuperAdmin && (
+        <div style={{ marginTop: 8, paddingTop: 20, borderTop: '1px solid var(--color-border)' }}>
+          <button className="btn btn-primary" onClick={saveConfig} disabled={cfgSaving}>
+            {cfgSaving ? 'Guardando…' : 'Guardar configuración'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Usuarios y Sucursales ────────────────────────────────────────────────────
+
+type InnerTab = 'usuarios' | 'sucursales' | 'lugares';
+
+function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUserId: string }) {
+  const [innerTab, setInnerTab] = useState<InnerTab>('usuarios');
+
+  const canWrite = myRole === 'SUPER_ADMIN' || myRole === 'ADMIN';
+  const isSuperAdmin = myRole === 'SUPER_ADMIN';
+
+  // Users
+  const [users, setUsers] = useState<SafeUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState('');
+  const [userModal, setUserModal] = useState<'create' | 'edit' | null>(null);
+  const [userEdit, setUserEdit] = useState<Partial<SafeUser>>({});
+  const [userSaving, setUserSaving] = useState(false);
+  const [userError, setUserError] = useState('');
+
+  // Branches
+  const [branches, setBranches] = useState<CompanyBranch[]>([]);
+  const [branchesLoading, setBranchesLoading] = useState(false);
+  const [branchesError, setBranchesError] = useState('');
+  const [branchModal, setBranchModal] = useState<'create' | 'edit' | null>(null);
+  const [branchEdit, setBranchEdit] = useState<Partial<CompanyBranch>>({});
+  const [branchSaving, setBranchSaving] = useState(false);
+  const [branchError, setBranchError] = useState('');
+
+  // Locations
+  const [locations, setLocations] = useState<string[]>([]);
+  const [locLoading, setLocLoading] = useState(false);
+  const [locError, setLocError] = useState('');
+  const [locSaving, setLocSaving] = useState(false);
+  const [newLoc, setNewLoc] = useState('');
+
+  const loadUsers = useCallback(async () => {
+    setUsersLoading(true); setUsersError('');
+    try {
+      const res = await fetch('/api/gestor/usuarios');
+      if (!res.ok) throw new Error((await res.json()).error ?? 'Error');
+      setUsers((await res.json()).users ?? []);
+    } catch (e) { setUsersError(e instanceof Error ? e.message : 'Error'); }
+    finally { setUsersLoading(false); }
+  }, []);
+
+  const loadBranches = useCallback(async () => {
+    setBranchesLoading(true); setBranchesError('');
+    try {
+      const res = await fetch('/api/gestor/sucursales');
+      if (!res.ok) throw new Error((await res.json()).error ?? 'Error');
+      setBranches((await res.json()).branches ?? []);
+    } catch (e) { setBranchesError(e instanceof Error ? e.message : 'Error'); }
+    finally { setBranchesLoading(false); }
+  }, []);
+
+  const loadLocations = useCallback(async () => {
+    setLocLoading(true); setLocError('');
+    try {
+      const res = await fetch('/api/gestor/empresa');
+      if (!res.ok) throw new Error((await res.json()).error ?? 'Error');
+      setLocations((await res.json()).settings?.deliveryLocations ?? []);
+    } catch (e) { setLocError(e instanceof Error ? e.message : 'Error'); }
+    finally { setLocLoading(false); }
+  }, []);
+
   async function persistLocations(updated: string[]) {
     setLocSaving(true); setLocError('');
     try {
@@ -198,8 +294,7 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
     if (innerTab === 'usuarios') loadUsers();
     else if (innerTab === 'sucursales') loadBranches();
     else if (innerTab === 'lugares') loadLocations();
-    else if (innerTab === 'configuracion') loadConfig();
-  }, [innerTab, loadUsers, loadBranches, loadLocations, loadConfig]);
+  }, [innerTab, loadUsers, loadBranches, loadLocations]);
 
   async function saveUser() {
     setUserSaving(true); setUserError('');
@@ -260,9 +355,9 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
     <div>
       {/* Inner tabs */}
       <div className={styles.tabs}>
-        {(['usuarios', 'sucursales', 'lugares', 'configuracion'] as InnerTab[]).map((t) => (
+        {(['usuarios', 'sucursales', 'lugares'] as InnerTab[]).map((t) => (
           <button key={t} className={`${styles.tab} ${innerTab === t ? styles.tabActive : ''}`} onClick={() => setInnerTab(t)}>
-            {t === 'usuarios' ? 'Usuarios' : t === 'sucursales' ? 'Sucursales' : t === 'lugares' ? 'Lugares de entrega' : 'Configuración'}
+            {t === 'usuarios' ? 'Usuarios' : t === 'sucursales' ? 'Sucursales' : 'Lugares de entrega'}
           </button>
         ))}
       </div>
@@ -390,99 +485,6 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
         </div>
       )}
 
-      {/* ── Configuración ── */}
-      {innerTab === 'configuracion' && (
-        <div style={{ maxWidth: 600 }}>
-          {cfgLoading ? (
-            <div className={styles.loadingRow}>Cargando…</div>
-          ) : (
-            <>
-              {cfgError && <div className="alert alert-danger" style={{ marginBottom: 16 }}>{cfgError}</div>}
-              {cfgOk && <div className="alert alert-success" style={{ marginBottom: 16 }}>Configuración guardada</div>}
-
-              {/* Reservas */}
-              <div className={styles.cfgSection}>
-                <div className={styles.cfgSectionTitle}>Reservas</div>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label className="form-label">Días mínimos de reserva</label>
-                    <input type="number" className="form-input" value={minReservationDays} min={1} step={1} placeholder="Sin mínimo" disabled={!isSuperAdmin} onChange={(e) => setMinReservationDays(e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Antelación mínima (horas)</label>
-                    <input type="number" className="form-input" value={minAdvanceHours} min={0} step={1} placeholder="Sin límite" disabled={!isSuperAdmin} onChange={(e) => setMinAdvanceHours(e.target.value)} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Presupuestos y contratos */}
-              <div className={styles.cfgSection}>
-                <div className={styles.cfgSectionTitle}>Presupuestos y contratos</div>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label className="form-label">Validez del presupuesto (días)</label>
-                    <input type="number" className="form-input" value={quoteValidityDays} min={1} step={1} placeholder="Sin caducidad" disabled={!isSuperAdmin} onChange={(e) => setQuoteValidityDays(e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Depósito por defecto (€)</label>
-                    <input type="number" className="form-input" value={defaultDeposit} min={0} step={0.01} placeholder="0.00" disabled={!isSuperAdmin} onChange={(e) => setDefaultDeposit(e.target.value)} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Cálculo de días */}
-              <div className={styles.cfgSection}>
-                <div className={styles.cfgSectionTitle}>Cálculo de días</div>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label className="form-label">Hora de corte de día (0–23)</label>
-                    <input type="number" className="form-input" value={dayChangeCutoffHour} min={0} max={23} step={1} placeholder="Sin corte" disabled={!isSuperAdmin} onChange={(e) => setDayChangeCutoffHour(e.target.value)} />
-                    <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Entregas/recogidas después de esta hora cuentan como día siguiente.</p>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Período de cortesía (horas)</label>
-                    <input type="number" className="form-input" value={graceHours} min={0} max={72} step={1} placeholder="Sin cortesía" disabled={!isSuperAdmin} onChange={(e) => setGraceHours(e.target.value)} />
-                    <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Horas de exceso a partir de las cuales se suma un día adicional al precio.</p>
-                  </div>
-                  <div className="form-group col-span-2">
-                    <label className="form-label">Tiempo de solape en planning (horas)</label>
-                    <input type="number" className="form-input" value={overlapMinHours} min={0} max={48} step={1} placeholder="2" disabled={!isSuperAdmin} onChange={(e) => setOverlapMinHours(e.target.value)} style={{ maxWidth: 160 }} />
-                    <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Margen mínimo entre fin de una reserva e inicio de la siguiente antes de marcarla como solape en el planning.</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tarifa nocturna */}
-              <div className={styles.cfgSection}>
-                <div className={styles.cfgSectionTitle}>Tarifa nocturna</div>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label className="form-label">Hora de inicio (0–23)</label>
-                    <input type="number" className="form-input" value={nightFeeFromHour} min={0} max={23} step={1} placeholder="Ej: 22" disabled={!isSuperAdmin} onChange={(e) => setNightFeeFromHour(e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Hora de fin (0–23)</label>
-                    <input type="number" className="form-input" value={nightFeeToHour} min={0} max={23} step={1} placeholder="Ej: 8" disabled={!isSuperAdmin} onChange={(e) => setNightFeeToHour(e.target.value)} />
-                  </div>
-                  <div className="form-group col-span-2">
-                    <label className="form-label">Precio tarifa nocturna (€)</label>
-                    <input type="number" className="form-input" value={nightFeePrice} min={0} step={0.01} placeholder="0.00 — vacío = no aplica" disabled={!isSuperAdmin} onChange={(e) => setNightFeePrice(e.target.value)} style={{ maxWidth: 200 }} />
-                    <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Recargo aplicable a entregas y recogidas fuera del horario habitual. Dejar vacío para desactivar.</p>
-                  </div>
-                </div>
-              </div>
-
-              {isSuperAdmin && (
-                <div style={{ marginTop: 8, paddingTop: 20, borderTop: '1px solid var(--color-border)' }}>
-                  <button className="btn btn-primary" onClick={saveConfig} disabled={cfgSaving}>
-                    {cfgSaving ? 'Guardando…' : 'Guardar configuración'}
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
 
       {/* ── User modal ── */}
       {userModal && (
@@ -736,6 +738,7 @@ const GESTOR_TABS = [
   { key: 'gestion',       label: 'Usuarios y Sucursales' },
   { key: 'canales',       label: 'Canales de venta' },
   { key: 'tarifas',       label: 'Tarifas' },
+  { key: 'config',        label: 'Config. operativa' },
   { key: 'plantillas',    label: 'Plantillas' },
   { key: 'backups',       label: 'Backups' },
 ];
@@ -802,6 +805,7 @@ function GestorInner() {
       {tab === 'gestion'       && <UsuariosYSucursalesTab myRole={myRole} myUserId={myUserId} />}
       {tab === 'canales'       && <CanalesTab myRole={myRole} />}
       {tab === 'tarifas'       && <TarifasPage />}
+      {tab === 'config'        && <ConfigOperativaTab myRole={myRole} />}
       {(tab === 'plantillas' || tab === 'backups') && (
         <div className="empty-state" style={{ marginTop: 32 }}>
           <div className="empty-state__icon">🚧</div>

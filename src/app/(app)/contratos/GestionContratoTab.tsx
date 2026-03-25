@@ -5,7 +5,7 @@ import type { Client, VehicleCategory, CompanyBranch, TariffPlan, FleetVehicle, 
 import DatePicker from '@/src/components/DatePicker';
 import styles from '../reservas/gestion.module.css';
 import CrearClienteModal from '../reservas/CrearClienteModal';
-import ExtrasTabContent, { type FormExtra } from '../reservas/ExtrasTabContent';
+import ExtrasTabContent, { type FormExtra, type NightFeeConfig } from '../reservas/ExtrasTabContent';
 import SegurosTabContent, { type FormInsurance } from '../reservas/SegurosTabContent';
 import ConductoresTabContent, { type FormConductor } from '../reservas/ConductoresTabContent';
 import ClientAutocompleteInput from '../reservas/ClientAutocompleteInput';
@@ -42,6 +42,7 @@ interface FormState {
   lockPlate: boolean;
   vehicleTabIn: 'seguros' | 'extras';
   notesTab: 'publicas' | 'privadas' | 'conductores';
+  nightFeeApplied: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -90,6 +91,7 @@ function blankForm(branches: CompanyBranch[], categories: VehicleCategory[]): Fo
     lockPlate: false,
     vehicleTabIn: 'seguros',
     notesTab: 'publicas',
+    nightFeeApplied: false,
   };
 }
 
@@ -138,10 +140,11 @@ export default function GestionContratoTab() {
   const [saved, setSaved] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showCrearCliente, setShowCrearCliente] = useState(false);
+  const [nightFeeConfig, setNightFeeConfig] = useState<NightFeeConfig | null>(null);
 
   useEffect(() => {
     async function load() {
-      const [clientsRes, catRes, brRes, tarRes, extrasRes, segurosRes, locRes] = await Promise.all([
+      const [clientsRes, catRes, brRes, tarRes, extrasRes, segurosRes, locRes, empresaRes] = await Promise.all([
         fetch('/api/clientes'),
         fetch('/api/categorias'),
         fetch('/api/sucursales'),
@@ -149,6 +152,7 @@ export default function GestionContratoTab() {
         fetch('/api/vehiculos/extras').catch(() => null),
         fetch('/api/vehiculos/seguros').catch(() => null),
         fetch('/api/locations').catch(() => null),
+        fetch('/api/gestor/empresa').catch(() => null),
       ]);
       const clientsData  = clientsRes.ok   ? (await clientsRes.json()).clients      ?? [] : [];
       const catData      = catRes.ok       ? (await catRes.json()).categories        ?? [] : [];
@@ -157,6 +161,7 @@ export default function GestionContratoTab() {
       const extrasData   = extrasRes?.ok   ? (await extrasRes.json()).extras         ?? [] : [];
       const segurosData  = segurosRes?.ok  ? (await segurosRes.json()).insurances    ?? [] : [];
       const locData      = locRes?.ok      ? (await locRes.json()).locations         ?? [] : [];
+      const settings     = empresaRes?.ok  ? (await empresaRes.json()).settings      ?? {} : {};
       setClients(clientsData);
       setCategories(catData);
       setBranches(brData);
@@ -165,6 +170,9 @@ export default function GestionContratoTab() {
       setCatalogInsurances(segurosData);
       setLocations(locData);
       setForm(blankForm(brData, catData));
+      if (settings.nightFeePrice != null && settings.nightFeeFromHour != null && settings.nightFeeToHour != null) {
+        setNightFeeConfig({ fromHour: settings.nightFeeFromHour, toHour: settings.nightFeeToHour, price: settings.nightFeePrice });
+      }
     }
     load();
   }, []);
@@ -233,13 +241,14 @@ export default function GestionContratoTab() {
 
   function recalcTotal(updated?: Partial<FormState>) {
     const f = { ...form, ...updated };
-    const base = parseFloat(f.basePrice) || 0;
-    const disc = parseFloat(f.discount) || 0;
-    const ins  = parseFloat(f.insuranceTotal) || 0;
-    const ext  = parseFloat(f.extrasTotal) || 0;
-    const fuel = parseFloat(f.fuelCharge) || 0;
-    const extn = parseFloat(f.extension) || 0;
-    setForm((prev) => ({ ...prev, ...updated, total: (base - disc + ins + ext + fuel + extn).toFixed(2) }));
+    const base  = parseFloat(f.basePrice) || 0;
+    const disc  = parseFloat(f.discount) || 0;
+    const ins   = parseFloat(f.insuranceTotal) || 0;
+    const ext   = parseFloat(f.extrasTotal) || 0;
+    const fuel  = parseFloat(f.fuelCharge) || 0;
+    const extn  = parseFloat(f.extension) || 0;
+    const night = (f.nightFeeApplied && nightFeeConfig) ? nightFeeConfig.price : 0;
+    setForm((prev) => ({ ...prev, ...updated, total: (base - disc + ins + ext + fuel + extn + night).toFixed(2) }));
   }
 
   function handleNumBlur(field: keyof FormState) {
@@ -481,6 +490,9 @@ export default function GestionContratoTab() {
                     formExtras={formExtras}
                     billedDays={parseInt(form.billedDays) || 1}
                     onChange={setFormExtras}
+                    nightFeeConfig={nightFeeConfig}
+                    nightFeeApplied={form.nightFeeApplied}
+                    onNightFeeToggle={(v) => { set('nightFeeApplied', v); recalcTotal({ nightFeeApplied: v }); }}
                   />
                 )}
               </div>
