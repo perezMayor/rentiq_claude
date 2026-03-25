@@ -12,7 +12,7 @@ import type {
 } from '@/src/lib/types';
 import DatePicker from '@/src/components/DatePicker';
 import styles from './gestion.module.css';
-import ExtrasTabContent, { type FormExtra } from './ExtrasTabContent';
+import ExtrasTabContent, { type FormExtra, type NightFeeConfig } from './ExtrasTabContent';
 import SegurosTabContent, { type FormInsurance } from './SegurosTabContent';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -25,6 +25,7 @@ interface PlanDetail {
 interface FormState {
   clientName: string;
   clientEmail: string;
+  nightFeeApplied: boolean;
   startDate: string;
   startTime: string;
   endDate: string;
@@ -89,6 +90,7 @@ function blankForm(): FormState {
   return {
     clientName:     '',
     clientEmail:    '',
+    nightFeeApplied: false,
     startDate:      start,
     startTime:      '09:00',
     endDate:        end,
@@ -118,6 +120,7 @@ export default function PresupuestosTab() {
   const [planDetail, setPlanDetail] = useState<PlanDetail | null>(null);
   const [formExtras, setFormExtras]         = useState<FormExtra[]>([]);
   const [formInsurances, setFormInsurances] = useState<FormInsurance[]>([]);
+  const [nightFeeConfig, setNightFeeConfig] = useState<NightFeeConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [form, setForm] = useState<FormState>(blankForm);
@@ -134,17 +137,23 @@ export default function PresupuestosTab() {
       fetch('/api/vehiculos/categorias').catch(() => null),
       fetch('/api/vehiculos/extras').catch(() => null),
       fetch('/api/vehiculos/seguros').catch(() => null),
-    ]).then(([t, c, e, s]) => {
+      fetch('/api/gestor/empresa').catch(() => null),
+    ]).then(([t, c, e, s, g]) => {
       Promise.all([
         t?.ok ? t.json() : Promise.resolve({}),
         c?.ok ? c.json() : Promise.resolve({}),
         e?.ok ? e.json() : Promise.resolve({}),
         s?.ok ? s.json() : Promise.resolve({}),
-      ]).then(([td, cd, ed, sd]) => {
+        g?.ok ? g.json() : Promise.resolve({}),
+      ]).then(([td, cd, ed, sd, gd]) => {
         setPlans((td.plans ?? []).filter((p: TariffPlan) => p.active));
         setCategories((cd.categories ?? []).filter((x: VehicleCategory) => x.active));
         setCatalogExtras((ed.extras ?? []).filter((x: VehicleExtra) => x.active));
         setCatalogInsurances((sd.insurances ?? []).filter((x: VehicleInsurance) => x.active));
+        const cfg = gd.settings ?? {};
+        if (cfg.nightFeePrice != null && cfg.nightFeeFromHour != null && cfg.nightFeeToHour != null) {
+          setNightFeeConfig({ price: cfg.nightFeePrice, fromHour: cfg.nightFeeFromHour, toHour: cfg.nightFeeToHour });
+        }
       });
     }).finally(() => setLoading(false));
   }, []);
@@ -262,7 +271,8 @@ export default function PresupuestosTab() {
     const ins   = parseFloat(f.insuranceTotal)  || 0;
     const ext   = parseFloat(f.extrasTotal)     || 0;
     const fuel  = parseFloat(f.fuelCharge)      || 0;
-    const total = Math.max(0, base - disc + ins + ext + fuel);
+    const night = (f.nightFeeApplied && nightFeeConfig) ? nightFeeConfig.price : 0;
+    const total = Math.max(0, base - disc + ins + ext + fuel + night);
     setForm((prev) => ({ ...prev, ...updated, total: total.toFixed(2) }));
   }
 
@@ -473,6 +483,9 @@ export default function PresupuestosTab() {
                     formExtras={formExtras}
                     billedDays={parseInt(form.billedDays) || 1}
                     onChange={setFormExtras}
+                    nightFeeConfig={nightFeeConfig}
+                    nightFeeApplied={form.nightFeeApplied}
+                    onNightFeeToggle={(v) => recalcTotal({ nightFeeApplied: v })}
                   />
                 )}
               </div>

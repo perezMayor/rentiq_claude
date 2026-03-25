@@ -30,18 +30,20 @@ export async function PUT(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { name, nif, address, phone, email, invoiceSeries, ivaPercent, defaultBranchId, deliveryLocations, overlapMinHours, graceHours } = body as {
-      name?: string;
-      nif?: string;
-      address?: string;
-      phone?: string;
-      email?: string;
-      invoiceSeries?: string;
-      ivaPercent?: number;
-      defaultBranchId?: string;
-      deliveryLocations?: string[];
-      overlapMinHours?: number;
-      graceHours?: number | null;
+    const {
+      name, nif, address, phone, email, invoiceSeries, ivaPercent, defaultBranchId,
+      deliveryLocations, overlapMinHours, graceHours,
+      dayChangeCutoffHour, minReservationDays, minAdvanceHours,
+      quoteValidityDays, defaultDeposit,
+      nightFeeFromHour, nightFeeToHour, nightFeePrice,
+    } = body as {
+      name?: string; nif?: string; address?: string; phone?: string; email?: string;
+      invoiceSeries?: string; ivaPercent?: number; defaultBranchId?: string;
+      deliveryLocations?: string[]; overlapMinHours?: number; graceHours?: number | null;
+      dayChangeCutoffHour?: number | null; minReservationDays?: number | null;
+      minAdvanceHours?: number | null; quoteValidityDays?: number | null;
+      defaultDeposit?: number | null;
+      nightFeeFromHour?: number | null; nightFeeToHour?: number | null; nightFeePrice?: number | null;
     };
 
     const updated = withStoreWrite((store) => {
@@ -69,9 +71,15 @@ export async function PUT(req: NextRequest) {
       if (typeof overlapMinHours === 'number' && overlapMinHours >= 0) {
         store.settings.overlapMinHours = overlapMinHours;
       }
-      if (graceHours !== undefined) {
-        store.settings.graceHours = graceHours ?? undefined;
-      }
+      if (graceHours !== undefined) store.settings.graceHours = graceHours ?? undefined;
+      if (dayChangeCutoffHour !== undefined) store.settings.dayChangeCutoffHour = dayChangeCutoffHour ?? undefined;
+      if (minReservationDays !== undefined) store.settings.minReservationDays = minReservationDays ?? undefined;
+      if (minAdvanceHours !== undefined) store.settings.minAdvanceHours = minAdvanceHours ?? undefined;
+      if (quoteValidityDays !== undefined) store.settings.quoteValidityDays = quoteValidityDays ?? undefined;
+      if (defaultDeposit !== undefined) store.settings.defaultDeposit = defaultDeposit ?? undefined;
+      if (nightFeeFromHour !== undefined) store.settings.nightFeeFromHour = nightFeeFromHour ?? undefined;
+      if (nightFeeToHour !== undefined) store.settings.nightFeeToHour = nightFeeToHour ?? undefined;
+      if (nightFeePrice !== undefined) store.settings.nightFeePrice = nightFeePrice ?? undefined;
       return { ...store.settings };
     });
 

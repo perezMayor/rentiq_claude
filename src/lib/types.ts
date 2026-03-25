@@ -46,7 +46,15 @@ export interface CompanySettings {
   ivaPercent: number;
   deliveryLocations: string[]; // lugares de entrega/recogida configurados
   overlapMinHours: number;
-  graceHours?: number; // horas de cortesía antes de contar un día adicional
+  graceHours?: number;          // horas de cortesía antes de contar un día adicional
+  dayChangeCutoffHour?: number; // hora de corte para cambio de día (0-23)
+  minReservationDays?: number;  // días mínimos por reserva
+  minAdvanceHours?: number;     // antelación mínima en horas para crear reserva
+  quoteValidityDays?: number;   // días de validez de un presupuesto
+  defaultDeposit?: number;      // importe de depósito por defecto (€)
+  nightFeeFromHour?: number;    // hora de inicio tarifa nocturna (0-23)
+  nightFeeToHour?: number;      // hora de fin tarifa nocturna (0-23)
+  nightFeePrice?: number;       // precio de la tarifa nocturna (€)
 }
 
 export interface WeeklySchedule {

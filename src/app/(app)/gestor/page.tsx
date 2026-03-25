@@ -64,8 +64,16 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
   const [newLoc, setNewLoc] = useState('');
 
   // Configuración global
-  const [graceHours, setGraceHours] = useState<string>('');
-  const [overlapMinHours, setOverlapMinHours] = useState<string>('');
+  const [graceHours, setGraceHours] = useState('');
+  const [overlapMinHours, setOverlapMinHours] = useState('');
+  const [dayChangeCutoffHour, setDayChangeCutoffHour] = useState('');
+  const [minReservationDays, setMinReservationDays] = useState('');
+  const [minAdvanceHours, setMinAdvanceHours] = useState('');
+  const [quoteValidityDays, setQuoteValidityDays] = useState('');
+  const [defaultDeposit, setDefaultDeposit] = useState('');
+  const [nightFeeFromHour, setNightFeeFromHour] = useState('');
+  const [nightFeeToHour, setNightFeeToHour] = useState('');
+  const [nightFeePrice, setNightFeePrice] = useState('');
   const [cfgLoading, setCfgLoading] = useState(false);
   const [cfgSaving, setCfgSaving] = useState(false);
   const [cfgError, setCfgError] = useState('');
@@ -107,8 +115,17 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
       const res = await fetch('/api/gestor/empresa');
       if (!res.ok) throw new Error((await res.json()).error ?? 'Error');
       const s = (await res.json()).settings ?? {};
-      setGraceHours(s.graceHours != null ? String(s.graceHours) : '');
-      setOverlapMinHours(s.overlapMinHours != null ? String(s.overlapMinHours) : '');
+      const str = (v: unknown) => v != null ? String(v) : '';
+      setGraceHours(str(s.graceHours));
+      setOverlapMinHours(str(s.overlapMinHours));
+      setDayChangeCutoffHour(str(s.dayChangeCutoffHour));
+      setMinReservationDays(str(s.minReservationDays));
+      setMinAdvanceHours(str(s.minAdvanceHours));
+      setQuoteValidityDays(str(s.quoteValidityDays));
+      setDefaultDeposit(str(s.defaultDeposit));
+      setNightFeeFromHour(str(s.nightFeeFromHour));
+      setNightFeeToHour(str(s.nightFeeToHour));
+      setNightFeePrice(str(s.nightFeePrice));
     } catch (e) { setCfgError(e instanceof Error ? e.message : 'Error'); }
     finally { setCfgLoading(false); }
   }, []);
@@ -116,11 +133,19 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
   async function saveConfig() {
     setCfgSaving(true); setCfgError(''); setCfgOk(false);
     try {
-      const body: Record<string, unknown> = {};
-      if (graceHours === '') body.graceHours = null;
-      else { const n = parseInt(graceHours, 10); if (!isNaN(n) && n >= 0) body.graceHours = n; }
-      const ol = parseInt(overlapMinHours, 10);
-      if (!isNaN(ol) && ol >= 0) body.overlapMinHours = ol;
+      function numOrNull(v: string) { const n = parseFloat(v); return v === '' ? null : isNaN(n) ? null : n; }
+      const body = {
+        graceHours:           numOrNull(graceHours),
+        overlapMinHours:      numOrNull(overlapMinHours),
+        dayChangeCutoffHour:  numOrNull(dayChangeCutoffHour),
+        minReservationDays:   numOrNull(minReservationDays),
+        minAdvanceHours:      numOrNull(minAdvanceHours),
+        quoteValidityDays:    numOrNull(quoteValidityDays),
+        defaultDeposit:       numOrNull(defaultDeposit),
+        nightFeeFromHour:     numOrNull(nightFeeFromHour),
+        nightFeeToHour:       numOrNull(nightFeeToHour),
+        nightFeePrice:        numOrNull(nightFeePrice),
+      };
       const res = await fetch('/api/gestor/empresa', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -128,8 +153,12 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Error');
       const s = data.settings ?? {};
-      setGraceHours(s.graceHours != null ? String(s.graceHours) : '');
-      setOverlapMinHours(s.overlapMinHours != null ? String(s.overlapMinHours) : '');
+      const str = (v: unknown) => v != null ? String(v) : '';
+      setGraceHours(str(s.graceHours)); setOverlapMinHours(str(s.overlapMinHours));
+      setDayChangeCutoffHour(str(s.dayChangeCutoffHour)); setMinReservationDays(str(s.minReservationDays));
+      setMinAdvanceHours(str(s.minAdvanceHours)); setQuoteValidityDays(str(s.quoteValidityDays));
+      setDefaultDeposit(str(s.defaultDeposit));
+      setNightFeeFromHour(str(s.nightFeeFromHour)); setNightFeeToHour(str(s.nightFeeToHour)); setNightFeePrice(str(s.nightFeePrice));
       setCfgOk(true);
       setTimeout(() => setCfgOk(false), 3000);
     } catch (e) { setCfgError(e instanceof Error ? e.message : 'Error'); }
@@ -363,7 +392,7 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
 
       {/* ── Configuración ── */}
       {innerTab === 'configuracion' && (
-        <div style={{ maxWidth: 560 }}>
+        <div style={{ maxWidth: 600 }}>
           {cfgLoading ? (
             <div className={styles.loadingRow}>Cargando…</div>
           ) : (
@@ -371,46 +400,80 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
               {cfgError && <div className="alert alert-danger" style={{ marginBottom: 16 }}>{cfgError}</div>}
               {cfgOk && <div className="alert alert-success" style={{ marginBottom: 16 }}>Configuración guardada</div>}
 
-              <div className="form-grid">
-                <div className="form-group col-span-2">
-                  <label className="form-label">Período de cortesía (horas)</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={graceHours}
-                    min={0}
-                    max={72}
-                    step={1}
-                    placeholder="Dejar vacío para no aplicar"
-                    disabled={!isSuperAdmin}
-                    onChange={(e) => setGraceHours(e.target.value)}
-                  />
-                  <p style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-                    Horas de exceso sobre la hora de recogida a partir de las cuales se suma un día adicional al cálculo de precio.
-                  </p>
+              {/* Reservas */}
+              <div className={styles.cfgSection}>
+                <div className={styles.cfgSectionTitle}>Reservas</div>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label className="form-label">Días mínimos de reserva</label>
+                    <input type="number" className="form-input" value={minReservationDays} min={1} step={1} placeholder="Sin mínimo" disabled={!isSuperAdmin} onChange={(e) => setMinReservationDays(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Antelación mínima (horas)</label>
+                    <input type="number" className="form-input" value={minAdvanceHours} min={0} step={1} placeholder="Sin límite" disabled={!isSuperAdmin} onChange={(e) => setMinAdvanceHours(e.target.value)} />
+                  </div>
                 </div>
+              </div>
 
-                <div className="form-group col-span-2">
-                  <label className="form-label">Tiempo de solape en planning (horas)</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={overlapMinHours}
-                    min={0}
-                    max={48}
-                    step={1}
-                    placeholder="2"
-                    disabled={!isSuperAdmin}
-                    onChange={(e) => setOverlapMinHours(e.target.value)}
-                  />
-                  <p style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-                    Margen mínimo entre el fin de una reserva y el inicio de la siguiente para que no se marque como solape en el planning.
-                  </p>
+              {/* Presupuestos y contratos */}
+              <div className={styles.cfgSection}>
+                <div className={styles.cfgSectionTitle}>Presupuestos y contratos</div>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label className="form-label">Validez del presupuesto (días)</label>
+                    <input type="number" className="form-input" value={quoteValidityDays} min={1} step={1} placeholder="Sin caducidad" disabled={!isSuperAdmin} onChange={(e) => setQuoteValidityDays(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Depósito por defecto (€)</label>
+                    <input type="number" className="form-input" value={defaultDeposit} min={0} step={0.01} placeholder="0.00" disabled={!isSuperAdmin} onChange={(e) => setDefaultDeposit(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Cálculo de días */}
+              <div className={styles.cfgSection}>
+                <div className={styles.cfgSectionTitle}>Cálculo de días</div>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label className="form-label">Hora de corte de día (0–23)</label>
+                    <input type="number" className="form-input" value={dayChangeCutoffHour} min={0} max={23} step={1} placeholder="Sin corte" disabled={!isSuperAdmin} onChange={(e) => setDayChangeCutoffHour(e.target.value)} />
+                    <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Entregas/recogidas después de esta hora cuentan como día siguiente.</p>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Período de cortesía (horas)</label>
+                    <input type="number" className="form-input" value={graceHours} min={0} max={72} step={1} placeholder="Sin cortesía" disabled={!isSuperAdmin} onChange={(e) => setGraceHours(e.target.value)} />
+                    <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Horas de exceso a partir de las cuales se suma un día adicional al precio.</p>
+                  </div>
+                  <div className="form-group col-span-2">
+                    <label className="form-label">Tiempo de solape en planning (horas)</label>
+                    <input type="number" className="form-input" value={overlapMinHours} min={0} max={48} step={1} placeholder="2" disabled={!isSuperAdmin} onChange={(e) => setOverlapMinHours(e.target.value)} style={{ maxWidth: 160 }} />
+                    <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Margen mínimo entre fin de una reserva e inicio de la siguiente antes de marcarla como solape en el planning.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tarifa nocturna */}
+              <div className={styles.cfgSection}>
+                <div className={styles.cfgSectionTitle}>Tarifa nocturna</div>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label className="form-label">Hora de inicio (0–23)</label>
+                    <input type="number" className="form-input" value={nightFeeFromHour} min={0} max={23} step={1} placeholder="Ej: 22" disabled={!isSuperAdmin} onChange={(e) => setNightFeeFromHour(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Hora de fin (0–23)</label>
+                    <input type="number" className="form-input" value={nightFeeToHour} min={0} max={23} step={1} placeholder="Ej: 8" disabled={!isSuperAdmin} onChange={(e) => setNightFeeToHour(e.target.value)} />
+                  </div>
+                  <div className="form-group col-span-2">
+                    <label className="form-label">Precio tarifa nocturna (€)</label>
+                    <input type="number" className="form-input" value={nightFeePrice} min={0} step={0.01} placeholder="0.00 — vacío = no aplica" disabled={!isSuperAdmin} onChange={(e) => setNightFeePrice(e.target.value)} style={{ maxWidth: 200 }} />
+                    <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Recargo aplicable a entregas y recogidas fuera del horario habitual. Dejar vacío para desactivar.</p>
+                  </div>
                 </div>
               </div>
 
               {isSuperAdmin && (
-                <div style={{ marginTop: 24 }}>
+                <div style={{ marginTop: 8, paddingTop: 20, borderTop: '1px solid var(--color-border)' }}>
                   <button className="btn btn-primary" onClick={saveConfig} disabled={cfgSaving}>
                     {cfgSaving ? 'Guardando…' : 'Guardar configuración'}
                   </button>

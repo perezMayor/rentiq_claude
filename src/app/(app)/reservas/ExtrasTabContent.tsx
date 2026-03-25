@@ -15,14 +15,23 @@ export interface FormExtra {
   total: number;
 }
 
+export interface NightFeeConfig {
+  fromHour: number;
+  toHour: number;
+  price: number;
+}
+
 interface Props {
   catalogExtras: VehicleExtra[];
   formExtras: FormExtra[];
   billedDays: number;
   onChange: (extras: FormExtra[]) => void;
+  nightFeeConfig?: NightFeeConfig | null;
+  nightFeeApplied?: boolean;
+  onNightFeeToggle?: (v: boolean) => void;
 }
 
-export default function ExtrasTabContent({ catalogExtras, formExtras, billedDays, onChange }: Props) {
+export default function ExtrasTabContent({ catalogExtras, formExtras, billedDays, onChange, nightFeeConfig, nightFeeApplied, onNightFeeToggle }: Props) {
   const [selExtraId, setSelExtraId] = useState('');
   const [selPrice, setSelPrice]     = useState('');
 
@@ -192,6 +201,49 @@ export default function ExtrasTabContent({ catalogExtras, formExtras, billedDays
       {catalogExtras.filter((e) => e.active).length === 0 && (
         <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border)', paddingTop: 8 }}>
           No hay extras configurados en el sistema. Puedes añadirlos desde Vehículos → Extras.
+        </div>
+      )}
+
+      {/* ── Night Fee ── */}
+      {nightFeeConfig && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 12px',
+          background: nightFeeApplied ? 'rgba(43,108,189,0.07)' : 'var(--color-surface)',
+          border: `1px solid ${nightFeeApplied ? 'rgba(43,108,189,0.25)' : 'var(--color-border)'}`,
+          borderRadius: 6, marginTop: 4,
+          transition: 'background 0.15s, border-color 0.15s',
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+              🌙 Tarifa nocturna
+            </span>
+            <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
+              {String(nightFeeConfig.fromHour).padStart(2, '0')}:00 – {String(nightFeeConfig.toHour).padStart(2, '0')}:00 · {nightFeeConfig.price.toFixed(2)} €
+            </span>
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: onNightFeeToggle ? 'pointer' : 'default' }}>
+            <span style={{ fontSize: '0.8rem', color: nightFeeApplied ? 'var(--color-primary)' : 'var(--color-text-muted)', fontWeight: nightFeeApplied ? 600 : 400 }}>
+              {nightFeeApplied ? `+${nightFeeConfig.price.toFixed(2)} €` : 'No aplicada'}
+            </span>
+            <div
+              role="switch"
+              aria-checked={nightFeeApplied}
+              onClick={() => onNightFeeToggle?.(!nightFeeApplied)}
+              style={{
+                width: 36, height: 20, borderRadius: 10, position: 'relative', cursor: 'pointer',
+                background: nightFeeApplied ? 'var(--color-primary)' : 'var(--color-border)',
+                transition: 'background 0.2s',
+              }}
+            >
+              <div style={{
+                position: 'absolute', top: 2, left: nightFeeApplied ? 18 : 2,
+                width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                transition: 'left 0.2s',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              }} />
+            </div>
+          </label>
         </div>
       )}
     </div>
