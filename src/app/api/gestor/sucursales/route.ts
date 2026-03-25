@@ -31,12 +31,13 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { name, address, phone, email, contractPrefix, active } = body as {
+    const { name, address, phone, email, contractPrefix, invoicePrefix, active } = body as {
       name: string;
       address: string;
       phone: string;
       email: string;
       contractPrefix: string;
+      invoicePrefix?: string;
       active?: boolean;
     };
 
@@ -72,6 +73,7 @@ export async function POST(req: NextRequest) {
         email,
         active: active ?? true,
         contractPrefix: contractPrefix.toUpperCase(),
+        invoicePrefix: invoicePrefix?.toUpperCase() ?? undefined,
         contractCounter: 0,
         invoiceCounter: 0,
         schedule: defaultSchedule,

@@ -64,23 +64,27 @@ function planCovers(plan: TariffPlan, start: string, end: string): boolean {
 }
 
 function findBracket(brackets: TariffBracket[], days: number): TariffBracket | null {
-  const regular = brackets
+  // Sort ascending, find the largest bracket whose minDays <= days (proration reference)
+  const sorted = brackets
     .filter((b) => !b.isExtraDay)
     .sort((a, b) => a.minDays - b.minDays);
-  for (const b of regular) {
-    if (days >= b.minDays && (b.maxDays === null || days <= b.maxDays)) return b;
+  let match: TariffBracket | null = null;
+  for (const b of sorted) {
+    if (b.minDays <= days) match = b;
+    else break;
   }
-  return brackets.find((b) => b.isExtraDay) ?? null;
+  return match ?? sorted[0] ?? null;
 }
 
-function calcBaseFromCell(cell: TariffPrice | undefined, days: number): number {
+function calcBaseFromCell(cell: TariffPrice | undefined, days: number, bracketDays?: number): number {
   if (!cell) return 0;
   const t: TariffCellType = cell.pricingType ?? 'DIA';
   if (t === 'LIBRE') return 0;
-  if (t === 'FIJO')  return cell.price;
-  if (t === 'DIA')   return cell.price * days;
-  // KM and DIA_KM require km data — return day component only as base
-  if (t === 'DIA_KM') return cell.price * days;
+  if (t === 'DIA' || t === 'DIA_KM') return Math.round(cell.price * days * 100) / 100;
+  if (t === 'FIJO') {
+    const refDays = bracketDays && bracketDays > 0 ? bracketDays : days;
+    return Math.round((cell.price / refDays) * days * 100) / 100;
+  }
   return 0;
 }
 
@@ -197,7 +201,7 @@ export default function PresupuestosTab() {
 
   useEffect(() => {
     const days = parseInt(form.billedDays) || 1;
-    const base = calcBaseFromCell(priceCell, days);
+    const base = calcBaseFromCell(priceCell, days, matchedBracket?.minDays);
     setForm((prev) => {
       const disc  = parseFloat(prev.discount)       || 0;
       const ins   = parseFloat(prev.insuranceTotal) || 0;

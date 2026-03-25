@@ -109,14 +109,14 @@ function ConfigOperativaTab({ myRole }: { myRole: UserRole }) {
   if (cfgLoading) return <div className={styles.loadingRow}>Cargando…</div>;
 
   return (
-    <div style={{ maxWidth: 600 }}>
+    <div style={{ maxWidth: 900 }}>
       {cfgError && <div className="alert alert-danger" style={{ marginBottom: 16 }}>{cfgError}</div>}
       {cfgOk && <div className="alert alert-success" style={{ marginBottom: 16 }}>Configuración guardada</div>}
 
       {/* Reservas */}
       <div className={styles.cfgSection}>
         <div className={styles.cfgSectionTitle}>Reservas</div>
-        <div className="form-grid">
+        <div className="form-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
           <div className="form-group">
             <label className="form-label">Días mínimos de reserva</label>
             <input type="number" className="form-input" value={minReservationDays} min={1} step={1} placeholder="Sin mínimo" disabled={!isSuperAdmin} onChange={(e) => setMinReservationDays(e.target.value)} />
@@ -131,7 +131,7 @@ function ConfigOperativaTab({ myRole }: { myRole: UserRole }) {
       {/* Presupuestos y contratos */}
       <div className={styles.cfgSection}>
         <div className={styles.cfgSectionTitle}>Presupuestos y contratos</div>
-        <div className="form-grid">
+        <div className="form-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
           <div className="form-group">
             <label className="form-label">Validez del presupuesto (días)</label>
             <input type="number" className="form-input" value={quoteValidityDays} min={1} step={1} placeholder="Sin caducidad" disabled={!isSuperAdmin} onChange={(e) => setQuoteValidityDays(e.target.value)} />
@@ -146,7 +146,7 @@ function ConfigOperativaTab({ myRole }: { myRole: UserRole }) {
       {/* Cálculo de días */}
       <div className={styles.cfgSection}>
         <div className={styles.cfgSectionTitle}>Cálculo de días</div>
-        <div className="form-grid">
+        <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
           <div className="form-group">
             <label className="form-label">Hora de corte de día (0–23)</label>
             <input type="number" className="form-input" value={dayChangeCutoffHour} min={0} max={23} step={1} placeholder="Sin corte" disabled={!isSuperAdmin} onChange={(e) => setDayChangeCutoffHour(e.target.value)} />
@@ -157,9 +157,9 @@ function ConfigOperativaTab({ myRole }: { myRole: UserRole }) {
             <input type="number" className="form-input" value={graceHours} min={0} max={72} step={1} placeholder="Sin cortesía" disabled={!isSuperAdmin} onChange={(e) => setGraceHours(e.target.value)} />
             <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Horas de exceso a partir de las cuales se suma un día adicional al precio.</p>
           </div>
-          <div className="form-group col-span-2">
+          <div className="form-group">
             <label className="form-label">Tiempo de solape en planning (horas)</label>
-            <input type="number" className="form-input" value={overlapMinHours} min={0} max={48} step={1} placeholder="2" disabled={!isSuperAdmin} onChange={(e) => setOverlapMinHours(e.target.value)} style={{ maxWidth: 160 }} />
+            <input type="number" className="form-input" value={overlapMinHours} min={0} max={48} step={1} placeholder="2" disabled={!isSuperAdmin} onChange={(e) => setOverlapMinHours(e.target.value)} />
             <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Margen mínimo entre fin de una reserva e inicio de la siguiente antes de marcarla como solape en el planning.</p>
           </div>
         </div>
@@ -168,7 +168,7 @@ function ConfigOperativaTab({ myRole }: { myRole: UserRole }) {
       {/* Tarifa nocturna */}
       <div className={styles.cfgSection}>
         <div className={styles.cfgSectionTitle}>Tarifa nocturna</div>
-        <div className="form-grid">
+        <div className="form-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
           <div className="form-group">
             <label className="form-label">Hora de inicio (0–23)</label>
             <input type="number" className="form-input" value={nightFeeFromHour} min={0} max={23} step={1} placeholder="Ej: 22" disabled={!isSuperAdmin} onChange={(e) => setNightFeeFromHour(e.target.value)} />
@@ -177,9 +177,9 @@ function ConfigOperativaTab({ myRole }: { myRole: UserRole }) {
             <label className="form-label">Hora de fin (0–23)</label>
             <input type="number" className="form-input" value={nightFeeToHour} min={0} max={23} step={1} placeholder="Ej: 8" disabled={!isSuperAdmin} onChange={(e) => setNightFeeToHour(e.target.value)} />
           </div>
-          <div className="form-group col-span-2">
+          <div className="form-group">
             <label className="form-label">Precio tarifa nocturna (€)</label>
-            <input type="number" className="form-input" value={nightFeePrice} min={0} step={0.01} placeholder="0.00 — vacío = no aplica" disabled={!isSuperAdmin} onChange={(e) => setNightFeePrice(e.target.value)} style={{ maxWidth: 200 }} />
+            <input type="number" className="form-input" value={nightFeePrice} min={0} step={0.01} placeholder="0.00 — vacío = no aplica" disabled={!isSuperAdmin} onChange={(e) => setNightFeePrice(e.target.value)} />
             <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Recargo aplicable a entregas y recogidas fuera del horario habitual. Dejar vacío para desactivar.</p>
           </div>
         </div>
@@ -341,7 +341,7 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
       const res = await fetch(isEdit ? `/api/gestor/sucursales/${branchEdit.id}` : '/api/gestor/sucursales', {
         method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: branchEdit.name, address: branchEdit.address, phone: branchEdit.phone, email: branchEdit.email, contractPrefix: branchEdit.contractPrefix, active: branchEdit.active }),
+        body: JSON.stringify({ name: branchEdit.name, address: branchEdit.address, phone: branchEdit.phone, email: branchEdit.email, contractPrefix: branchEdit.contractPrefix, invoicePrefix: branchEdit.invoicePrefix, active: branchEdit.active }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Error');
@@ -547,6 +547,18 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
                 <div className="form-group">
                   <label className="form-label">Prefijo de contrato *</label>
                   <input type="text" className="form-input" value={branchEdit.contractPrefix ?? ''} onChange={(e) => setBranchEdit((b) => ({ ...b, contractPrefix: e.target.value.toUpperCase() }))} maxLength={6} disabled={branchModal === 'edit'} placeholder="MAD" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Serie facturas</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={branchEdit.invoicePrefix ?? ''}
+                    onChange={(e) => setBranchEdit((b) => ({ ...b, invoicePrefix: e.target.value.toUpperCase() }))}
+                    maxLength={6}
+                    placeholder={branchEdit.contractPrefix ?? 'Igual que contratos'}
+                  />
+                  <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Prefijo de facturas. Vacío = usa serie de contratos.</p>
                 </div>
                 <div className="form-group col-span-2">
                   <label className="form-label">Dirección *</label>

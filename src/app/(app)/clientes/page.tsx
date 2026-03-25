@@ -5,6 +5,7 @@ import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import type { ClientType, ReservationStatus } from '@/src/lib/types';
 import DatePicker from '@/src/components/DatePicker';
 import styles from './clientes.module.css';
+import PrintButton from '@/src/components/PrintButton';
 
 // ─── Local types ─────────────────────────────────────────────────────────────
 
@@ -869,6 +870,7 @@ function ClientesInner() {
           <h1 className="page-title">Clientes</h1>
           <p className="page-subtitle">{CLIENTES_TABS.find((t) => t.key === tab)?.label ?? tab}</p>
         </div>
+        <PrintButton />
       </div>
       <ClientesTabNav active={tab} />
       {tab === 'listado' && <ClientesContent />}

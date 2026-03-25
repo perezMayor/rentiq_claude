@@ -70,7 +70,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
       // Generate invoice
       const invoiceId = generateId();
-      const invoiceNumber = getNextInvoiceNumber(store, current.branchId);
+      const invoiceNumber = getNextInvoiceNumber(store, current.branchId, 'F');
 
       const ivaPercent = store.settings.ivaPercent ?? 21;
       const taxableBase =

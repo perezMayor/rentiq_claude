@@ -87,6 +87,7 @@ export interface CompanyBranch {
   email: string;
   active: boolean;
   contractPrefix: string;
+  invoicePrefix?: string;
   contractCounter: number;
   invoiceCounter: number;
   schedule: WeeklySchedule;

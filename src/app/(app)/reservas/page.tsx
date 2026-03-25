@@ -8,6 +8,7 @@ import ReservaForm from './ReservaForm';
 import GestionReservaTab from './GestionReservaTab';
 import PresupuestosTab from './PresupuestosTab';
 import styles from './reservas.module.css';
+import PrintButton from '@/src/components/PrintButton';
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
 
@@ -859,6 +860,7 @@ function ReservasPageInner() {
           <h1 className="page-title">Reservas</h1>
           <p className="page-subtitle">{TABS.find((t) => t.key === tab)?.label ?? tab}</p>
         </div>
+        <PrintButton />
       </div>
       <TabNav active={tab} />
       {tab === 'gestion'     && <GestionReservaTab reservationId={reservationId} />}

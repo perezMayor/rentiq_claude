@@ -608,3 +608,96 @@ table.data-table tbody tr:hover {
 .page-enter {
   animation: pageIn 0.28s ease both;
 }
+
+/* ── Print / PDF ─────────────────────────────────────────────────────────── */
+
+@media print {
+  /* Hide navigation and UI chrome */
+  aside,
+  nav,
+  .sidebar,
+  [class*="sidebar"],
+  [class*="Sidebar"],
+  header:not(.print-header),
+  .page-header .btn,
+  .page-header button,
+  .btn,
+  button:not(.print-show),
+  [class*="modal"],
+  [class*="toast"],
+  [class*="tooltip"],
+  [class*="dropdown"],
+  [class*="overlay"],
+  [class*="tabNav"],
+  [class*="tabs"],
+  input,
+  select {
+    display: none !important;
+  }
+
+  /* Show full width content */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt;
+  }
+
+  main,
+  [class*="main"],
+  [class*="content"],
+  [class*="pageContent"],
+  [class*="innerContent"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  /* Page header: keep title, hide buttons */
+  .page-header {
+    display: flex !important;
+    margin-bottom: 12pt !important;
+  }
+
+  /* Tables */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 9pt;
+  }
+
+  table th,
+  table td {
+    border: 1px solid #ccc !important;
+    padding: 4pt 6pt !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  table thead th {
+    background: #f5f5f5 !important;
+    font-weight: 600 !important;
+  }
+
+  /* Page breaks */
+  tr {
+    page-break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  /* Print-specific title */
+  .print-title {
+    display: block !important;
+    font-size: 14pt;
+    font-weight: 700;
+    margin-bottom: 8pt;
+  }
+
+  /* Hide print button itself */
+  .no-print {
+    display: none !important;
+  }
+}

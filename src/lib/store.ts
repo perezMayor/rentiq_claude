@@ -109,17 +109,17 @@ export function getNextContractNumber(store: RentalStore, branchId: string): str
   const branch = store.branches.find((b) => b.id === branchId);
   if (!branch) throw new Error(`Branch not found: ${branchId}`);
   branch.contractCounter += 1;
-  const year = new Date().getFullYear();
-  return `${branch.contractPrefix}-${year}-${String(branch.contractCounter).padStart(6, '0')}`;
+  const yy = String(new Date().getFullYear()).slice(-2);
+  return `${branch.contractPrefix}-${yy}-${String(branch.contractCounter).padStart(6, '0')}`;
 }
 
-export function getNextInvoiceNumber(store: RentalStore, branchId: string): string {
+export function getNextInvoiceNumber(store: RentalStore, branchId: string, type: string = 'F'): string {
   const branch = store.branches.find((b) => b.id === branchId);
   if (!branch) throw new Error(`Branch not found: ${branchId}`);
   branch.invoiceCounter += 1;
-  const year = new Date().getFullYear();
-  const series = store.settings.invoiceSeries ?? 'F';
-  return `${series}-${year}-${String(branch.invoiceCounter).padStart(6, '0')}`;
+  const yy = String(new Date().getFullYear()).slice(-2);
+  const prefix = branch.contractPrefix;
+  return `${type}-${prefix}-${yy}-${String(branch.invoiceCounter).padStart(6, '0')}`;
 }
 
 export function generateId(): string {

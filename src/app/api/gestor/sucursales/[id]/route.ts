@@ -36,12 +36,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   try {
     const body = await req.json();
-    const { name, address, phone, email, active } = body as {
+    const { name, address, phone, email, active, invoicePrefix } = body as {
       name?: string;
       address?: string;
       phone?: string;
       email?: string;
       active?: boolean;
+      invoicePrefix?: string;
     };
 
     const updated = withStoreWrite((store) => {
@@ -54,6 +55,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
       if (phone) branch.phone = phone;
       if (email) branch.email = email;
       if (active !== undefined) branch.active = active;
+      if (invoicePrefix !== undefined) branch.invoicePrefix = invoicePrefix?.toUpperCase() || undefined;
       return branch;
     });
 

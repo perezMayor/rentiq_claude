@@ -13,6 +13,7 @@ import DatePicker from '@/src/components/DatePicker';
 import ContratoDetail from './ContratoDetail';
 import GestionContratoTab from './GestionContratoTab';
 import styles from './contratos.module.css';
+import PrintButton from '@/src/components/PrintButton';
 
 type StoreData = {
   clients: Client[];
@@ -326,6 +327,7 @@ function ContratosInner() {
           <h1 className="page-title">Contratos</h1>
           <p className="page-subtitle">{CONTRATOS_TABS.find((t) => t.key === tab)?.label ?? tab}</p>
         </div>
+        <PrintButton />
       </div>
       <ContratosTabNav active={tab} />
       {tab === 'gestion' && <GestionContratoTab />}

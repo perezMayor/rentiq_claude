@@ -284,6 +284,14 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.billedDays]);
 
+  // ── Auto-compute tariff price when dates/category/billedDays change ──────
+  useEffect(() => {
+    if (!isEdit) { // Only auto-compute for new reservations
+      void computeTariffPrice();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.startDate, form.endDate, form.categoryId, form.billedDays]);
+
   // ── Load vehicles when category changes ──────────────────────────────────
 
   useEffect(() => {
@@ -331,6 +339,24 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
 
   function handleNumBlur(field: keyof FormState) {
     recalcTotal({ [field]: form[field] } as Partial<FormState>);
+  }
+
+  async function computeTariffPrice() {
+    if (!form.startDate || !form.endDate || !form.categoryId) return;
+    const days = parseInt(form.billedDays) || 1;
+    try {
+      const res = await fetch('/api/tarifas/calcular', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startDate: form.startDate, endDate: form.endDate, totalDays: days, categoryId: form.categoryId }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.total > 0) {
+        setForm((prev) => ({ ...prev, basePrice: String(data.total) }));
+        recalcTotal({ basePrice: String(data.total) });
+      }
+    } catch { /* silently ignore — user can set manually */ }
   }
 
   // ── Submit ───────────────────────────────────────────────────────────────
@@ -653,8 +679,30 @@ export default function GestionReservaTab({ reservationId }: { reservationId?: s
               </select>
             </div>
 
+            <div className={styles.liqRow}>
+              <span className={styles.liqLabel}>Alquiler</span>
+              <input
+                className={styles.liqInput}
+                type="number"
+                min={0}
+                step="0.01"
+                value={form.basePrice}
+                onChange={(e) => set('basePrice', e.target.value)}
+                onBlur={() => handleNumBlur('basePrice')}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -2, marginBottom: 2 }}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => void computeTariffPrice()}
+                title="Recalcular precio según tarifa"
+                style={{ marginTop: 2, whiteSpace: 'nowrap', fontSize: '0.78rem' }}
+              >
+                ↻ Tarifa
+              </button>
+            </div>
             {([
-              { label: 'Alquiler',     field: 'basePrice'      },
               { label: 'Descuento',    field: 'discount'       },
               { label: 'Seguro',       field: 'insuranceTotal' },
               { label: 'Franquicia',   field: 'franchise'      },
