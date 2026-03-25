@@ -152,6 +152,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
   const [filterBranch, setFilterBranch] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterPlate, setFilterPlate] = useState('');
+  const [hasSearchedFlota, setHasSearchedFlota] = useState(false);
 
   // Modal state
   const [vehicleModal, setVehicleModal] = useState<'create' | 'edit' | null>(null);
@@ -630,7 +631,6 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
             + Nuevo Seguro
           </button>
         )}
-        <PrintButton />
       </div>
 
       {/* ── TAB: FLOTA ─────────────────────────────────────────────────────── */}
@@ -641,14 +641,14 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
               <input
                 type="checkbox"
                 checked={filterActive}
-                onChange={(e) => setFilterActive(e.target.checked)}
+                onChange={(e) => { setFilterActive(e.target.checked); setHasSearchedFlota(true); }}
               />
               Solo activos
             </label>
             <select
               className="form-select"
               value={filterBranch}
-              onChange={(e) => setFilterBranch(e.target.value)}
+              onChange={(e) => { setFilterBranch(e.target.value); setHasSearchedFlota(true); }}
             >
               <option value="">Todas las sucursales</option>
               {branches.map((b) => (
@@ -660,7 +660,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
             <select
               className="form-select"
               value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
+              onChange={(e) => { setFilterCategory(e.target.value); setHasSearchedFlota(true); }}
             >
               <option value="">Todas las categorías</option>
               {categories.map((c) => (
@@ -673,10 +673,13 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
               className="form-input"
               placeholder="Buscar matrícula..."
               value={filterPlate}
-              onChange={(e) => setFilterPlate(e.target.value)}
+              onChange={(e) => { setFilterPlate(e.target.value); setHasSearchedFlota(true); }}
             />
           </div>
 
+          {!hasSearchedFlota ? (
+            <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', padding: '24px 0', textAlign: 'center' }}>Aplica los filtros para ver el listado.</div>
+          ) : (
           <div className="table-wrapper">
             <table className="data-table">
               <thead>
@@ -742,6 +745,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
               </tbody>
             </table>
           </div>
+          )}
         </>
       )}
 

@@ -665,6 +665,7 @@ function ListadoTab() {
   const [storeData, setStoreData] = useState<StoreData>({ clients: [], categories: [], branches: [], userRole: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
 
   const [filterStatus, setFilterStatus] = useState('');
   const [filterBranch, setFilterBranch] = useState('');
@@ -745,22 +746,22 @@ function ListadoTab() {
   return (
     <div>
       <div className="filters-bar">
-        <select className="form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ width: 'auto' }}>
+        <select className="form-select" value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setHasSearched(true); }} style={{ width: 'auto' }}>
           <option value="">Todos los estados</option>
           <option value="PETICION">Petición</option>
           <option value="CONFIRMADA">Confirmada</option>
           <option value="CANCELADA">Cancelada</option>
         </select>
         {storeData.branches.length > 1 && (
-          <select className="form-select" value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)} style={{ width: 'auto' }}>
+          <select className="form-select" value={filterBranch} onChange={(e) => { setFilterBranch(e.target.value); setHasSearched(true); }} style={{ width: 'auto' }}>
             <option value="">Todas las sucursales</option>
             {storeData.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         )}
-        <DatePicker className="form-input" value={filterFrom} onChange={(v) => setFilterFrom(v)} style={{ width: 'auto' }} />
-        <DatePicker className="form-input" value={filterTo} onChange={(v) => setFilterTo(v)} style={{ width: 'auto' }} />
-        <input type="search" className="form-input" value={filterSearch} onChange={(e) => setFilterSearch(e.target.value)} placeholder="Buscar número, matrícula…" style={{ minWidth: 200 }} />
-        <button className="btn btn-ghost btn-sm" onClick={loadReservations}>Actualizar</button>
+        <DatePicker className="form-input" value={filterFrom} onChange={(v) => { setFilterFrom(v); setHasSearched(true); }} style={{ width: 'auto' }} />
+        <DatePicker className="form-input" value={filterTo} onChange={(v) => { setFilterTo(v); setHasSearched(true); }} style={{ width: 'auto' }} />
+        <input type="search" className="form-input" value={filterSearch} onChange={(e) => { setFilterSearch(e.target.value); setHasSearched(true); }} placeholder="Buscar número, matrícula…" style={{ minWidth: 200 }} />
+        <button className="btn btn-ghost btn-sm" onClick={() => { setHasSearched(true); loadReservations(); }}>Actualizar</button>
         <span style={{ marginLeft: 'auto', fontSize: '0.82rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
           {reservations.length} reserva{reservations.length !== 1 ? 's' : ''}
         </span>
@@ -774,7 +775,9 @@ function ListadoTab() {
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="table-wrapper">
-        {loading ? (
+        {!hasSearched ? (
+          <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', padding: '24px 0', textAlign: 'center' }}>Aplica los filtros para ver el listado.</div>
+        ) : loading ? (
           <div className={styles.loadingRow}>Cargando reservas…</div>
         ) : reservations.length === 0 ? (
           <div className="empty-state">
@@ -860,7 +863,7 @@ function ReservasPageInner() {
           <h1 className="page-title">Reservas</h1>
           <p className="page-subtitle">{TABS.find((t) => t.key === tab)?.label ?? tab}</p>
         </div>
-        <PrintButton />
+        {['entregas', 'recogidas', 'listado', 'canales', 'log'].includes(tab) && <PrintButton />}
       </div>
       <TabNav active={tab} />
       {tab === 'gestion'     && <GestionReservaTab reservationId={reservationId} />}

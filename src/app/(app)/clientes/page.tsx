@@ -164,6 +164,7 @@ function ClientesContent() {
   const [filterType, setFilterType] = useState<string>('');
   const [filterActive, setFilterActive] = useState(true);
   const [filterSearch, setFilterSearch] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
 
   // Form modal
   const [formModal, setFormModal] = useState<'create' | 'edit' | null>(null);
@@ -361,7 +362,7 @@ function ClientesContent() {
         <select
           className="form-select"
           value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
+          onChange={(e) => { setFilterType(e.target.value); setHasSearched(true); }}
         >
           <option value="">Todos los tipos</option>
           <option value="PARTICULAR">Particular</option>
@@ -373,7 +374,7 @@ function ClientesContent() {
           <input
             type="checkbox"
             checked={filterActive}
-            onChange={(e) => setFilterActive(e.target.checked)}
+            onChange={(e) => { setFilterActive(e.target.checked); setHasSearched(true); }}
           />
           Solo activos
         </label>
@@ -382,7 +383,7 @@ function ClientesContent() {
           className="form-input"
           placeholder="Buscar nombre, DNI, email..."
           value={filterSearch}
-          onChange={(e) => setFilterSearch(e.target.value)}
+          onChange={(e) => { setFilterSearch(e.target.value); setHasSearched(true); }}
           style={{ minWidth: 220 }}
         />
         <span style={{ marginLeft: 'auto', fontSize: '0.82rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
@@ -399,6 +400,9 @@ function ClientesContent() {
       {error && <div className="alert alert-danger">{error}</div>}
 
       {/* ── TABLE ─────────────────────────────────────────────────────────── */}
+      {!hasSearched ? (
+        <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', padding: '24px 0', textAlign: 'center' }}>Aplica los filtros para ver el listado.</div>
+      ) : (
       <div className="table-wrapper">
         <table className="data-table">
           <thead>
@@ -501,6 +505,7 @@ function ClientesContent() {
           </tbody>
         </table>
       </div>
+      )}
 
       {/* ── MODAL: FORM (create / edit) ───────────────────────────────────── */}
       {formModal !== null && (
@@ -870,7 +875,7 @@ function ClientesInner() {
           <h1 className="page-title">Clientes</h1>
           <p className="page-subtitle">{CLIENTES_TABS.find((t) => t.key === tab)?.label ?? tab}</p>
         </div>
-        <PrintButton />
+        {tab === 'listado' && <PrintButton />}
       </div>
       <ClientesTabNav active={tab} />
       {tab === 'listado' && <ClientesContent />}

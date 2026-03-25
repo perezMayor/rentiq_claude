@@ -351,6 +351,7 @@ function HistorialTab({ vehicles }: { vehicles: FleetVehicle[] }) {
   const [filterTo, setFilterTo] = useState('');
   const [filterPlate, setFilterPlate] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
 
   const [editingExpense, setEditingExpense] = useState<DailyExpense | null>(null);
   const [editFields, setEditFields] = useState<Partial<DailyExpense & { amount: number | string }>>({});
@@ -446,14 +447,14 @@ function HistorialTab({ vehicles }: { vehicles: FleetVehicle[] }) {
 
       {/* Filters */}
       <div className="filters-bar">
-        <DatePicker className="form-input" value={filterFrom} onChange={(v) => setFilterFrom(v)} style={{ width: 'auto' }} />
-        <DatePicker className="form-input" value={filterTo} onChange={(v) => setFilterTo(v)} style={{ width: 'auto' }} />
-        <input type="text" className="form-input" value={filterPlate} onChange={(e) => setFilterPlate(e.target.value)} placeholder="Matrícula" style={{ width: 130 }} />
-        <select className="form-select" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ width: 'auto' }}>
+        <DatePicker className="form-input" value={filterFrom} onChange={(v) => { setFilterFrom(v); setHasSearched(true); }} style={{ width: 'auto' }} />
+        <DatePicker className="form-input" value={filterTo} onChange={(v) => { setFilterTo(v); setHasSearched(true); }} style={{ width: 'auto' }} />
+        <input type="text" className="form-input" value={filterPlate} onChange={(e) => { setFilterPlate(e.target.value); setHasSearched(true); }} placeholder="Matrícula" style={{ width: 130 }} />
+        <select className="form-select" value={filterCategory} onChange={(e) => { setFilterCategory(e.target.value); setHasSearched(true); }} style={{ width: 'auto' }}>
           <option value="">Todas las categorías</option>
           {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
         </select>
-        <button className="btn btn-ghost btn-sm" onClick={loadExpenses}>Actualizar</button>
+        <button className="btn btn-ghost btn-sm" onClick={() => { setHasSearched(true); loadExpenses(); }}>Actualizar</button>
         {(filterFrom || filterTo || filterPlate || filterCategory) && (
           <button className="btn btn-ghost btn-sm" onClick={() => { setFilterFrom(''); setFilterTo(''); setFilterPlate(''); setFilterCategory(''); }}>
             Limpiar
@@ -464,7 +465,9 @@ function HistorialTab({ vehicles }: { vehicles: FleetVehicle[] }) {
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="table-wrapper">
-        {loading ? (
+        {!hasSearched ? (
+          <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', padding: '24px 0', textAlign: 'center' }}>Aplica los filtros para ver el listado.</div>
+        ) : loading ? (
           <div className={styles.loadingRow}>Cargando gastos…</div>
         ) : expenses.length === 0 ? (
           <div className="empty-state">
@@ -592,7 +595,7 @@ export default function GastosPage() {
           <h1 className="page-title">Gastos internos</h1>
           <p className="page-subtitle">Gastos operativos diarios — no facturables, asignados a vehículos</p>
         </div>
-        <PrintButton />
+        {tab === 'historial' && <PrintButton />}
       </div>
 
       <nav className={styles.tabNav}>

@@ -50,6 +50,7 @@ function FacturacionContent() {
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
   const [filterSearch, setFilterSearch] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
 
   // Detail modal
   const [selectedDetail, setSelectedDetail] = useState<InvoiceDetail | null>(null);
@@ -181,7 +182,7 @@ function FacturacionContent() {
         <select
           className="form-select"
           value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
+          onChange={(e) => { setFilterStatus(e.target.value); setHasSearched(true); }}
           style={{ width: 'auto' }}
         >
           <option value="">Todos los estados</option>
@@ -192,7 +193,7 @@ function FacturacionContent() {
           <select
             className="form-select"
             value={filterBranch}
-            onChange={(e) => setFilterBranch(e.target.value)}
+            onChange={(e) => { setFilterBranch(e.target.value); setHasSearched(true); }}
             style={{ width: 'auto' }}
           >
             <option value="">Todas las sucursales</option>
@@ -204,24 +205,24 @@ function FacturacionContent() {
         <DatePicker
           className="form-input"
           value={filterFrom}
-          onChange={(v) => setFilterFrom(v)}
+          onChange={(v) => { setFilterFrom(v); setHasSearched(true); }}
           style={{ width: 'auto' }}
         />
         <DatePicker
           className="form-input"
           value={filterTo}
-          onChange={(v) => setFilterTo(v)}
+          onChange={(v) => { setFilterTo(v); setHasSearched(true); }}
           style={{ width: 'auto' }}
         />
         <input
           type="search"
           className="form-input"
           value={filterSearch}
-          onChange={(e) => setFilterSearch(e.target.value)}
+          onChange={(e) => { setFilterSearch(e.target.value); setHasSearched(true); }}
           placeholder="Buscar número, contrato, cliente…"
           style={{ minWidth: 200 }}
         />
-        <button className="btn btn-ghost btn-sm" onClick={loadInvoices}>
+        <button className="btn btn-ghost btn-sm" onClick={() => { setHasSearched(true); loadInvoices(); }}>
           Actualizar
         </button>
       </div>
@@ -230,7 +231,9 @@ function FacturacionContent() {
 
       {/* Table */}
       <div className="table-wrapper">
-        {loading ? (
+        {!hasSearched ? (
+          <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', padding: '24px 0', textAlign: 'center' }}>Aplica los filtros para ver el listado.</div>
+        ) : loading ? (
           <div className={styles.loadingRow}>Cargando facturas…</div>
         ) : invoices.length === 0 ? (
           <div className="empty-state">
@@ -491,7 +494,7 @@ function FacturacionInner() {
           <h1 className="page-title">Facturación</h1>
           <p className="page-subtitle">{FACTURACION_TABS.find((t) => t.key === tab)?.label ?? tab}</p>
         </div>
-        <PrintButton />
+        {tab === 'diario' && <PrintButton />}
       </div>
       <FacturacionTabNav active={tab} />
       {tab === 'diario' && <FacturacionContent />}
