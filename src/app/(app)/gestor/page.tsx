@@ -30,7 +30,7 @@ const ROLE_CLASS: Record<UserRole, string> = {
 
 // ─── Usuarios y Sucursales ────────────────────────────────────────────────────
 
-type InnerTab = 'usuarios' | 'sucursales' | 'lugares';
+type InnerTab = 'usuarios' | 'sucursales' | 'lugares' | 'configuracion';
 
 function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUserId: string }) {
   const [innerTab, setInnerTab] = useState<InnerTab>('usuarios');
@@ -63,6 +63,14 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
   const [locSaving, setLocSaving] = useState(false);
   const [newLoc, setNewLoc] = useState('');
 
+  // Configuración global
+  const [graceHours, setGraceHours] = useState<string>('');
+  const [overlapMinHours, setOverlapMinHours] = useState<string>('');
+  const [cfgLoading, setCfgLoading] = useState(false);
+  const [cfgSaving, setCfgSaving] = useState(false);
+  const [cfgError, setCfgError] = useState('');
+  const [cfgOk, setCfgOk] = useState(false);
+
   const loadUsers = useCallback(async () => {
     setUsersLoading(true); setUsersError('');
     try {
@@ -92,6 +100,41 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
     } catch (e) { setLocError(e instanceof Error ? e.message : 'Error'); }
     finally { setLocLoading(false); }
   }, []);
+
+  const loadConfig = useCallback(async () => {
+    setCfgLoading(true); setCfgError('');
+    try {
+      const res = await fetch('/api/gestor/empresa');
+      if (!res.ok) throw new Error((await res.json()).error ?? 'Error');
+      const s = (await res.json()).settings ?? {};
+      setGraceHours(s.graceHours != null ? String(s.graceHours) : '');
+      setOverlapMinHours(s.overlapMinHours != null ? String(s.overlapMinHours) : '');
+    } catch (e) { setCfgError(e instanceof Error ? e.message : 'Error'); }
+    finally { setCfgLoading(false); }
+  }, []);
+
+  async function saveConfig() {
+    setCfgSaving(true); setCfgError(''); setCfgOk(false);
+    try {
+      const body: Record<string, unknown> = {};
+      if (graceHours === '') body.graceHours = null;
+      else { const n = parseInt(graceHours, 10); if (!isNaN(n) && n >= 0) body.graceHours = n; }
+      const ol = parseInt(overlapMinHours, 10);
+      if (!isNaN(ol) && ol >= 0) body.overlapMinHours = ol;
+      const res = await fetch('/api/gestor/empresa', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Error');
+      const s = data.settings ?? {};
+      setGraceHours(s.graceHours != null ? String(s.graceHours) : '');
+      setOverlapMinHours(s.overlapMinHours != null ? String(s.overlapMinHours) : '');
+      setCfgOk(true);
+      setTimeout(() => setCfgOk(false), 3000);
+    } catch (e) { setCfgError(e instanceof Error ? e.message : 'Error'); }
+    finally { setCfgSaving(false); }
+  }
 
   async function persistLocations(updated: string[]) {
     setLocSaving(true); setLocError('');
@@ -125,8 +168,9 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
   useEffect(() => {
     if (innerTab === 'usuarios') loadUsers();
     else if (innerTab === 'sucursales') loadBranches();
-    else loadLocations();
-  }, [innerTab, loadUsers, loadBranches, loadLocations]);
+    else if (innerTab === 'lugares') loadLocations();
+    else if (innerTab === 'configuracion') loadConfig();
+  }, [innerTab, loadUsers, loadBranches, loadLocations, loadConfig]);
 
   async function saveUser() {
     setUserSaving(true); setUserError('');
@@ -187,9 +231,9 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
     <div>
       {/* Inner tabs */}
       <div className={styles.tabs}>
-        {(['usuarios', 'sucursales', 'lugares'] as InnerTab[]).map((t) => (
+        {(['usuarios', 'sucursales', 'lugares', 'configuracion'] as InnerTab[]).map((t) => (
           <button key={t} className={`${styles.tab} ${innerTab === t ? styles.tabActive : ''}`} onClick={() => setInnerTab(t)}>
-            {t === 'usuarios' ? 'Usuarios' : t === 'sucursales' ? 'Sucursales' : 'Lugares de entrega'}
+            {t === 'usuarios' ? 'Usuarios' : t === 'sucursales' ? 'Sucursales' : t === 'lugares' ? 'Lugares de entrega' : 'Configuración'}
           </button>
         ))}
       </div>
@@ -314,6 +358,66 @@ function UsuariosYSucursalesTab({ myRole, myUserId }: { myRole: UserRole; myUser
             </div>
           )}
           {locSaving && <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 12 }}>Guardando…</p>}
+        </div>
+      )}
+
+      {/* ── Configuración ── */}
+      {innerTab === 'configuracion' && (
+        <div style={{ maxWidth: 560 }}>
+          {cfgLoading ? (
+            <div className={styles.loadingRow}>Cargando…</div>
+          ) : (
+            <>
+              {cfgError && <div className="alert alert-danger" style={{ marginBottom: 16 }}>{cfgError}</div>}
+              {cfgOk && <div className="alert alert-success" style={{ marginBottom: 16 }}>Configuración guardada</div>}
+
+              <div className="form-grid">
+                <div className="form-group col-span-2">
+                  <label className="form-label">Período de cortesía (horas)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={graceHours}
+                    min={0}
+                    max={72}
+                    step={1}
+                    placeholder="Dejar vacío para no aplicar"
+                    disabled={!isSuperAdmin}
+                    onChange={(e) => setGraceHours(e.target.value)}
+                  />
+                  <p style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+                    Horas de exceso sobre la hora de recogida a partir de las cuales se suma un día adicional al cálculo de precio.
+                  </p>
+                </div>
+
+                <div className="form-group col-span-2">
+                  <label className="form-label">Tiempo de solape en planning (horas)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={overlapMinHours}
+                    min={0}
+                    max={48}
+                    step={1}
+                    placeholder="2"
+                    disabled={!isSuperAdmin}
+                    onChange={(e) => setOverlapMinHours(e.target.value)}
+                  />
+                  <p style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+                    Margen mínimo entre el fin de una reserva y el inicio de la siguiente para que no se marque como solape en el planning.
+                  </p>
+                </div>
+              </div>
+
+              {isSuperAdmin && (
+                <div style={{ marginTop: 24 }}>
+                  <button className="btn btn-primary" onClick={saveConfig} disabled={cfgSaving}>
+                    {cfgSaving ? 'Guardando…' : 'Guardar configuración'}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 

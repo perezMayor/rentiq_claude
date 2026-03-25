@@ -41,13 +41,12 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { name, code, validFrom, validTo, active, graceHours } = body as {
+    const { name, code, validFrom, validTo, active } = body as {
       name: string;
       code: string;
       validFrom: string;
       validTo: string;
       active?: boolean;
-      graceHours?: number | null;
     };
 
     if (!name || !code || !validFrom || !validTo) {
@@ -69,7 +68,6 @@ export async function POST(req: NextRequest) {
         validFrom,
         validTo,
         active: active ?? true,
-        ...(graceHours != null ? { graceHours } : {}),
         createdAt: now,
       };
       store.tariffPlans.push(newPlan);

@@ -46,6 +46,7 @@ export interface CompanySettings {
   ivaPercent: number;
   deliveryLocations: string[]; // lugares de entrega/recogida configurados
   overlapMinHours: number;
+  graceHours?: number; // horas de cortesía antes de contar un día adicional
 }
 
 export interface WeeklySchedule {
@@ -359,7 +360,6 @@ export interface TariffPlan {
   validFrom: string;
   validTo: string;
   active: boolean;
-  graceHours?: number;
   createdAt: string;
 }
 

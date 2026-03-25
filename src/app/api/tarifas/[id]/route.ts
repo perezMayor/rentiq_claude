@@ -51,13 +51,12 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   try {
     const body = await req.json();
-    const { name, code, validFrom, validTo, active, graceHours } = body as {
+    const { name, code, validFrom, validTo, active } = body as {
       name?: string;
       code?: string;
       validFrom?: string;
       validTo?: string;
       active?: boolean;
-      graceHours?: number | null;
     };
 
     const updated = withStoreWrite((store) => {
@@ -69,7 +68,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
       if (validFrom) plan.validFrom = validFrom;
       if (validTo) plan.validTo = validTo;
       if (active !== undefined) plan.active = active;
-      if (graceHours !== undefined) plan.graceHours = graceHours ?? undefined;
       return plan;
     });
 
