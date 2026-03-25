@@ -496,7 +496,7 @@ export default function TarifasPage() {
             ) : detailLoading ? (
               <div className={styles.loadingRow}>Cargando…</div>
             ) : detail ? (
-              <>
+              <div className={styles.detailCard}>
                 {/* Header del plan */}
                 <div className={styles.detailHeader}>
                   <div className={styles.detailMeta}>
@@ -630,7 +630,7 @@ export default function TarifasPage() {
                     </button>
                   </div>
                 )}
-              </>
+              </div>
             ) : null}
           </div>
         </div>

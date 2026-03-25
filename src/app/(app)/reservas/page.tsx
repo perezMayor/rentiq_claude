@@ -6,6 +6,7 @@ import type { Reservation, Client, VehicleCategory, CompanyBranch, ReservationSt
 import DatePicker from '@/src/components/DatePicker';
 import ReservaForm from './ReservaForm';
 import GestionReservaTab from './GestionReservaTab';
+import PresupuestosTab from './PresupuestosTab';
 import styles from './reservas.module.css';
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
@@ -868,7 +869,7 @@ function ReservasPageInner() {
       {tab === 'log'         && <LogConfirmacionesTab />}
       {tab === 'planning'    && <PlanningRedirect />}
       {tab === 'informes'    && <PlaceholderTab label="Informes de reservas" />}
-      {tab === 'presupuesto' && <PlaceholderTab label="Presupuestos" />}
+      {tab === 'presupuesto' && <PresupuestosTab />}
     </div>
   );
 }

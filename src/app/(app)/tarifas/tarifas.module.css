@@ -2,16 +2,16 @@
 
 .layout {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 272px 1fr;
   gap: 20px;
   align-items: start;
 }
 
 .loadingRow {
-  padding: 40px;
+  padding: 48px;
   text-align: center;
   color: var(--color-text-muted);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 /* ─── Plan list ──────────────────────────────────────────────────────────────── */
@@ -19,56 +19,63 @@
 .planList {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .planCard {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+  border-left: 3px solid transparent;
   border-radius: var(--radius-md);
-  padding: 12px 14px;
+  padding: 13px 15px 11px;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.14s, background 0.14s, box-shadow 0.14s;
 }
 
 .planCard:hover {
-  border-color: var(--color-primary);
+  border-left-color: rgba(43, 108, 189, 0.4);
+  background: rgba(43, 108, 189, 0.02);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
 .planCardActive {
-  border-color: var(--color-primary);
-  background: rgba(43, 108, 189, 0.06);
+  border-left-color: var(--color-primary) !important;
+  background: rgba(43, 108, 189, 0.05) !important;
+  box-shadow: 0 1px 6px rgba(43, 108, 189, 0.12) !important;
 }
 
 .planCardHeader {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
 }
 
 .planName {
   font-weight: 600;
-  font-size: 0.88rem;
+  font-size: 0.875rem;
   color: var(--color-text-primary);
+  line-height: 1.3;
 }
 
 .planCode {
-  font-family: monospace;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  background: var(--color-surface-strong);
-  border: 1px solid var(--color-border);
+  font-family: 'SFMono-Regular', 'Consolas', monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: rgba(43, 108, 189, 0.08);
+  border: 1px solid rgba(43, 108, 189, 0.2);
   border-radius: 4px;
-  padding: 1px 6px;
+  padding: 1px 7px;
   flex-shrink: 0;
+  letter-spacing: 0.02em;
 }
 
 .planMeta {
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   color: var(--color-text-muted);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 /* ─── Detail area ────────────────────────────────────────────────────────────── */
@@ -77,16 +84,23 @@
   min-width: 0;
 }
 
+/* Container unificado: header + tabla + footer dentro de una card */
+.detailCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
 .detailHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 16px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
-  border-bottom: none;
+  padding: 14px 18px;
+  background: var(--color-surface-strong);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .detailMeta {
@@ -94,26 +108,29 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .detailName {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.95rem;
   color: var(--color-text-primary);
 }
 
 .detailCode {
-  font-family: monospace;
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-  background: var(--color-surface-strong);
-  border: 1px solid var(--color-border);
+  font-family: 'SFMono-Regular', 'Consolas', monospace;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: rgba(43, 108, 189, 0.08);
+  border: 1px solid rgba(43, 108, 189, 0.2);
   border-radius: 4px;
   padding: 2px 8px;
+  letter-spacing: 0.03em;
 }
 
 .detailDates {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--color-text-muted);
 }
 
@@ -127,23 +144,23 @@
 
 .tableWrap {
   overflow-x: auto;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 0 0 0 0;
 }
 
 table.priceTable {
   width: 100%;
   border-collapse: collapse;
+  table-layout: auto;
 }
+
+/* ── Column header ── */
 
 .th {
   background: var(--color-surface-strong);
   border-bottom: 2px solid var(--color-border);
   border-right: 1px solid var(--color-border);
   padding: 0;
-  min-width: 180px;
-  vertical-align: top;
+  min-width: 190px;
+  vertical-align: bottom;
 }
 
 .th:last-child {
@@ -151,8 +168,8 @@ table.priceTable {
 }
 
 .thGroup {
-  min-width: 140px;
-  width: 140px;
+  min-width: 150px;
+  width: 150px;
   position: sticky;
   left: 0;
   z-index: 2;
@@ -160,62 +177,82 @@ table.priceTable {
 }
 
 .thAdd {
-  min-width: 100px;
-  width: 100px;
+  min-width: 110px;
+  width: 110px;
+  vertical-align: middle;
   text-align: center;
 }
 
 .thContent {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px 8px;
+  gap: 3px;
+  padding: 12px 14px 10px;
 }
 
 .thLabel {
   font-weight: 600;
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   color: var(--color-text-primary);
+  line-height: 1.3;
 }
 
 .thDays {
-  font-size: 0.73rem;
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 500;
   color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 1px 7px;
+  width: fit-content;
   font-variant-numeric: tabular-nums;
+  margin-top: 1px;
 }
 
 .thActions {
   display: flex;
   gap: 4px;
-  margin-top: 4px;
+  margin-top: 6px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.th:hover .thActions {
+  opacity: 1;
 }
 
 .thBtn {
-  background: none;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: pointer;
   color: var(--color-text-muted);
-  padding: 1px 5px;
+  padding: 2px 7px;
   font-size: 0.7rem;
-  line-height: 1.4;
-  transition: color 0.12s, border-color 0.12s;
+  line-height: 1.5;
+  transition: color 0.1s, background 0.1s, border-color 0.1s;
 }
 
 .thBtn:hover {
   color: var(--color-text-primary);
+  background: var(--color-surface-strong);
   border-color: var(--color-text-muted);
 }
 
 .addColBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: none;
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--color-text-muted);
-  padding: 6px 10px;
-  font-size: 0.78rem;
-  margin: 10px 8px;
+  padding: 5px 10px;
+  font-size: 0.76rem;
+  font-family: inherit;
   white-space: nowrap;
   transition: color 0.12s, border-color 0.12s;
 }
@@ -225,28 +262,38 @@ table.priceTable {
   border-color: var(--color-primary);
 }
 
+/* ── Día extra column ── */
+
 .addExtraBtn {
-  border-color: rgba(245, 158, 11, 0.4);
-  color: #92400e;
+  border-style: dashed;
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #b45309;
 }
 
 [data-theme="dark"] .addExtraBtn {
   color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.4);
 }
 
 .addExtraBtn:hover {
-  color: #b45309;
+  color: #92400e;
   border-color: #f59e0b;
 }
 
+[data-theme="dark"] .addExtraBtn:hover {
+  color: #fde68a;
+  border-color: #fbbf24;
+}
+
 .thExtra {
-  background: rgba(245, 158, 11, 0.06);
-  border-left: 2px solid rgba(245, 158, 11, 0.4) !important;
+  background: rgba(245, 158, 11, 0.05);
+  border-left: 2px solid rgba(245, 158, 11, 0.5) !important;
+  border-right: none !important;
 }
 
 .thExtraLabel {
-  font-weight: 600;
-  font-size: 0.82rem;
+  font-weight: 700;
+  font-size: 0.84rem;
   color: #92400e;
 }
 
@@ -254,16 +301,36 @@ table.priceTable {
   color: #fbbf24;
 }
 
-.tdExtra {
-  background: rgba(245, 158, 11, 0.04);
-  border-left: 2px solid rgba(245, 158, 11, 0.25) !important;
+.thExtraDays {
+  font-size: 0.7rem;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 20px;
+  padding: 1px 7px;
+  width: fit-content;
+  margin-top: 1px;
 }
+
+[data-theme="dark"] .thExtraDays {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.25);
+}
+
+.tdExtra {
+  background: rgba(245, 158, 11, 0.03);
+  border-left: 2px solid rgba(245, 158, 11, 0.3) !important;
+  border-right: none !important;
+}
+
+/* ── Rows ── */
 
 .td {
   border-bottom: 1px solid var(--color-border);
   border-right: 1px solid var(--color-border);
   padding: 0;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .td:last-child {
@@ -272,6 +339,7 @@ table.priceTable {
 
 .tdGroup {
   background: var(--color-surface-strong);
+  border-right: 2px solid var(--color-border) !important;
   position: sticky;
   left: 0;
   z-index: 1;
@@ -282,107 +350,124 @@ table.priceTable tbody tr:last-child .td {
 }
 
 table.priceTable tbody tr:hover .td {
-  background: rgba(43, 108, 189, 0.03);
+  background: rgba(43, 108, 189, 0.025);
 }
 
 table.priceTable tbody tr:hover .tdGroup {
   background: var(--color-surface-strong);
 }
 
+table.priceTable tbody tr:hover .tdExtra {
+  background: rgba(245, 158, 11, 0.05);
+}
+
 .groupName {
   display: block;
-  padding: 12px 14px;
-  font-size: 0.85rem;
-  font-weight: 500;
+  padding: 0 16px;
+  height: 100%;
+  min-height: 52px;
+  line-height: 52px;
+  font-size: 0.84rem;
+  font-weight: 600;
   color: var(--color-text-primary);
   white-space: nowrap;
 }
 
 .emptyRow {
-  padding: 32px;
+  padding: 40px;
   text-align: center;
   color: var(--color-text-muted);
   font-size: 0.85rem;
 }
 
-/* ─── Cell ───────────────────────────────────────────────────────────────────── */
+/* ─── Cell (edit mode) ───────────────────────────────────────────────────────── */
 
 .cell {
   padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-}
-
-.cellReadOnly {
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .cellTypeSelect {
   width: 100%;
-  padding: 4px 6px;
+  padding: 4px 8px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: 5px;
   background: var(--color-surface-strong);
-  color: var(--color-text-primary);
-  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
   font-family: inherit;
+  font-weight: 500;
   cursor: pointer;
+  appearance: auto;
+  transition: border-color 0.12s, color 0.12s;
 }
 
 .cellTypeSelect:focus {
   outline: none;
   border-color: var(--color-primary);
+  color: var(--color-text-primary);
 }
 
 .cellInputs {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .cellInputRow {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
 }
 
 .cellInput {
   flex: 1;
   min-width: 0;
-  padding: 3px 6px;
+  padding: 4px 7px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: 5px;
   background: var(--color-surface-strong);
   color: var(--color-text-primary);
-  font-size: 0.82rem;
+  font-size: 0.83rem;
   font-family: inherit;
   font-variant-numeric: tabular-nums;
+  font-weight: 500;
   text-align: right;
+  transition: border-color 0.12s, box-shadow 0.12s;
 }
 
 .cellInput:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(43, 108, 189, 0.12);
+  box-shadow: 0 0 0 2px rgba(43, 108, 189, 0.14);
 }
 
 .cellUnit {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--color-text-muted);
   white-space: nowrap;
   flex-shrink: 0;
+  min-width: 32px;
+}
+
+/* ─── Cell (read-only mode) ──────────────────────────────────────────────────── */
+
+.cellReadOnly {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
 .cellTypeTag {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--color-primary);
+  font-size: 0.68rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.06em;
+  color: var(--color-primary);
+  opacity: 0.75;
 }
 
 .cellPriceDisplay {
@@ -392,28 +477,29 @@ table.priceTable tbody tr:hover .tdGroup {
 }
 
 .cellPriceDisplay span {
-  font-size: 0.83rem;
+  font-size: 0.88rem;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-primary);
+  line-height: 1.3;
 }
 
 .cellSub {
   font-size: 0.73rem !important;
+  font-weight: 400 !important;
   color: var(--color-text-muted) !important;
 }
 
-/* ─── Table footer ───────────────────────────────────────────────────────────── */
+/* ─── Footer ─────────────────────────────────────────────────────────────────── */
 
 .tableFooter {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  padding: 12px 16px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-top: none;
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  padding: 11px 16px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-strong);
 }
 
 .saveError {
@@ -422,13 +508,14 @@ table.priceTable tbody tr:hover .tdGroup {
 }
 
 .btnDisabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: default;
+  pointer-events: none;
 }
 
 /* ─── Responsive ─────────────────────────────────────────────────────────────── */
 
-@media (max-width: 900px) {
+@media (max-width: 960px) {
   .layout {
     grid-template-columns: 1fr;
   }

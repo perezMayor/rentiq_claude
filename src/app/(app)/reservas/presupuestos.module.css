@@ -1,0 +1,389 @@
+/* ─── Layout ─────────────────────────────────────────────────────────────────── */
+
+.layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.loading {
+  padding: 48px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+}
+
+/* ─── Config panel ────────────────────────────────────────────────────────────── */
+
+.configPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sectionTitle {
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.sectionTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldGroup {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.fieldNarrow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 90px;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.daysChip {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: rgba(43, 108, 189, 0.08);
+  border: 1px solid rgba(43, 108, 189, 0.2);
+  border-radius: 20px;
+  padding: 2px 10px;
+  width: fit-content;
+  font-variant-numeric: tabular-nums;
+}
+
+.warn {
+  font-size: 0.8rem;
+  color: var(--color-danger);
+  padding: 6px 10px;
+  background: rgba(180, 35, 24, 0.06);
+  border: 1px solid rgba(180, 35, 24, 0.15);
+  border-radius: 5px;
+}
+
+.warnSmall {
+  font-size: 0.78rem;
+  color: var(--color-danger);
+}
+
+.infoText {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.bracketInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  background: rgba(43, 108, 189, 0.05);
+  border: 1px solid rgba(43, 108, 189, 0.15);
+  border-radius: 5px;
+}
+
+.bracketLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.bracketDays {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  background: var(--color-surface-strong);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+
+/* ─── Extras ──────────────────────────────────────────────────────────────────── */
+
+.addBtn {
+  background: none;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  padding: 2px 10px;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+  font-family: inherit;
+}
+
+.addBtn:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.extrasList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.extraRow {
+  display: grid;
+  grid-template-columns: 1fr 52px 26px;
+  align-items: center;
+  gap: 6px;
+}
+
+.extraSelect {
+  min-width: 0;
+}
+
+.extraQty {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding: 4px 6px !important;
+}
+
+.removeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  padding: 2px;
+  line-height: 1;
+  border-radius: 3px;
+  transition: color 0.1s;
+}
+
+.removeBtn:hover {
+  color: var(--color-danger);
+}
+
+/* ─── Result panel ────────────────────────────────────────────────────────────── */
+
+.resultPanel {
+  min-width: 0;
+}
+
+.emptyResult {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 300px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 40px;
+}
+
+.emptyIcon {
+  font-size: 2rem;
+  opacity: 0.5;
+}
+
+.emptyText {
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  max-width: 300px;
+}
+
+.resultCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.resultHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  background: var(--color-surface-strong);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.resultTitle {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+}
+
+.resultMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.clientName {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.resultDates {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Breakdown ───────────────────────────────────────────────────────────────── */
+
+.breakdown {
+  padding: 4px 0;
+}
+
+.breakdownRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.breakdownRow:last-of-type {
+  border-bottom: none;
+}
+
+.breakdownDiscount .breakdownAmount {
+  color: var(--color-danger);
+}
+
+.breakdownLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.breakdownLabel > span:first-child {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.breakdownSub {
+  font-size: 0.73rem;
+  color: var(--color-text-muted);
+}
+
+.breakdownAmount {
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.totalRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 12px;
+  border-top: 2px solid var(--color-border);
+  background: var(--color-surface-strong);
+}
+
+.totalLabel {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.totalAmount {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.resultNotes {
+  padding: 10px 18px;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
+}
+
+.notesLabel {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.resultDisclaimer {
+  padding: 8px 18px 12px;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* ─── Actions ─────────────────────────────────────────────────────────────────── */
+
+.resultActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  justify-content: flex-end;
+}
+
+/* ─── Responsive ──────────────────────────────────────────────────────────────── */
+
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  .configPanel,
+  .resultActions {
+    display: none;
+  }
+
+  .resultPanel {
+    grid-column: 1 / -1;
+  }
+
+  .resultCard {
+    border: none;
+    box-shadow: none;
+  }
+}
