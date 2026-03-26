@@ -1,15 +1,9 @@
 // contract-pdf.ts — PDFKit contract builder (2 copies × anverso + reverso)
-// Diseño tipo contrato de alquiler profesional, dos columnas, reverso bilingüe
 
 import PDFDocument from 'pdfkit';
 import type {
-  Contract,
-  Client,
-  FleetVehicle,
-  VehicleModel,
-  VehicleCategory,
-  CompanySettings,
-  CompanyBranch,
+  Contract, Client, FleetVehicle, VehicleModel,
+  VehicleCategory, CompanySettings, CompanyBranch,
 } from '@/src/lib/types';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -27,21 +21,21 @@ export interface ContractPdfData {
   returnFlight?: string;
 }
 
-// ─── Layout constants ─────────────────────────────────────────────────────────
+// ─── Layout ───────────────────────────────────────────────────────────────────
 
 const PW  = 595;
 const PH  = 842;
-const ML  = 30;   // left margin
-const MR  = 30;   // right margin
-const CW  = PW - ML - MR;  // 535
+const ML  = 30;
+const MR  = 30;
+const CW  = PW - ML - MR;   // 535
 
-// Two-column grid
 const C1W  = 249;
 const CGAP = 17;
 const C2W  = CW - C1W - CGAP;  // 269
 const C2X  = ML + C1W + CGAP;
 
-// Colors
+// ─── Colors ───────────────────────────────────────────────────────────────────
+
 const PRIMARY    = '#2b6cbd';
 const BORDER_CLR = '#d1d5db';
 const LABEL_CLR  = '#6b7280';
@@ -52,29 +46,7 @@ const TOTAL_BG   = '#eff6ff';
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 
-interface Strings {
-  titleDoc: string; copyCompany: string; copyClient: string; contractNo: string;
-  vehicleData: string; brandModel: string; plate: string; color: string;
-  group: string; fuelLabel: string;
-  mainDriver: string; clientLabel: string; birthDate: string; document: string;
-  license: string; docExpiry: string; licExpiry: string; nationality: string;
-  permAddress: string; phones: string; phoneFix: string; mobile: string;
-  addDrivers: string; noAddDrivers: string;
-  companySection: string; companyCIF: string; fiscalAddr: string; contact: string;
-  rentalData: string; pickupLocation: string; returnLocation: string;
-  deliveryDate: string; returnDate: string; deliveryTime: string; returnTime: string;
-  deliveryFlight: string; returnFlight: string;
-  techData: string; totalDays: string; groupBilled: string; tariffCode: string;
-  breakdown: string; base: string; discount: string; extras: string;
-  fuelCharge: string; insurance: string; penalties: string; total: string; franchise: string;
-  vehicleSection: string; vehicleChanges: string; noChanges: string;
-  observations: string; noObs: string;
-  sigTextEs: string; sigTextEn: string;
-  sigRenter: string; sigCompany: string;
-  na: string;
-}
-
-function strings(lang: string): Strings {
+function str(lang: string) {
   const en = lang.startsWith('en');
   return {
     titleDoc:       en ? 'Car Rental Contract'              : 'Contrato de alquiler',
@@ -83,7 +55,7 @@ function strings(lang: string): Strings {
     contractNo:     en ? 'No.'                              : 'Nº',
     vehicleData:    en ? 'Vehicle data'                     : 'Datos del vehículo',
     brandModel:     en ? 'Make / Model'                     : 'Marca / modelo',
-    plate:          en ? 'License plate'                    : 'Matrícula',
+    plate:          en ? 'Plate'                            : 'Matrícula',
     color:          en ? 'Color'                            : 'Color',
     group:          en ? 'Group'                            : 'Grupo',
     fuelLabel:      en ? 'Fuel'                             : 'Combustible',
@@ -136,7 +108,6 @@ function strings(lang: string): Strings {
     sigTextEn:      'I have read and agreed the terms of this rental agreement and I authorize with my signature that all amounts derived from this rent are charged to my credit card, deposit or others.',
     sigRenter:      en ? 'Renter signature'                 : 'Firma arrendatario',
     sigCompany:     en ? 'Company signature'                : 'Firma empresa',
-    na:             'N/D',
   };
 }
 
@@ -150,20 +121,15 @@ function fmtDate(d: string | undefined, lang: string): string {
   return lang.startsWith('en') ? `${m}/${day}/${y}` : `${day}/${m}/${y}`;
 }
 
-function fmtAmt(n: number): string {
-  return n.toFixed(2);
-}
+function fmtAmt(n: number): string { return (n ?? 0).toFixed(2); }
 
-function blankLine(n = 20): string {
-  return '_'.repeat(n);
-}
+function blankLine(n = 20): string { return '_'.repeat(n); }
 
 function fuelStr(fuel: string | undefined, lang: string): string {
   if (!fuel) return 'N/D';
-  if (lang.startsWith('en')) {
-    return ({GASOLINA: 'Petrol', DIESEL: 'Diesel', ELECTRICO: 'Electric', HIBRIDO: 'Hybrid'}[fuel] ?? fuel);
-  }
-  return ({GASOLINA: 'Gasolina', DIESEL: 'Diésel', ELECTRICO: 'Eléctrico', HIBRIDO: 'Híbrido'}[fuel] ?? fuel);
+  return lang.startsWith('en')
+    ? ({ GASOLINA: 'Petrol', DIESEL: 'Diesel', ELECTRICO: 'Electric', HIBRIDO: 'Hybrid' }[fuel] ?? fuel)
+    : ({ GASOLINA: 'Gasolina', DIESEL: 'Diésel', ELECTRICO: 'Eléctrico', HIBRIDO: 'Híbrido' }[fuel] ?? fuel);
 }
 
 // ─── Draw helpers ─────────────────────────────────────────────────────────────
@@ -172,12 +138,12 @@ function hline(doc: PDFKit.PDFDocument, y: number, x1 = ML, x2 = PW - MR, color 
   doc.save().moveTo(x1, y).lineTo(x2, y).strokeColor(color).lineWidth(lw).stroke().restore();
 }
 
-// Bordered section box with blue title — returns innerY (after title row)
-function secBox(
-  doc: PDFKit.PDFDocument,
-  title: string,
-  x: number, y: number, w: number, h: number,
-): number {
+function vline(doc: PDFKit.PDFDocument, x: number, y1: number, y2: number, color = BORDER_CLR, lw = 0.3) {
+  doc.save().moveTo(x, y1).lineTo(x, y2).strokeColor(color).lineWidth(lw).stroke().restore();
+}
+
+// Bordered section box with blue title — returns innerY
+function secBox(doc: PDFKit.PDFDocument, title: string, x: number, y: number, w: number, h: number): number {
   doc.save().roundedRect(x, y, w, h, 2).strokeColor(BORDER_CLR).lineWidth(0.5).stroke().restore();
   doc.font('Helvetica-Bold').fontSize(8.5).fillColor(PRIMARY)
      .text(title, x + 7, y + 6, { width: w - 14, lineBreak: false });
@@ -185,28 +151,133 @@ function secBox(
   return y + 20;
 }
 
-// Stacked label + value field
-function field(
-  doc: PDFKit.PDFDocument,
-  label: string, value: string,
-  x: number, y: number, w: number,
-) {
+// Stacked label + value
+function field(doc: PDFKit.PDFDocument, label: string, value: string, x: number, y: number, w: number) {
   doc.font('Helvetica').fontSize(6).fillColor(LABEL_CLR)
      .text(label, x, y, { width: w, lineBreak: false });
   doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
      .text(value || 'N/D', x, y + 7, { width: w, lineBreak: false, ellipsis: true });
 }
 
-// Gray subheader stripe inside a section
-function subHdr(
-  doc: PDFKit.PDFDocument,
-  text: string,
-  x: number, y: number, w: number,
-): number {
+// Gray subheader stripe
+function subHdr(doc: PDFKit.PDFDocument, text: string, x: number, y: number, w: number): number {
   doc.save().rect(x, y, w, 11).fillColor(SUBHDR_BG).fill().restore();
   doc.font('Helvetica-Bold').fontSize(6.5).fillColor(SUBHDR_CLR)
-     .text(text, x + 4, y + 3, { width: w - 8, lineBreak: false, align: 'center' });
+     .text(text, x + 4, y + 2, { width: w - 8, lineBreak: false, align: 'center' });
   return y + 13;
+}
+
+// ─── Car croquis (side-view silhouette) ───────────────────────────────────────
+
+function drawCarSide(doc: PDFKit.PDFDocument, bx: number, by: number, bw: number, bh: number) {
+  // Leave internal margin
+  const m  = 6;
+  const x  = bx + m;
+  const y  = by + m;
+  const w  = bw - m * 2;
+  const h  = bh - m * 2;
+
+  const bodyStroke  = '#475569';
+  const bodyFill    = '#f8fafc';
+  const cabinFill   = '#dbeafe';
+  const wheelFill   = '#334155';
+  const rimFill     = '#94a3b8';
+  const groundLine  = '#e2e8f0';
+
+  // Proportions relative to bounding box
+  const bodyH    = h * 0.44;
+  const bodyY    = y + h - bodyH - h * 0.12;   // body sits above ground
+  const bodyW    = w * 0.92;
+  const bodyX    = x + (w - bodyW) / 2;
+
+  const wheelR   = h * 0.28;
+  const wheelY   = bodyY + bodyH;               // centre of wheel at body bottom
+  const frontWX  = bodyX + bodyW * 0.20;
+  const rearWX   = bodyX + bodyW * 0.80;
+
+  // Cabin sits on top of body
+  const cabinW   = bodyW * 0.50;
+  const cabinX   = bodyX + bodyW * 0.22;
+  const cabinH   = h * 0.30;
+  const cabinY   = bodyY - cabinH + 4;
+  const cabinR   = 5;
+
+  doc.save();
+
+  // Ground shadow line
+  doc.moveTo(x, wheelY + wheelR + 1).lineTo(x + w, wheelY + wheelR + 1)
+     .strokeColor(groundLine).lineWidth(0.5).stroke();
+
+  // ── Body ──
+  doc.save()
+     .roundedRect(bodyX, bodyY, bodyW, bodyH, 3)
+     .fillColor(bodyFill).strokeColor(bodyStroke).lineWidth(0.8)
+     .fillAndStroke()
+     .restore();
+
+  // ── Cabin ──
+  // Use a path: flat bottom merging with body, rounded top
+  doc.save()
+     .roundedRect(cabinX, cabinY, cabinW, cabinH + 4, cabinR)
+     .fillColor(cabinFill).strokeColor(bodyStroke).lineWidth(0.7)
+     .fillAndStroke()
+     .restore();
+
+  // Window dividers (A, B, C pillars)
+  const pillarW = 2.5;
+  const wY = cabinY + 3;
+  const wH = cabinH - 2;
+
+  // A pillar (front)
+  doc.save().rect(cabinX + 2, wY, pillarW, wH).fillColor(bodyStroke).fill().restore();
+  // B pillar (middle)
+  const bPillarX = cabinX + cabinW * 0.47;
+  doc.save().rect(bPillarX, wY, pillarW, wH).fillColor(bodyStroke).fill().restore();
+  // C pillar (rear)
+  doc.save().rect(cabinX + cabinW - pillarW - 2, wY, pillarW, wH).fillColor(bodyStroke).fill().restore();
+
+  // ── Wheels ──
+  for (const wx of [frontWX, rearWX]) {
+    // Tyre
+    doc.save().circle(wx, wheelY, wheelR)
+       .fillColor(wheelFill).strokeColor(bodyStroke).lineWidth(0.6).fillAndStroke().restore();
+    // Rim
+    doc.save().circle(wx, wheelY, wheelR * 0.62)
+       .fillColor(rimFill).strokeColor(bodyStroke).lineWidth(0.4).fillAndStroke().restore();
+    // Hub
+    doc.save().circle(wx, wheelY, wheelR * 0.18)
+       .fillColor(wheelFill).fill().restore();
+    // Spoke lines (3 spokes)
+    for (let a = 0; a < 3; a++) {
+      const angle = (a * Math.PI * 2) / 3;
+      const r1 = wheelR * 0.20, r2 = wheelR * 0.58;
+      doc.save()
+         .moveTo(wx + Math.cos(angle) * r1, wheelY + Math.sin(angle) * r1)
+         .lineTo(wx + Math.cos(angle) * r2, wheelY + Math.sin(angle) * r2)
+         .strokeColor(bodyStroke).lineWidth(0.5).stroke()
+         .restore();
+    }
+  }
+
+  // ── Hood/trunk details ──
+  // Front bumper line
+  doc.save().moveTo(bodyX + 4, bodyY + bodyH * 0.5)
+     .lineTo(bodyX + 4, bodyY + bodyH - 2)
+     .strokeColor(BORDER_CLR).lineWidth(0.5).stroke().restore();
+  // Rear bumper line
+  doc.save().moveTo(bodyX + bodyW - 4, bodyY + bodyH * 0.5)
+     .lineTo(bodyX + bodyW - 4, bodyY + bodyH - 2)
+     .strokeColor(BORDER_CLR).lineWidth(0.5).stroke().restore();
+  // Hood crease line
+  doc.save().moveTo(bodyX + bodyW * 0.06, bodyY + 5)
+     .lineTo(cabinX, bodyY + 4)
+     .strokeColor(BORDER_CLR).lineWidth(0.4).stroke().restore();
+  // Trunk crease line
+  doc.save().moveTo(cabinX + cabinW, bodyY + 4)
+     .lineTo(bodyX + bodyW - bodyW * 0.06, bodyY + 5)
+     .strokeColor(BORDER_CLR).lineWidth(0.4).stroke().restore();
+
+  doc.restore();
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
@@ -218,47 +289,52 @@ function drawHeader(
   copyLabel: string,
   lang: string,
 ): number {
-  const tr = strings(lang);
+  const tr = str(lang);
   let y = 22;
 
-  // Logo
+  // Logo (left)
+  let logoW = 0;
   if (settings.logoDataUrl) {
     try {
       const b64 = settings.logoDataUrl.replace(/^data:image\/\w+;base64,/, '');
-      const buf = Buffer.from(b64, 'base64');
-      doc.image(buf, ML, y, { height: 44, fit: [100, 44] });
+      doc.image(Buffer.from(b64, 'base64'), ML, y, { height: 44, fit: [100, 44] });
+      logoW = 108;
     } catch { /* skip */ }
   }
 
-  // Company block (center-left)
-  const cx = ML + 108;
-  const cw = CW - 108 - 120;
+  // Contract no. + badge block (right, fixed 115pt wide)
+  const rightBlockW = 115;
+  doc.font('Helvetica-Bold').fontSize(11).fillColor(TXT_CLR)
+     .text(`${tr.contractNo} ${contractNum}`, PW - MR - rightBlockW, y + 2, {
+       width: rightBlockW, align: 'right', lineBreak: false,
+     });
+  const badgeY = y + 18;
+  doc.save().roundedRect(PW - MR - rightBlockW, badgeY, rightBlockW, 15, 3)
+     .fillColor(PRIMARY).fill().restore();
+  doc.font('Helvetica-Bold').fontSize(7.5).fillColor('white')
+     .text(copyLabel, PW - MR - rightBlockW, badgeY + 4, {
+       width: rightBlockW, align: 'center', lineBreak: false,
+     });
+
+  // Company block (between logo and right block), perfectly centred
+  const cx  = ML + logoW;
+  const cw  = CW - logoW - rightBlockW - 6;
   const name = settings.documentName ?? settings.name ?? '';
   const nif  = settings.taxId ?? settings.nif ?? '';
   const addr = settings.fiscalAddress ?? settings.address ?? '';
+  const phone = settings.companyPhone ?? settings.phone ?? '';
 
   doc.font('Helvetica-Bold').fontSize(11).fillColor(TXT_CLR)
      .text(name, cx, y + 2, { width: cw, lineBreak: false });
   doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
-     .text(nif, cx, y + 15, { width: cw, lineBreak: false });
-  doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
-     .text(addr, cx, y + 24, { width: cw, lineBreak: false });
-
-  // Contract number (top-right)
-  doc.font('Helvetica-Bold').fontSize(11).fillColor(TXT_CLR)
-     .text(`${tr.contractNo} ${contractNum}`, PW - MR - 118, y + 2, { width: 118, align: 'right', lineBreak: false });
-
-  // Copy badge
-  const badgeY = y + 18;
-  doc.save().roundedRect(PW - MR - 102, badgeY, 102, 15, 3).fillColor(PRIMARY).fill().restore();
-  doc.font('Helvetica-Bold').fontSize(7.5).fillColor('white')
-     .text(copyLabel, PW - MR - 102, badgeY + 4, { width: 102, align: 'center', lineBreak: false });
+     .text([nif, addr, phone].filter(Boolean).join('  ·  '), cx, y + 16, {
+       width: cw, lineBreak: false, ellipsis: true,
+     });
 
   y = 74;
   hline(doc, y, ML, PW - MR, PRIMARY, 1.5);
   y += 8;
 
-  // Title
   doc.font('Helvetica-Bold').fontSize(18).fillColor(TXT_CLR)
      .text(tr.titleDoc, ML, y, { lineBreak: false });
   y += 26;
@@ -276,23 +352,19 @@ function renderAnverso(
 ): void {
   const { contract, client, vehicle, model, category, settings } = data;
   const lang = data.language;
-  const tr = strings(lang);
-
-  // Value helper: real or blank
+  const tr = str(lang);
   const v = (val: string | number | undefined | null, fb = 'N/D'): string =>
     isBlank ? blankLine() : (val != null && String(val).trim() !== '' ? String(val) : fb);
 
-  const num = isBlank ? '' : (contract?.number ?? '');
-  let y = drawHeader(doc, settings, num, copyLabel, lang);
+  let y = drawHeader(doc, settings, isBlank ? '' : (contract?.number ?? ''), copyLabel, lang);
 
-  // ── Datos del vehículo (full width) ───────────────────────────────────────
+  // ── Vehicle data (full width) ─────────────────────────────────────────────
 
   const VH = 50;
+  const VIW = CW - 14;  // inner usable width (7px padding each side)
   const vInner = secBox(doc, tr.vehicleData, ML, y, CW, VH);
 
-  // 5 horizontal columns inside vehicle box
-  const vcols = [CW * 0.30, CW * 0.17, CW * 0.13, CW * 0.13, CW * 0.27];
-  let vx = ML + 7;
+  const vRatios = [0.30, 0.17, 0.13, 0.13, 0.27];
   const modelStr = model ? `${model.brand} ${model.model}` : '';
   const vFields: [string, string][] = [
     [tr.brandModel,  v(modelStr)],
@@ -301,87 +373,84 @@ function renderAnverso(
     [tr.group,       v(category?.code ?? category?.name)],
     [tr.fuelLabel,   v(fuelStr(model?.fuel, lang))],
   ];
+  let vx = ML + 7;
   for (let i = 0; i < vFields.length; i++) {
-    field(doc, vFields[i][0], vFields[i][1], vx, vInner + 4, vcols[i] - 8);
-    vx += vcols[i];
-    if (i < vFields.length - 1) {
-      doc.save().moveTo(vx - 4, vInner + 2).lineTo(vx - 4, y + VH - 4)
-         .strokeColor(BORDER_CLR).lineWidth(0.3).stroke().restore();
-    }
+    const colW = VIW * vRatios[i];
+    field(doc, vFields[i][0], vFields[i][1], vx, vInner + 4, colW - 6);
+    vx += colW;
+    if (i < vFields.length - 1) vline(doc, vx - 2, vInner + 2, y + VH - 3);
   }
   y += VH + 4;
 
-  // ── Row 1: Conductor principal (left) | Datos del alquiler (right) ────────
+  // ── Row 1: Conductor principal | Datos del alquiler ───────────────────────
 
   let ly = y, ry = y;
 
-  // LEFT: Conductor principal
+  // LEFT: Conductor principal  –– height 154
   const cpH = 154;
   const cpInner = secBox(doc, tr.mainDriver, ML, ly, C1W, cpH);
   let cpY = cpInner + 3;
-  const c2w = (C1W - 16) / 2;
+  const cHalf = (C1W - 16) / 2;
 
-  const clientName = client ? `${client.name}${client.surname ? ' ' + client.surname : ''}` : '';
-  field(doc, tr.clientLabel,    v(clientName),                      ML + 7, cpY, C1W * 0.58 - 4);
-  field(doc, tr.birthDate,      'N/D',                              ML + 7 + C1W * 0.58, cpY, C1W * 0.42 - 14);
+  const clientName = client
+    ? `${client.name}${client.surname ? ' ' + client.surname : ''}`
+    : '';
+  field(doc, tr.clientLabel,  v(clientName),                     ML + 7, cpY, C1W * 0.57 - 4);
+  field(doc, tr.birthDate,    'N/D',                             ML + 7 + C1W * 0.57, cpY, C1W * 0.43 - 14);
   cpY += 20;
 
-  field(doc, tr.document,       client?.nif ? `DNI ${client.nif}` : v(undefined), ML + 7, cpY, c2w);
-  field(doc, tr.license,        v(client?.licenseNumber),           ML + 7 + c2w + 4, cpY, c2w);
+  field(doc, tr.document,  client?.nif ? `DNI ${client.nif}` : v(undefined), ML + 7, cpY, cHalf);
+  field(doc, tr.license,   v(client?.licenseNumber),                         ML + 7 + cHalf + 4, cpY, cHalf);
   cpY += 20;
 
-  field(doc, tr.docExpiry,      'N/D',                              ML + 7, cpY, c2w * 0.6);
-  field(doc, tr.licExpiry,      v(client?.licenseExpiry ? fmtDate(client.licenseExpiry, lang) : undefined), ML + 7 + c2w * 0.6 + 4, cpY, c2w * 0.6);
-  field(doc, tr.nationality,    'N/D',                              ML + 7 + c2w * 1.2 + 8, cpY, C1W - (7 + c2w * 1.2 + 8) - 4);
+  field(doc, tr.docExpiry,  'N/D',                                            ML + 7, cpY, cHalf * 0.58);
+  field(doc, tr.licExpiry,  client?.licenseExpiry ? fmtDate(client.licenseExpiry, lang) : 'N/D', ML + 7 + cHalf * 0.58 + 4, cpY, cHalf * 0.58);
+  field(doc, tr.nationality, 'N/D',                                           ML + 7 + cHalf * 1.20 + 8, cpY, C1W - (7 + cHalf * 1.20 + 8) - 4);
   cpY += 20;
 
   cpY = subHdr(doc, tr.permAddress, ML + 4, cpY, C1W - 8);
-  const addrParts = [client?.address, client?.city, client?.country].filter(Boolean);
-  const addrStr = addrParts.length > 0 ? addrParts.join(', ') : 'N/D';
+  const addrLine = [client?.address, client?.city, client?.country].filter(Boolean).join(', ') || 'N/D';
   doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
-     .text(v(addrStr !== 'N/D' ? addrStr : undefined), ML + 7, cpY, { width: C1W - 14, lineBreak: false, ellipsis: true });
+     .text(isBlank ? blankLine(22) : addrLine, ML + 7, cpY, { width: C1W - 14, lineBreak: false, ellipsis: true });
   cpY += 10;
   doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
      .text('N/D', ML + 7, cpY, { lineBreak: false });
   cpY += 10;
 
   cpY = subHdr(doc, tr.phones, ML + 4, cpY, C1W - 8);
-  field(doc, tr.phoneFix, v(client?.phone), ML + 7, cpY, c2w);
-  field(doc, tr.mobile,   'N/D',            ML + 7 + c2w + 4, cpY, c2w);
+  field(doc, tr.phoneFix, v(client?.phone), ML + 7, cpY, cHalf);
+  field(doc, tr.mobile,   'N/D',            ML + 7 + cHalf + 4, cpY, cHalf);
 
   ly += cpH + 4;
 
-  // RIGHT: Datos del alquiler
-  const daH = 154;
+  // RIGHT: Datos del alquiler  –– same height as conductor
+  const daH = cpH;
   const daInner = secBox(doc, tr.rentalData, C2X, ry, C2W, daH);
   let daY = daInner + 3;
-  const rc2w = (C2W - 16) / 2;
+  const rHalf = (C2W - 16) / 2;
 
-  const hasFlight = !!(data.pickupFlight || data.returnFlight);
-
-  field(doc, tr.pickupLocation, v(contract?.pickupLocation), C2X + 7, daY, rc2w);
-  field(doc, tr.returnLocation, v(contract?.returnLocation), C2X + 7 + rc2w + 4, daY, rc2w);
+  field(doc, tr.pickupLocation, v(contract?.pickupLocation), C2X + 7, daY, rHalf);
+  field(doc, tr.returnLocation, v(contract?.returnLocation), C2X + 7 + rHalf + 4, daY, rHalf);
   daY += 20;
 
-  field(doc, tr.deliveryDate, v(contract ? fmtDate(contract.startDate, lang) : undefined), C2X + 7, daY, rc2w);
-  field(doc, tr.returnDate,   v(contract ? fmtDate(contract.endDate, lang) : undefined),   C2X + 7 + rc2w + 4, daY, rc2w);
+  field(doc, tr.deliveryDate, v(contract ? fmtDate(contract.startDate, lang) : undefined), C2X + 7, daY, rHalf);
+  field(doc, tr.returnDate,   v(contract ? fmtDate(contract.endDate,   lang) : undefined), C2X + 7 + rHalf + 4, daY, rHalf);
   daY += 20;
 
-  field(doc, tr.deliveryTime, v(contract?.startTime), C2X + 7, daY, rc2w);
-  field(doc, tr.returnTime,   v(contract?.endTime),   C2X + 7 + rc2w + 4, daY, rc2w);
+  field(doc, tr.deliveryTime, v(contract?.startTime), C2X + 7, daY, rHalf);
+  field(doc, tr.returnTime,   v(contract?.endTime),   C2X + 7 + rHalf + 4, daY, rHalf);
   daY += 20;
 
-  field(doc, tr.deliveryFlight, v(data.pickupFlight), C2X + 7, daY, rc2w);
-  field(doc, tr.returnFlight,   v(data.returnFlight), C2X + 7 + rc2w + 4, daY, rc2w);
+  field(doc, tr.deliveryFlight, v(data.pickupFlight), C2X + 7, daY, rHalf);
+  field(doc, tr.returnFlight,   v(data.returnFlight), C2X + 7 + rHalf + 4, daY, rHalf);
   daY += 20;
 
-  // Extra row: billed days
-  field(doc, tr.totalDays, v(contract?.billedDays), C2X + 7, daY, rc2w);
+  field(doc, tr.totalDays, v(contract?.billedDays), C2X + 7, daY, rHalf);
 
   ry += daH + 4;
   y = Math.max(ly, ry);
 
-  // ── Row 2: Conductores adicionales (left) | Datos técnicos (right) ────────
+  // ── Row 2: Conductores adicionales | Datos técnicos ───────────────────────
 
   ly = y; ry = y;
 
@@ -391,19 +460,17 @@ function renderAnverso(
      .text(tr.noAddDrivers, ML + 7, ly + 24, { lineBreak: false });
   ly += caH + 4;
 
-  const dtH = 44;
+  const dtH = caH;
   const dtInner = secBox(doc, tr.techData, C2X, ry, C2W, dtH);
   let dtY = dtInner + 3;
-
+  const dtLW = C2W * 0.68;
   function dtRow(lbl: string, val: string) {
-    const lw = C2W * 0.7;
     doc.font('Helvetica').fontSize(6.5).fillColor(LABEL_CLR)
-       .text(lbl, C2X + 7, dtY, { width: lw, lineBreak: false });
+       .text(lbl, C2X + 7, dtY, { width: dtLW, lineBreak: false });
     doc.font('Helvetica').fontSize(7).fillColor(TXT_CLR)
-       .text(val, C2X + lw, dtY, { width: C2W - lw - 8, align: 'right', lineBreak: false });
+       .text(val, C2X + dtLW, dtY, { width: C2W - dtLW - 10, align: 'right', lineBreak: false });
     dtY += 9;
   }
-
   const catCode = category?.code ?? category?.name ?? 'N/D';
   dtRow(tr.totalDays,   v(contract?.billedDays));
   dtRow(tr.groupBilled, isBlank ? 'N/D' : `${catCode} / ${catCode}`);
@@ -412,12 +479,34 @@ function renderAnverso(
   ry += dtH + 4;
   y = Math.max(ly, ry);
 
-  // ── Row 3: Empresa (left) | Desglose de facturación (right) ──────────────
+  // ── Row 3: Empresa | Desglose — SAME HEIGHT ───────────────────────────────
 
   ly = y; ry = y;
 
-  const emH = 72;
-  const emInner = secBox(doc, tr.companySection, ML, ly, C1W, emH);
+  // Calculate desglose rows first so both boxes share the same height
+  type BRow = [string, number | null, boolean];
+  const bRows: BRow[] = isBlank
+    ? ([
+        [tr.base, null, false], [tr.discount, null, false], [tr.extras, null, false],
+        [tr.fuelCharge, null, false], [tr.insurance, null, false], [tr.total, null, true],
+      ] as BRow[])
+    : ([
+        [tr.base,       contract.basePrice,      false],
+        [tr.discount,   contract.discount,       false],
+        [tr.extras,     contract.extrasTotal,    false],
+        [tr.fuelCharge, contract.fuelCharge,     false],
+        [tr.insurance,  contract.insuranceTotal, false],
+        ...(contract.penalties > 0 ? [[tr.penalties, contract.penalties, false]] as BRow[] : []),
+        [tr.total, contract.total, true],
+      ] as BRow[]);
+
+  const rowH      = 12;
+  const rowsH     = bRows.length * rowH + 20;   // content height
+  const francH    = 18;                          // franquicia row below separator
+  const boxH      = Math.max(72, rowsH + francH);
+
+  // Empresa box
+  const emInner = secBox(doc, tr.companySection, ML, ly, C1W, boxH);
   let emY = emInner + 4;
   const emPairs: [string, string][] = [
     [tr.companySection, blankLine(22)],
@@ -429,98 +518,70 @@ function renderAnverso(
     field(doc, lbl, val, ML + 7, emY, C1W - 14);
     emY += 14;
   }
-  ly += emH + 4;
+  ly += boxH + 4;
 
-  // RIGHT: Desglose
-  type Row = [string, number | null, boolean];
-  let rows: Row[];
-  if (isBlank) {
-    rows = [
-      [tr.base,       null, false],
-      [tr.discount,   null, false],
-      [tr.extras,     null, false],
-      [tr.fuelCharge, null, false],
-      [tr.insurance,  null, false],
-      [tr.total,      null, true ],
-    ];
-  } else {
-    rows = [
-      [tr.base,       contract.basePrice,      false],
-      [tr.discount,   contract.discount,       false],
-      [tr.extras,     contract.extrasTotal,    false],
-      [tr.fuelCharge, contract.fuelCharge,     false],
-      [tr.insurance,  contract.insuranceTotal, false],
-    ];
-    if (contract.penalties > 0) rows.push([tr.penalties, contract.penalties, false]);
-    rows.push([tr.total, contract.total, true]);
-  }
-
-  const rowH = 12;
-  const deH = Math.max(emH, rows.length * rowH + 30);
-  const deInner = secBox(doc, tr.breakdown, C2X, ry, C2W, deH);
+  // Desglose box (same height)
+  const deInner = secBox(doc, tr.breakdown, C2X, ry, C2W, boxH);
   let deY = deInner + 4;
+  const deLW = C2W * 0.62;
+  const deVW = C2W - deLW - 10;
 
-  for (const [lbl, amt, bold] of rows) {
+  for (const [lbl, amt, bold] of bRows) {
     const valStr = isBlank ? blankLine(8) : fmtAmt(amt ?? 0);
     if (bold) {
-      doc.save().rect(C2X + 2, deY - 2, C2W - 4, 14).fillColor(TOTAL_BG).fill().restore();
+      doc.save().rect(C2X + 2, deY - 2, C2W - 4, rowH + 1).fillColor(TOTAL_BG).fill().restore();
     }
-    const lw = C2W * 0.62;
-    const vw = C2W - lw - 10;
     doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(7.5)
        .fillColor(bold ? PRIMARY : LABEL_CLR)
-       .text(lbl, C2X + 7, deY, { width: lw, lineBreak: false });
+       .text(lbl, C2X + 7, deY, { width: deLW, lineBreak: false });
     doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(7.5)
        .fillColor(TXT_CLR)
-       .text(valStr, C2X + lw, deY, { width: vw, align: 'right', lineBreak: false });
+       .text(valStr, C2X + deLW, deY, { width: deVW, align: 'right', lineBreak: false });
     deY += rowH;
   }
 
-  // Franquicia row
-  deY += 2;
+  // Franquicia
+  deY += 3;
   hline(doc, deY, C2X + 4, C2X + C2W - 4, BORDER_CLR, 0.3);
   deY += 4;
-  const lw2 = C2W * 0.62;
   doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
-     .text(tr.franchise, C2X + 7, deY, { width: lw2, lineBreak: false });
+     .text(tr.franchise, C2X + 7, deY, { width: deLW, lineBreak: false });
   doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
-     .text('N/D', C2X + lw2, deY, { width: C2W - lw2 - 10, align: 'right', lineBreak: false });
+     .text('N/D', C2X + deLW, deY, { width: deVW, align: 'right', lineBreak: false });
 
-  ry += deH + 4;
+  ry += boxH + 4;
   y = Math.max(ly, ry);
 
-  // ── Row 4: Vehículo (left) | Cambios + Observaciones (right) ─────────────
+  // ── Row 4: Vehículo (con croquis) | Cambios + Observaciones ──────────────
 
   ly = y; ry = y;
 
-  const vehH = 90;
-  secBox(doc, tr.vehicleSection, ML, ly, C1W, vehH);
-  // Vehicle silhouette placeholder
-  const vbx = ML + 8, vby = ly + 22, vbw = C1W - 16, vbh = vehH - 28;
-  doc.save().rect(vbx, vby, vbw, vbh).fillColor('#f9fafb').fill()
-     .strokeColor('#e5e7eb').lineWidth(0.4).stroke().restore();
-  const plateStr = isBlank ? '' : (contract?.plate ?? '');
-  if (plateStr) {
-    doc.font('Helvetica-Bold').fontSize(8).fillColor('#d1d5db')
-       .text(plateStr, vbx, vby + vbh / 2 - 5, { width: vbw, align: 'center', lineBreak: false });
-  }
+  // Right height = 2 boxes stacked
+  const chH  = 36;
+  const obsH = 54;
+  const vehH = chH + 4 + obsH;   // left matches combined right height
+
+  // Left: Vehículo + car sketch
+  const vehInner = secBox(doc, tr.vehicleSection, ML, ly, C1W, vehH);
+  // Draw car silhouette inside the available area
+  drawCarSide(doc, ML + 4, vehInner + 2, C1W - 8, vehH - (vehInner - ly) - 4);
   ly += vehH + 4;
 
-  const chH = 38;
+  // Right top: Cambios de vehículo
   secBox(doc, tr.vehicleChanges, C2X, ry, C2W, chH);
   doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
-     .text(tr.noChanges, C2X + 7, ry + 23, { lineBreak: false });
+     .text(tr.noChanges, C2X + 7, ry + 22, { lineBreak: false });
   ry += chH + 4;
 
-  const obsText = isBlank ? '' : (contract?.notes ?? '');
-  const obsH = vehH - chH - 4;
-  secBox(doc, tr.observations, C2X, ry, C2W, obsH);
+  // Right bottom: Observaciones
+  const obsInner = secBox(doc, tr.observations, C2X, ry, C2W, obsH);
+  const obsText  = isBlank ? '' : (contract?.notes ?? '');
   if (obsText) {
     doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
-       .text(obsText, C2X + 7, ry + 22, { width: C2W - 14, height: obsH - 28, lineBreak: true });
+       .text(obsText, C2X + 7, obsInner + 2, { width: C2W - 14, height: obsH - 10, lineBreak: true });
   } else {
     doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
-       .text(tr.noObs, C2X + 7, ry + 23, { lineBreak: false });
+       .text(tr.noObs, C2X + 7, obsInner + 4, { lineBreak: false });
   }
   ry += obsH + 4;
 
@@ -531,101 +592,80 @@ function renderAnverso(
   hline(doc, y, ML, PW - MR, BORDER_CLR, 0.5);
   y += 6;
 
-  // Both languages side by side
   doc.font('Helvetica').fontSize(6.5).fillColor(LABEL_CLR)
-     .text(tr.sigTextEs, ML, y, { width: CW, lineBreak: false });
+     .text(str('es').sigTextEs, ML, y, { width: CW, lineBreak: false });
   y += 9;
   doc.font('Helvetica').fontSize(6.5).fillColor(LABEL_CLR)
-     .text('* ' + tr.sigTextEn, ML, y, { width: CW, lineBreak: false });
+     .text('* ' + str('en').sigTextEn, ML, y, { width: CW, lineBreak: false });
   y += 14;
 
-  // Signature boxes
   const sigW = CW / 2 - 8;
-  const sigH = 44;
+  const sigH = 42;
 
   doc.save().roundedRect(ML, y, sigW, sigH, 2).strokeColor(BORDER_CLR).lineWidth(0.5).stroke().restore();
   doc.font('Helvetica-Bold').fontSize(8).fillColor(TXT_CLR)
-     .text(tr.sigRenter, ML + 6, y + 5, { lineBreak: false });
+     .text(tr.sigRenter, ML + 7, y + 5, { lineBreak: false });
 
   const sx2 = ML + sigW + 16;
   doc.save().roundedRect(sx2, y, sigW, sigH, 2).strokeColor(BORDER_CLR).lineWidth(0.5).stroke().restore();
   doc.font('Helvetica-Bold').fontSize(8).fillColor(TXT_CLR)
-     .text(tr.sigCompany, sx2 + 6, y + 5, { lineBreak: false });
+     .text(tr.sigCompany, sx2 + 7, y + 5, { lineBreak: false });
 
-  // Embed digital signature if available
+  // Embed digital signature if present
   if (!isBlank && contract?.checkout?.signatureUrl) {
     try {
       const b64 = contract.checkout.signatureUrl.replace(/^data:image\/\w+;base64,/, '');
-      const buf = Buffer.from(b64, 'base64');
-      doc.image(buf, ML + 4, y + 14, { height: 26, fit: [sigW - 8, 26] });
+      doc.image(Buffer.from(b64, 'base64'), ML + 4, y + 14, { height: 24, fit: [sigW - 10, 24] });
     } catch { /* ignore */ }
   }
 
-  y += sigH + 6;
-
-  // ── Page footer ────────────────────────────────────────────────────────────
-
+  // Footer
   const footerText = settings.documentFooter
-    ?? [settings.documentName ?? settings.name ?? '', settings.fiscalAddress ?? settings.address ?? ''].filter(Boolean).join('  ·  ');
+    ?? [settings.documentName ?? settings.name ?? '', settings.fiscalAddress ?? settings.address ?? '']
+       .filter(Boolean).join('  ·  ');
 
   hline(doc, PH - 22, ML, PW - MR, BORDER_CLR, 0.3);
   doc.font('Helvetica').fontSize(6.5).fillColor(LABEL_CLR)
      .text(footerText, ML, PH - 16, { width: CW, align: 'center', lineBreak: false });
 }
 
-// ─── Reverso (two-column bilingual terms) ─────────────────────────────────────
+// ─── Reverso (two-column bilingual) ───────────────────────────────────────────
 
 function renderReverso(doc: PDFKit.PDFDocument, settings: CompanySettings): void {
-  const MT = 22, MB = 22;
+  const MT  = 22;
+  const MB  = 22;
   const colW = Math.floor((CW - 14) / 2);
   const col2x = ML + colW + 14;
-
-  const titleY = MT;
+  const divX  = ML + colW + 7;
 
   // Column headers
   doc.font('Helvetica-Bold').fontSize(8.5).fillColor(PRIMARY)
-     .text('CONDICIONES GENERALES DEL CONTRATO', ML, titleY, { width: colW, lineBreak: false });
+     .text('CONDICIONES GENERALES DEL CONTRATO', ML, MT, { width: colW, lineBreak: false });
   doc.font('Helvetica-Bold').fontSize(8.5).fillColor(PRIMARY)
-     .text('CAR RENTAL CONTRACT', col2x, titleY, { width: colW, lineBreak: false });
+     .text('CAR RENTAL CONTRACT', col2x, MT, { width: colW, lineBreak: false });
 
-  hline(doc, titleY + 14, ML, PW - MR, PRIMARY, 1);
+  hline(doc, MT + 14, ML, PW - MR, PRIMARY, 1);
 
-  const contentY = titleY + 20;
-  // 95% of page height minus header
+  const contentY = MT + 20;
   const contentH = Math.floor((PH - MT - MB) * 0.95) - 20;
 
   const fontSize = Math.max(5.5, Math.min(9, settings.contractBackFontSize ?? 7));
-  const type = settings.contractBackContentType ?? 'TEXT';
+  const type     = settings.contractBackContentType ?? 'TEXT';
 
   function stripHtml(s: string): string {
     return s
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/p>/gi, '\n\n')
-      .replace(/<\/li>/gi, '\n')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/[ \t]+/g, ' ')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
+      .replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<\/li>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
+      .replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
   }
 
   let esContent = settings.contractBackContentEs ?? settings.contractBackContent ?? '';
   let enContent = settings.contractBackContentEn ?? '';
-
-  if (type === 'HTML') {
-    esContent = stripHtml(esContent);
-    enContent = stripHtml(enContent);
-  }
+  if (type === 'HTML') { esContent = stripHtml(esContent); enContent = stripHtml(enContent); }
 
   // Vertical divider
-  const divX = ML + colW + 7;
-  doc.save()
-     .moveTo(divX, contentY - 4).lineTo(divX, contentY + contentH)
-     .strokeColor(BORDER_CLR).lineWidth(0.4).stroke()
-     .restore();
+  doc.save().moveTo(divX, contentY - 4).lineTo(divX, contentY + contentH)
+     .strokeColor(BORDER_CLR).lineWidth(0.4).stroke().restore();
 
   // ES column
   if (esContent) {
@@ -652,8 +692,8 @@ export function buildContractPdf(data: ContractPdfData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
       const lang = data.language ?? 'es';
-      const tr = strings(lang);
-      const doc = new PDFDocument({
+      const tr   = str(lang);
+      const doc  = new PDFDocument({
         size: 'A4', margin: 0, autoFirstPage: true,
         info: {
           Title:  data.contract?.number ?? 'Contrato',
@@ -682,8 +722,9 @@ export function buildContractPdf(data: ContractPdfData): Promise<Buffer> {
 export function buildBlankContractPdf(settings: CompanySettings, lang: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
-      const tr = strings(lang);
+      const tr  = str(lang);
       const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
+
       const chunks: Buffer[] = [];
       doc.on('data', (c) => chunks.push(c));
       doc.on('end',  () => resolve(Buffer.concat(chunks)));
