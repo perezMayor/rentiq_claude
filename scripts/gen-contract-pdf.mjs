@@ -148,13 +148,12 @@ const SILUETA_BUF = (() => {
 
 function drawCarSide(doc, bx, by, bw, bh) {
   if (!SILUETA_BUF) return;
-  const margin = 4;
-  const maxW = bw - margin * 2, maxH = bh - margin * 2;
   const aspect = 1916 / 1228;
-  let iw = maxW, ih = maxW / aspect;
-  if (ih > maxH) { ih = maxH; iw = maxH * aspect; }
-  const ix = bx + margin + (maxW - iw) / 2;
-  const iy = by + margin + (maxH - ih) / 2;
+  const tW = bw * 0.90, tH = bh * 0.90;
+  let iw = tW, ih = tW / aspect;
+  if (ih > tH) { ih = tH; iw = tH * aspect; }
+  const ix = bx + (bw - iw) / 2;
+  const iy = by + (bh - ih) / 2;
   try { doc.image(SILUETA_BUF, ix, iy, { width: iw, height: ih }); } catch {}
 }
 
@@ -283,7 +282,8 @@ function renderAnverso(doc, data, copyLabel, isBlank) {
   field(doc, tr.deliveryFlight, v(data.pickupFlight), C2X + 7, daY, rHalf);
   field(doc, tr.returnFlight,   v(data.returnFlight), C2X + 7 + rHalf + 4, daY, rHalf);
   daY += 20;
-  field(doc, tr.totalDays, v(contract?.billedDays), C2X + 7, daY, rHalf);
+  field(doc, tr.totalDays,  v(contract?.billedDays), C2X + 7, daY, rHalf);
+  field(doc, tr.tariffCode, 'N/D',                   C2X + 7 + rHalf + 4, daY, rHalf);
   ry += daH + 4;
   y = Math.max(ly, ry);
 
@@ -305,9 +305,7 @@ function renderAnverso(doc, data, copyLabel, isBlank) {
     dtY += 9;
   }
   const catCode = category?.code ?? category?.name ?? 'N/D';
-  dtRow(tr.totalDays,   v(contract?.billedDays));
   dtRow(tr.groupBilled, isBlank ? 'N/D' : `${catCode} / ${catCode}`);
-  dtRow(tr.tariffCode,  'N/D');
   ry += dtH + 4;
   y = Math.max(ly, ry);
 
@@ -335,11 +333,16 @@ function renderAnverso(doc, data, copyLabel, isBlank) {
   // Empresa
   const emInner = secBox(doc, tr.companySection, ML, ly, C1W, boxH);
   let emY = emInner + 4;
-  const emPairs = [
+  const emPairs = isBlank ? [
     [tr.companySection, blankLine(22)],
     [tr.companyCIF,     blankLine(14)],
     [tr.fiscalAddr,     blankLine(22)],
     [tr.contact,        blankLine(22)],
+  ] : [
+    [tr.companySection, settings.documentName ?? settings.name ?? ''],
+    [tr.companyCIF,     settings.taxId ?? settings.nif ?? ''],
+    [tr.fiscalAddr,     settings.fiscalAddress ?? settings.address ?? ''],
+    [tr.contact,        [settings.companyPhone ?? settings.phone, settings.email].filter(Boolean).join('  ·  ')],
   ];
   for (const [lbl, val] of emPairs) { field(doc, lbl, val, ML + 7, emY, C1W - 14); emY += 14; }
   ly += boxH + 4;
@@ -371,8 +374,8 @@ function renderAnverso(doc, data, copyLabel, isBlank) {
 
   // ── Row 4: Vehículo (croquis) | Cambios + Obs ─────────────────────────────
   ly = y; ry = y;
-  const chH  = 36;
-  const obsH = 54;
+  const chH  = 44;
+  const obsH = 150;
   const vehH = chH + 4 + obsH;
 
   const vehInner = secBox(doc, tr.vehicleSection, ML, ly, C1W, vehH);

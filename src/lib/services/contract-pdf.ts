@@ -186,18 +186,14 @@ function getSilueta(): Buffer | null {
 function drawCarSide(doc: PDFKit.PDFDocument, bx: number, by: number, bw: number, bh: number) {
   const buf = getSilueta();
   if (!buf) return;
-  // silueta.png is 1916×1228 — fit within area preserving aspect ratio, centred
-  const margin = 4;
-  const maxW = bw - margin * 2;
-  const maxH = bh - margin * 2;
+  // Fill 90 % of the bounding box, preserving aspect ratio, centred
   const aspect = 1916 / 1228;
-  let iw = maxW, ih = maxW / aspect;
-  if (ih > maxH) { ih = maxH; iw = maxH * aspect; }
-  const ix = bx + margin + (maxW - iw) / 2;
-  const iy = by + margin + (maxH - ih) / 2;
-  try {
-    doc.image(buf, ix, iy, { width: iw, height: ih });
-  } catch { /* skip if corrupt */ }
+  const tW = bw * 0.90, tH = bh * 0.90;
+  let iw = tW, ih = tW / aspect;
+  if (ih > tH) { ih = tH; iw = tH * aspect; }
+  const ix = bx + (bw - iw) / 2;
+  const iy = by + (bh - ih) / 2;
+  try { doc.image(buf, ix, iy, { width: iw, height: ih }); } catch { /* skip */ }
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
@@ -365,7 +361,8 @@ function renderAnverso(
   field(doc, tr.returnFlight,   v(data.returnFlight), C2X + 7 + rHalf + 4, daY, rHalf);
   daY += 20;
 
-  field(doc, tr.totalDays, v(contract?.billedDays), C2X + 7, daY, rHalf);
+  field(doc, tr.totalDays,  v(contract?.billedDays), C2X + 7, daY, rHalf);
+  field(doc, tr.tariffCode, 'N/D',                   C2X + 7 + rHalf + 4, daY, rHalf);
 
   ry += daH + 4;
   y = Math.max(ly, ry);
@@ -392,9 +389,7 @@ function renderAnverso(
     dtY += 9;
   }
   const catCode = category?.code ?? category?.name ?? 'N/D';
-  dtRow(tr.totalDays,   v(contract?.billedDays));
   dtRow(tr.groupBilled, isBlank ? 'N/D' : `${catCode} / ${catCode}`);
-  dtRow(tr.tariffCode,  'N/D');
 
   ry += dtH + 4;
   y = Math.max(ly, ry);
@@ -428,12 +423,19 @@ function renderAnverso(
   // Empresa box
   const emInner = secBox(doc, tr.companySection, ML, ly, C1W, boxH);
   let emY = emInner + 4;
-  const emPairs: [string, string][] = [
-    [tr.companySection, blankLine(22)],
-    [tr.companyCIF,     blankLine(14)],
-    [tr.fiscalAddr,     blankLine(22)],
-    [tr.contact,        blankLine(22)],
-  ];
+  const emPairs: [string, string][] = isBlank
+    ? [
+        [tr.companySection, blankLine(22)],
+        [tr.companyCIF,     blankLine(14)],
+        [tr.fiscalAddr,     blankLine(22)],
+        [tr.contact,        blankLine(22)],
+      ]
+    : [
+        [tr.companySection, settings.documentName ?? settings.name],
+        [tr.companyCIF,     settings.taxId ?? settings.nif],
+        [tr.fiscalAddr,     settings.fiscalAddress ?? settings.address],
+        [tr.contact,        [settings.companyPhone ?? settings.phone, settings.email].filter(Boolean).join('  ·  ')],
+      ];
   for (const [lbl, val] of emPairs) {
     field(doc, lbl, val, ML + 7, emY, C1W - 14);
     emY += 14;
@@ -477,8 +479,8 @@ function renderAnverso(
   ly = y; ry = y;
 
   // Right height = 2 boxes stacked
-  const chH  = 36;
-  const obsH = 54;
+  const chH  = 44;
+  const obsH = 150;
   const vehH = chH + 4 + obsH;   // left matches combined right height
 
   // Left: Vehículo + car sketch
