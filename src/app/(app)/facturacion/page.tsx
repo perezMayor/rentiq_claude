@@ -60,6 +60,10 @@ function FacturacionContent() {
   const [finalizingSaving, setFinalizingSaving] = useState(false);
   const [finalizeError, setFinalizeError] = useState('');
 
+  // Email
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailFeedback, setEmailFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+
   const canWrite = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
 
   const loadInvoices = useCallback(async () => {
@@ -114,6 +118,7 @@ function FacturacionContent() {
   async function openDetail(invoiceId: string) {
     setDetailLoading(true);
     setFinalizeError('');
+    setEmailFeedback(null);
     try {
       const res = await fetch(`/api/facturas/${invoiceId}`);
       if (!res.ok) throw new Error('Error al cargar detalle');
@@ -123,6 +128,23 @@ function FacturacionContent() {
       // silently fail
     } finally {
       setDetailLoading(false);
+    }
+  }
+
+  async function handleSendInvoiceEmail() {
+    if (!selectedDetail) return;
+    setSendingEmail(true);
+    setEmailFeedback(null);
+    try {
+      const res = await fetch(`/api/email/factura/${selectedDetail.invoice.id}`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Error al enviar');
+      const clientEmail = selectedDetail.client?.email ?? '—';
+      setEmailFeedback({ ok: true, msg: `Factura enviada a ${clientEmail}` });
+    } catch (e) {
+      setEmailFeedback({ ok: false, msg: e instanceof Error ? e.message : 'Error desconocido' });
+    } finally {
+      setSendingEmail(false);
     }
   }
 
@@ -429,11 +451,43 @@ function FacturacionContent() {
               {finalizeError && (
                 <div className="alert alert-danger" style={{ marginTop: 16 }}>{finalizeError}</div>
               )}
+              {emailFeedback && (
+                <div
+                  className={emailFeedback.ok ? 'alert alert-success' : 'alert alert-danger'}
+                  style={{ marginTop: 16 }}
+                >
+                  {emailFeedback.msg}
+                </div>
+              )}
             </div>
             <div className="modal__footer">
               <button className="btn btn-ghost" onClick={() => setSelectedDetail(null)}>
                 Cerrar
               </button>
+              <button
+                className="btn btn-ghost"
+                onClick={() => {
+                  const printUrl = `/api/facturas/${selectedDetail.invoice.id}/print`;
+                  window.open(printUrl, '_blank');
+                }}
+                title="Exportar / imprimir factura"
+              >
+                Exportar PDF
+              </button>
+              {canWrite && (
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => void handleSendInvoiceEmail()}
+                  disabled={sendingEmail || !selectedDetail.client?.email}
+                  title={
+                    selectedDetail.client?.email
+                      ? `Enviar a ${selectedDetail.client.email}`
+                      : 'El cliente no tiene email registrado'
+                  }
+                >
+                  {sendingEmail ? 'Enviando…' : 'Enviar por email'}
+                </button>
+              )}
               {canWrite && selectedDetail.invoice.status === 'BORRADOR' && (
                 <button
                   className="btn btn-primary"

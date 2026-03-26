@@ -25,6 +25,7 @@ interface PlanDetail {
 interface FormState {
   clientName: string;
   clientEmail: string;
+  clientLanguage: string;
   nightFeeApplied: boolean;
   startDate: string;
   startTime: string;
@@ -94,6 +95,7 @@ function blankForm(): FormState {
   return {
     clientName:     '',
     clientEmail:    '',
+    clientLanguage: 'es',
     nightFeeApplied: false,
     startDate:      start,
     startTime:      '09:00',
@@ -126,6 +128,8 @@ export default function PresupuestosTab() {
   const [formInsurances, setFormInsurances] = useState<FormInsurance[]>([]);
   const [nightFeeConfig, setNightFeeConfig] = useState<NightFeeConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailFeedback, setEmailFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const [form, setForm] = useState<FormState>(blankForm);
 
@@ -313,6 +317,44 @@ export default function PresupuestosTab() {
     setFormExtras([]);
     setFormInsurances([]);
     setPlanDetail(null);
+    setEmailFeedback(null);
+  }
+
+  async function handleSendEmail() {
+    if (!form.clientEmail) return;
+    setSendingEmail(true);
+    setEmailFeedback(null);
+    try {
+      const res = await fetch('/api/email/presupuesto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientName:     form.clientName,
+          clientEmail:    form.clientEmail,
+          language:       form.clientLanguage,
+          startDate:      form.startDate,
+          startTime:      form.startTime,
+          endDate:        form.endDate,
+          endTime:        form.endTime,
+          billedDays:     parseInt(form.billedDays) || 1,
+          categoryId:     form.categoryId,
+          basePrice:      parseFloat(form.basePrice) || 0,
+          discount:       parseFloat(form.discount) || 0,
+          insuranceTotal: parseFloat(form.insuranceTotal) || 0,
+          extrasTotal:    parseFloat(form.extrasTotal) || 0,
+          fuelCharge:     parseFloat(form.fuelCharge) || 0,
+          total:          parseFloat(form.total) || 0,
+          notes:          form.notes,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Error al enviar');
+      setEmailFeedback({ ok: true, msg: `Presupuesto enviado a ${form.clientEmail}` });
+    } catch (err) {
+      setEmailFeedback({ ok: false, msg: err instanceof Error ? err.message : 'Error desconocido' });
+    } finally {
+      setSendingEmail(false);
+    }
   }
 
   const matchingPlans = plans.filter((p) => planCovers(p, form.startDate, form.endDate));
@@ -358,13 +400,26 @@ export default function PresupuestosTab() {
 
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Email del cliente</label>
-                  <input
-                    type="email"
-                    className="form-input"
-                    value={form.clientEmail}
-                    onChange={(e) => set('clientEmail', e.target.value)}
-                    placeholder="correo@ejemplo.com"
-                  />
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <input
+                      type="email"
+                      className="form-input"
+                      value={form.clientEmail}
+                      onChange={(e) => set('clientEmail', e.target.value)}
+                      placeholder="correo@ejemplo.com"
+                      style={{ flex: 1 }}
+                    />
+                    <select
+                      className="form-select"
+                      value={form.clientLanguage}
+                      onChange={(e) => set('clientLanguage', e.target.value)}
+                      style={{ width: 80 }}
+                      title="Idioma del presupuesto"
+                    >
+                      <option value="es">ES</option>
+                      <option value="en">EN</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
@@ -631,6 +686,16 @@ export default function PresupuestosTab() {
         </div>
       </div>
 
+      {/* ── Email feedback ── */}
+      {emailFeedback && (
+        <div
+          className={emailFeedback.ok ? 'alert alert-success' : 'alert alert-danger'}
+          style={{ marginTop: 8 }}
+        >
+          {emailFeedback.msg}
+        </div>
+      )}
+
       {/* ── Action bar ── */}
       <div className={styles.actionBar}>
         <button type="button" className="btn btn-primary" onClick={() => window.print()}>
@@ -641,17 +706,11 @@ export default function PresupuestosTab() {
           <button
             type="button"
             className="btn btn-ghost"
-            disabled={!form.clientEmail}
+            disabled={!form.clientEmail || sendingEmail}
             title={form.clientEmail ? `Enviar a ${form.clientEmail}` : 'Introduce el email del cliente primero'}
-            onClick={() => {
-              const subject = encodeURIComponent('Presupuesto de alquiler de vehículo');
-              const body = encodeURIComponent(
-                `${form.clientName ? `Estimado/a ${form.clientName},\n\n` : ''}Adjuntamos el presupuesto de alquiler de vehículo solicitado.\n\nTotal estimado: ${parseFloat(form.total).toFixed(2)} €\n\nQuedamos a su disposición para cualquier consulta.`
-              );
-              window.open(`mailto:${form.clientEmail}?subject=${subject}&body=${body}`);
-            }}
+            onClick={() => void handleSendEmail()}
           >
-            Enviar por email
+            {sendingEmail ? 'Enviando…' : 'Enviar por email'}
           </button>
         </div>
       </div>

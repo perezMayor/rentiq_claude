@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
         licenseNumber: body.licenseNumber,
         licenseExpiry: body.licenseExpiry,
         commissionPercent: body.commissionPercent,
+        preferredLanguage: body.preferredLanguage ?? 'es',
         active: true,
         notes: body.notes,
         createdAt: now,

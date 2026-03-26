@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest, canWrite } from '@/src/lib/auth';
 import { withStoreWrite } from '@/src/lib/store';
 import { appendEvent } from '@/src/lib/audit';
+import { sendReservationConfirmationEmail } from '@/src/lib/services/email-service';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -65,7 +66,12 @@ export async function POST(req: NextRequest, { params }: Params) {
       details: { action: 'CONFIRMAR', number: updated.number },
     });
 
-    return NextResponse.json({ reservation: updated });
+    // Auto-send confirmation email (non-blocking — failure doesn't affect the response)
+    const emailResult = await sendReservationConfirmationEmail(id);
+    const emailSent = emailResult.ok;
+    const emailError = emailResult.ok ? undefined : emailResult.error;
+
+    return NextResponse.json({ reservation: updated, emailSent, emailError });
   } catch (err: unknown) {
     const error = err as Error & { statusCode?: number };
     const message = error.message ?? 'Error interno';

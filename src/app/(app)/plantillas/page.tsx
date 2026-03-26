@@ -435,6 +435,7 @@ export default async function PlantillasPage({
       {/* Visual template editor */}
       {!isNewMode && !isContractReverse && selectedTemplate && isVisualTemplate && (
         <VisualTemplateEditor
+          key={selectedTemplate.id}
           action={handleSaveTemplate}
           canWrite={userCanWrite}
           selectedTemplateId={selectedTemplate.id}

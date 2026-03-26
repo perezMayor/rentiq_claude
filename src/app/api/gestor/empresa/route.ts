@@ -80,6 +80,19 @@ export async function PUT(req: NextRequest) {
       if (nightFeeFromHour !== undefined) store.settings.nightFeeFromHour = nightFeeFromHour ?? undefined;
       if (nightFeeToHour !== undefined) store.settings.nightFeeToHour = nightFeeToHour ?? undefined;
       if (nightFeePrice !== undefined) store.settings.nightFeePrice = nightFeePrice ?? undefined;
+      // Branding / document fields
+      const s = store.settings as unknown as Record<string, unknown>;
+      const strField = (k: string) => { if ((body as Record<string,unknown>)[k] !== undefined) s[k] = String((body as Record<string,unknown>)[k] ?? ''); };
+      strField('documentName'); strField('legalName'); strField('documentBrandName');
+      strField('taxId'); strField('fiscalAddress'); strField('companyEmailFrom');
+      strField('companyPhone'); strField('companyWebsite'); strField('documentFooter');
+      strField('logoDataUrl'); strField('brandPrimaryColor'); strField('brandSecondaryColor');
+      strField('contractBackLayout'); strField('contractBackContentType');
+      strField('contractBackContentEs'); strField('contractBackContentEn'); strField('contractBackContent');
+      if ((body as Record<string,unknown>).contractBackFontSize !== undefined) {
+        const n = parseFloat(String((body as Record<string,unknown>).contractBackFontSize));
+        s['contractBackFontSize'] = isNaN(n) ? undefined : n;
+      }
       return { ...store.settings };
     });
 

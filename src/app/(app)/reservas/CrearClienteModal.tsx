@@ -17,6 +17,7 @@ interface ClientForm {
   email: string;
   phone: string;
   companyName: string;
+  preferredLanguage: string;
 }
 
 export default function CrearClienteModal({ onCreated, onClose }: Props) {
@@ -28,6 +29,7 @@ export default function CrearClienteModal({ onCreated, onClose }: Props) {
     email: '',
     phone: '',
     companyName: '',
+    preferredLanguage: 'es',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -51,6 +53,7 @@ export default function CrearClienteModal({ onCreated, onClose }: Props) {
       if (form.email.trim())       payload.email       = form.email.trim();
       if (form.phone.trim())       payload.phone       = form.phone.trim();
       if (form.companyName.trim()) payload.companyName = form.companyName.trim();
+      if (form.preferredLanguage)  payload.preferredLanguage = form.preferredLanguage;
 
       const res = await fetch('/api/clientes', {
         method: 'POST',
@@ -124,6 +127,14 @@ export default function CrearClienteModal({ onCreated, onClose }: Props) {
                 <label className="form-label">Teléfono</label>
                 <input className="form-input" type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+34 600 000 000" />
               </div>
+            </div>
+
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Idioma de documentos</label>
+              <select className="form-select" value={form.preferredLanguage} onChange={(e) => set('preferredLanguage', e.target.value)}>
+                <option value="es">Español</option>
+                <option value="en">English</option>
+              </select>
             </div>
           </div>
 

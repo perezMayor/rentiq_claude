@@ -220,192 +220,225 @@ function EmpresaTab() {
 // ─── Branding tab ─────────────────────────────────────────────────────────────
 
 interface BrandingData {
-  logoUrl: string;
-  primaryColor: string;
-  secondaryColor: string;
-  footerText: string;
+  logoDataUrl: string;
+  documentName: string;
+  documentFooter: string;
+  brandPrimaryColor: string;
+  brandSecondaryColor: string;
+  companyPhone: string;
+  companyEmailFrom: string;
+  fiscalAddress: string;
+  taxId: string;
 }
 
+const BRANDING_DEFAULTS: BrandingData = {
+  logoDataUrl: '',
+  documentName: '',
+  documentFooter: '',
+  brandPrimaryColor: '#2563eb',
+  brandSecondaryColor: '#0f172a',
+  companyPhone: '',
+  companyEmailFrom: '',
+  fiscalAddress: '',
+  taxId: '',
+};
+
 function BrandingTab() {
-  const [data, setData] = useState<BrandingData>({
-    logoUrl: '',
-    primaryColor: '#1e3a5f',
-    secondaryColor: '#2b6cbd',
-    footerText: '',
-  });
+  const [data, setData] = useState<BrandingData>(BRANDING_DEFAULTS);
   const [userRole, setUserRole] = useState('');
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     async function load() {
-      const meRes = await fetch('/api/me');
+      const [empRes, meRes] = await Promise.all([fetch('/api/gestor/empresa'), fetch('/api/me')]);
       if (meRes.ok) setUserRole((await meRes.json()).role ?? '');
-      // TODO: load from company settings when branding fields are added to store
+      if (empRes.ok) {
+        const d = await empRes.json();
+        const s = d.settings ?? d ?? {};
+        setData({
+          logoDataUrl:        s.logoDataUrl        ?? '',
+          documentName:       s.documentName       ?? s.name ?? '',
+          documentFooter:     s.documentFooter     ?? '',
+          brandPrimaryColor:  s.brandPrimaryColor  ?? '#2563eb',
+          brandSecondaryColor:s.brandSecondaryColor ?? '#0f172a',
+          companyPhone:       s.companyPhone       ?? s.phone ?? '',
+          companyEmailFrom:   s.companyEmailFrom   ?? s.email ?? '',
+          fiscalAddress:      s.fiscalAddress      ?? s.address ?? '',
+          taxId:              s.taxId              ?? s.nif ?? '',
+        });
+      }
     }
     load();
   }, []);
 
   const canWrite = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
 
-  return (
-    <div>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Branding de documentos</h1>
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true); setError(''); setSaved(false);
+    const res = await fetch('/api/gestor/empresa', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 3000); }
+    else { const d = await res.json().catch(() => ({})); setError(d.error ?? 'Error al guardar'); }
+    setSaving(false);
+  }
+
+  function handleLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setData((prev) => ({ ...prev, logoDataUrl: reader.result as string }));
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function colorField(label: string, key: 'brandPrimaryColor' | 'brandSecondaryColor') {
+    return (
+      <div className="form-group">
+        <label className="form-label">{label}</label>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input type="color" value={data[key]} onChange={(e) => setData({ ...data, [key]: e.target.value })}
+            disabled={!canWrite} style={{ width: 44, height: 34, padding: 2, border: '1px solid var(--color-border)', borderRadius: 6, cursor: canWrite ? 'pointer' : 'not-allowed' }} />
+          <input className="form-input" value={data[key]} onChange={(e) => setData({ ...data, [key]: e.target.value })}
+            disabled={!canWrite} style={{ flex: 1, fontFamily: 'monospace' }} />
         </div>
       </div>
+    );
+  }
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        {/* Configuration */}
-        <div className="card">
-          <h3 style={{ fontWeight: 600, marginBottom: 16, fontSize: '0.95rem' }}>Configuración de documentos</h3>
+  return (
+    <div>
+      <div className="page-header"><div><h1 className="page-title">Branding de documentos</h1></div></div>
+      {error && <div className="alert alert-danger" style={{ marginBottom: 16 }}>{error}</div>}
+      {saved && <div className="alert" style={{ marginBottom: 16, background: '#f0fdf4', borderLeft: '4px solid #15803d', color: '#14532d' }}>Branding guardado correctamente.</div>}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div className="form-group">
-              <label className="form-label">URL del logo de empresa</label>
-              <input
-                className="form-input"
-                value={data.logoUrl}
-                onChange={(e) => setData({ ...data, logoUrl: e.target.value })}
-                disabled={!canWrite}
-                placeholder="https://miempresa.com/logo.png o /uploads/logo.png"
-              />
-            </div>
+      <form onSubmit={handleSave}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
 
-            <div className="form-group">
-              <label className="form-label">Color corporativo principal</label>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <input
-                  type="color"
-                  value={data.primaryColor}
-                  onChange={(e) => setData({ ...data, primaryColor: e.target.value })}
-                  disabled={!canWrite}
-                  style={{ width: 48, height: 36, padding: 2, border: '1px solid var(--color-border)', borderRadius: 6, cursor: canWrite ? 'pointer' : 'not-allowed' }}
-                />
-                <input
-                  className="form-input"
-                  value={data.primaryColor}
-                  onChange={(e) => setData({ ...data, primaryColor: e.target.value })}
-                  disabled={!canWrite}
-                  style={{ flex: 1, fontFamily: 'monospace' }}
-                  placeholder="#1e3a5f"
-                />
+          {/* Left: config */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <h3 style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: 4 }}>Logo de empresa</h3>
+            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: -10 }}>
+              Este logo aparece en las cabeceras de confirmaciones, presupuestos y facturas.
+            </p>
+
+            {data.logoDataUrl && (
+              <div style={{ border: '1px solid var(--color-border)', borderRadius: 6, padding: 12, background: 'var(--color-surface)', textAlign: 'center' }}>
+                <img src={data.logoDataUrl} alt="Logo empresa" style={{ maxHeight: 64, maxWidth: '100%', objectFit: 'contain' }} />
               </div>
-            </div>
+            )}
 
             <div className="form-group">
-              <label className="form-label">Color corporativo secundario</label>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <input
-                  type="color"
-                  value={data.secondaryColor}
-                  onChange={(e) => setData({ ...data, secondaryColor: e.target.value })}
-                  disabled={!canWrite}
-                  style={{ width: 48, height: 36, padding: 2, border: '1px solid var(--color-border)', borderRadius: 6, cursor: canWrite ? 'pointer' : 'not-allowed' }}
-                />
-                <input
-                  className="form-input"
-                  value={data.secondaryColor}
-                  onChange={(e) => setData({ ...data, secondaryColor: e.target.value })}
-                  disabled={!canWrite}
-                  style={{ flex: 1, fontFamily: 'monospace' }}
-                  placeholder="#2b6cbd"
-                />
-              </div>
+              <label className="form-label">Subir logo (PNG, SVG, JPG)</label>
+              <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                onChange={handleLogoFile} disabled={!canWrite || uploading}
+                className="form-input" style={{ padding: '5px 8px' }} />
+              {uploading && <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Procesando…</span>}
             </div>
 
+            {data.logoDataUrl && canWrite && (
+              <button type="button" className="btn btn-ghost btn-sm" style={{ alignSelf: 'flex-start' }}
+                onClick={() => setData((p) => ({ ...p, logoDataUrl: '' }))}>
+                Eliminar logo
+              </button>
+            )}
+
+            <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)' }} />
+            <h3 style={{ fontWeight: 600, fontSize: '0.95rem' }}>Colores corporativos</h3>
+            {colorField('Color principal (cabeceras, botones)', 'brandPrimaryColor')}
+            {colorField('Color secundario (textos, accentos)', 'brandSecondaryColor')}
+
+            <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)' }} />
+            <h3 style={{ fontWeight: 600, fontSize: '0.95rem' }}>Datos en documentos</h3>
+
             <div className="form-group">
-              <label className="form-label">Texto de pie de documento</label>
-              <textarea
-                className="form-input"
-                value={data.footerText}
-                onChange={(e) => setData({ ...data, footerText: e.target.value })}
-                disabled={!canWrite}
-                rows={2}
-                placeholder="Mi Rent a Car S.L. · CIF B12345678 · Tel. 900 000 000"
-                style={{ resize: 'vertical' }}
-              />
+              <label className="form-label">Nombre de empresa en documentos</label>
+              <input className="form-input" value={data.documentName}
+                onChange={(e) => setData({ ...data, documentName: e.target.value })}
+                disabled={!canWrite} placeholder="Mi Rent a Car S.L." />
+            </div>
+            <div className="form-group">
+              <label className="form-label">NIF / CIF en documentos</label>
+              <input className="form-input" value={data.taxId}
+                onChange={(e) => setData({ ...data, taxId: e.target.value })}
+                disabled={!canWrite} placeholder="B12345678" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Dirección fiscal</label>
+              <input className="form-input" value={data.fiscalAddress}
+                onChange={(e) => setData({ ...data, fiscalAddress: e.target.value })}
+                disabled={!canWrite} placeholder="Calle Ejemplo 1, 28001 Madrid" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Teléfono en documentos</label>
+              <input className="form-input" value={data.companyPhone}
+                onChange={(e) => setData({ ...data, companyPhone: e.target.value })}
+                disabled={!canWrite} placeholder="+34 900 000 000" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Email de contacto en documentos</label>
+              <input type="email" className="form-input" value={data.companyEmailFrom}
+                onChange={(e) => setData({ ...data, companyEmailFrom: e.target.value })}
+                disabled={!canWrite} placeholder="reservas@miempresa.es" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Pie de página de documentos</label>
+              <textarea className="form-textarea" value={data.documentFooter}
+                onChange={(e) => setData({ ...data, documentFooter: e.target.value })}
+                disabled={!canWrite} rows={2}
+                placeholder="Mi Rent a Car S.L. · CIF B12345678 · reservas@miempresa.es" />
             </div>
 
             {canWrite && (
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 3000); }}
-              >
-                {saved ? '¡Guardado!' : 'Guardar branding'}
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Guardando…' : 'Guardar branding'}
               </button>
             )}
           </div>
-        </div>
 
-        {/* Preview */}
-        <div className="card">
-          <h3 style={{ fontWeight: 600, marginBottom: 16, fontSize: '0.95rem' }}>Vista previa de documento</h3>
-          <div style={{
-            border: '1px solid var(--color-border)',
-            borderRadius: 8,
-            overflow: 'hidden',
-            fontSize: '0.78rem',
-          }}>
-            {/* Doc header */}
-            <div style={{
-              background: data.primaryColor,
-              color: '#fff',
-              padding: '16px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-            }}>
-              <div>
-                {data.logoUrl ? (
-                  <img src={data.logoUrl} alt="Logo empresa" style={{ height: 36, objectFit: 'contain' }} />
-                ) : (
-                  <div style={{ fontWeight: 700, fontSize: '1rem', opacity: 0.9 }}>LOGO EMPRESA</div>
-                )}
-              </div>
-              <div style={{ textAlign: 'right', opacity: 0.85 }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>CONTRATO DE ALQUILER</div>
-                <div style={{ fontSize: '0.72rem' }}>Nº CNT-2026-000001</div>
-              </div>
-            </div>
-
-            {/* Doc body */}
-            <div style={{ padding: '16px 20px', background: '#fff', color: '#111' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          {/* Right: preview */}
+          <div className="card">
+            <h3 style={{ fontWeight: 600, marginBottom: 16, fontSize: '0.95rem' }}>Vista previa en documentos</h3>
+            <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden', fontSize: '0.8rem' }}>
+              <div style={{ background: '#fff', borderBottom: `3px solid ${data.brandPrimaryColor}`, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontWeight: 600, marginBottom: 4, color: data.secondaryColor }}>ARRENDADOR</div>
-                  <div>Mi Empresa Rent a Car S.L.</div>
-                  <div style={{ opacity: 0.6 }}>CIF: B12345678</div>
+                  {data.logoDataUrl
+                    ? <img src={data.logoDataUrl} alt="Logo" style={{ maxHeight: 48, maxWidth: 160, objectFit: 'contain' }} />
+                    : <div style={{ fontWeight: 700, fontSize: '1rem', color: data.brandSecondaryColor }}>{data.documentName || 'LOGO EMPRESA'}</div>}
                 </div>
-                <div>
-                  <div style={{ fontWeight: 600, marginBottom: 4, color: data.secondaryColor }}>ARRENDATARIO</div>
-                  <div>Nombre del Cliente</div>
-                  <div style={{ opacity: 0.6 }}>DNI: 12345678A</div>
+                <div style={{ textAlign: 'right', color: 'var(--color-text-muted)', fontSize: '0.75rem', lineHeight: 1.5 }}>
+                  {data.taxId && <div>{data.taxId}</div>}
+                  {data.fiscalAddress && <div>{data.fiscalAddress}</div>}
+                  {data.companyPhone && <div>{data.companyPhone}</div>}
                 </div>
               </div>
-              <div style={{ height: 1, background: data.secondaryColor, opacity: 0.2, marginBottom: 12 }} />
-              <div style={{ opacity: 0.5, textAlign: 'center', padding: '8px 0' }}>
-                … contenido del contrato …
+              <div style={{ padding: '16px 18px', background: '#fff', color: '#1e293b' }}>
+                <div style={{ fontWeight: 700, color: data.brandPrimaryColor, fontSize: '1.1rem', marginBottom: 10 }}>Confirmación de reserva</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: '0.75rem' }}>
+                  {[['Reserva', 'RSV-2026-000001'], ['Cliente', 'Juan García'], ['Entrega', '04/04/2026 · Hotel Entremares'], ['Recogida', '11/04/2026 · Aeropuerto']].map(([l, v]) => (
+                    <div key={l}>
+                      <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em' }}>{l}</div>
+                      <div style={{ fontWeight: 500, color: data.brandSecondaryColor }}>{v}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-
-            {/* Doc footer */}
-            <div style={{
-              background: '#f5f5f5',
-              borderTop: `2px solid ${data.primaryColor}`,
-              padding: '8px 20px',
-              color: '#666',
-              textAlign: 'center',
-              fontSize: '0.7rem',
-            }}>
-              {data.footerText || 'Pie de página de la empresa · Datos fiscales · Contacto'}
+              <div style={{ background: '#f8fafc', borderTop: '1px solid var(--color-border)', padding: '8px 18px', color: '#94a3b8', textAlign: 'center', fontSize: '0.7rem' }}>
+                {data.documentFooter || `${data.documentName || 'Mi empresa'} · ${data.taxId || 'CIF'} · ${data.companyEmailFrom || 'email@empresa.es'}`}
+              </div>
             </div>
           </div>
-
         </div>
-      </div>
+      </form>
     </div>
   );
 }

@@ -131,6 +131,7 @@ export interface Client {
   licenseNumber?: string;
   licenseExpiry?: string;
   commissionPercent?: number;
+  preferredLanguage?: string; // 'es' | 'en' — idioma preferido para documentos
   active: boolean;
   notes?: string;
   createdAt: string;
