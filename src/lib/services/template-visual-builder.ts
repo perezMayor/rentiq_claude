@@ -32,8 +32,8 @@ export function defaultVisualTemplateConfig(type: VisualTemplateType, language: 
       ? 'Dear {customer_first_name}, please find below the details of your confirmed reservation.'
       : 'Estimado/a {customer_first_name}, a continuación encontrará los detalles de su reserva confirmada.',
     PRESUPUESTO: isEn
-      ? 'Please find below the quotation for your vehicle rental.'
-      : 'A continuación le presentamos el presupuesto para su alquiler de vehículo.',
+      ? 'Dear {customer_name}, following your request please find below the quotation for your vehicle rental. This estimate has been prepared exclusively for you by {company_name}.'
+      : 'Estimado/a {customer_name}, en respuesta a su solicitud le presentamos el presupuesto para su alquiler de vehículo. Esta estimación ha sido preparada exclusivamente para usted por {company_name}.',
     FACTURA: isEn
       ? 'Please find attached your invoice for services rendered.'
       : 'Adjunto encontrará su factura por los servicios prestados.',
@@ -345,15 +345,6 @@ export function buildVisualTemplateHtml(
       <div class="doc-additional">${config.additionalText}</div>
     ` : '';
 
-    // Customer intro — greets client by name and presents the quote
-    const customerIntro = `
-      <div style="margin-bottom:20px;padding:14px 16px;background:#f8fafc;border-left:4px solid ${primary};border-radius:0 6px 6px 0;font-size:13px;color:#334155;line-height:1.6">
-        ${isEn
-          ? 'Dear <strong>{customer_name}</strong>,<br>Following your request, please find below the quotation for your vehicle rental. This estimate is valid for <strong>{company_name}</strong> and has been prepared exclusively for you.'
-          : 'Estimado/a <strong>{customer_name}</strong>,<br>En respuesta a su solicitud, le presentamos a continuación el presupuesto para su alquiler de vehículo. Esta estimación es válida para <strong>{company_name}</strong> y ha sido preparada exclusivamente para usted.'}
-      </div>
-    `;
-
     return `<!DOCTYPE html>
 <html lang="${language}" ${VISUAL_TEMPLATE_MARKER} data-rentiq-visual-config="${configJson}">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">${commonStyles}</head>
@@ -364,7 +355,7 @@ export function buildVisualTemplateHtml(
     ${companyBlock}
   </div>
   <div class="doc-title">${config.title}</div>
-  ${customerIntro}
+  <p class="doc-intro">${config.intro}</p>
   ${reservationBlock}
   ${pricingBlock}
   ${additionalBlock}
