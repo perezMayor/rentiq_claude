@@ -1,5 +1,5 @@
-// contract-pdf.ts — PDFKit contract document builder (2 copies × anverso + reverso)
-// Uses PDFKit ^0.18.0 (already installed)
+// contract-pdf.ts — PDFKit contract builder (2 copies × anverso + reverso)
+// Diseño tipo contrato de alquiler profesional, dos columnas, reverso bilingüe
 
 import PDFDocument from 'pdfkit';
 import type {
@@ -12,7 +12,7 @@ import type {
   CompanyBranch,
 } from '@/src/lib/types';
 
-// ─── Public data shape ────────────────────────────────────────────────────────
+// ─── Public types ─────────────────────────────────────────────────────────────
 
 export interface ContractPdfData {
   contract: Contract;
@@ -23,185 +23,250 @@ export interface ContractPdfData {
   branch: CompanyBranch | null;
   settings: CompanySettings;
   language: string;
+  pickupFlight?: string;
+  returnFlight?: string;
 }
 
 // ─── Layout constants ─────────────────────────────────────────────────────────
 
-const PW = 595;   // A4 width  (pt)
-const PH = 842;   // A4 height (pt)
-const ML = 38;    // left margin
-const MR = 38;    // right margin
-const CW = PW - ML - MR; // content width (519)
-const PRIMARY = '#2b6cbd';
-const LIGHT_BG = '#f0f7ff';
-const BORDER = '#c0c7d1';
-const TEXT_COLOR = '#0f172a';
-const MUTED_COLOR = '#475569';
+const PW  = 595;
+const PH  = 842;
+const ML  = 30;   // left margin
+const MR  = 30;   // right margin
+const CW  = PW - ML - MR;  // 535
+
+// Two-column grid
+const C1W  = 249;
+const CGAP = 17;
+const C2W  = CW - C1W - CGAP;  // 269
+const C2X  = ML + C1W + CGAP;
+
+// Colors
+const PRIMARY    = '#2b6cbd';
+const BORDER_CLR = '#d1d5db';
+const LABEL_CLR  = '#6b7280';
+const TXT_CLR    = '#111827';
+const SUBHDR_BG  = '#f3f4f6';
+const SUBHDR_CLR = '#9ca3af';
+const TOTAL_BG   = '#eff6ff';
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 
-function i18n(lang: string) {
+interface Strings {
+  titleDoc: string; copyCompany: string; copyClient: string; contractNo: string;
+  vehicleData: string; brandModel: string; plate: string; color: string;
+  group: string; fuelLabel: string;
+  mainDriver: string; clientLabel: string; birthDate: string; document: string;
+  license: string; docExpiry: string; licExpiry: string; nationality: string;
+  permAddress: string; phones: string; phoneFix: string; mobile: string;
+  addDrivers: string; noAddDrivers: string;
+  companySection: string; companyCIF: string; fiscalAddr: string; contact: string;
+  rentalData: string; pickupLocation: string; returnLocation: string;
+  deliveryDate: string; returnDate: string; deliveryTime: string; returnTime: string;
+  deliveryFlight: string; returnFlight: string;
+  techData: string; totalDays: string; groupBilled: string; tariffCode: string;
+  breakdown: string; base: string; discount: string; extras: string;
+  fuelCharge: string; insurance: string; penalties: string; total: string; franchise: string;
+  vehicleSection: string; vehicleChanges: string; noChanges: string;
+  observations: string; noObs: string;
+  sigTextEs: string; sigTextEn: string;
+  sigRenter: string; sigCompany: string;
+  na: string;
+}
+
+function strings(lang: string): Strings {
   const en = lang.startsWith('en');
   return {
-    title:          en ? 'VEHICLE RENTAL CONTRACT'          : 'CONTRATO DE ARRENDAMIENTO DE VEHÍCULO',
+    titleDoc:       en ? 'Car Rental Contract'              : 'Contrato de alquiler',
     copyCompany:    en ? 'COMPANY COPY'                     : 'COPIA EMPRESA',
     copyClient:     en ? 'CLIENT COPY'                      : 'COPIA CLIENTE',
-    contractNo:     en ? 'Contract No.'                     : 'Nº Contrato',
-    issueDate:      en ? 'Date'                             : 'Fecha',
-    reservation:    en ? 'Reservation'                      : 'Reserva',
-    clientData:     en ? 'CLIENT DATA'                      : 'DATOS DEL ARRENDATARIO',
-    clientName:     en ? 'Name / Company'                   : 'Nombre / Razón social',
-    nif:            en ? 'ID / VAT'                         : 'DNI / NIF',
-    licenseNo:      en ? 'License No.'                      : 'Nº Permiso conducir',
-    licenseExpiry:  en ? 'Expiry'                           : 'Caducidad',
-    phone:          en ? 'Phone'                            : 'Teléfono',
-    email:          en ? 'Email'                            : 'Email',
-    address:        en ? 'Address'                          : 'Dirección',
-    vehicleData:    en ? 'VEHICLE DATA'                     : 'DATOS DEL VEHÍCULO',
+    contractNo:     en ? 'No.'                              : 'Nº',
+    vehicleData:    en ? 'Vehicle data'                     : 'Datos del vehículo',
+    brandModel:     en ? 'Make / Model'                     : 'Marca / modelo',
     plate:          en ? 'License plate'                    : 'Matrícula',
-    category:       en ? 'Category'                         : 'Categoría',
-    vehicleModel:   en ? 'Model'                            : 'Modelo',
     color:          en ? 'Color'                            : 'Color',
-    year:           en ? 'Year'                             : 'Año',
-    kmOut:          en ? 'Km out'                           : 'Km salida',
-    fuelOut:        en ? 'Fuel out'                         : 'Comb. salida',
-    kmIn:           en ? 'Km in'                            : 'Km entrada',
-    fuelIn:         en ? 'Fuel in'                          : 'Comb. entrada',
-    period:         en ? 'RENTAL PERIOD'                    : 'PERÍODO DE ARRENDAMIENTO',
-    delivery:       en ? 'DELIVERY'                         : 'ENTREGA',
-    return:         en ? 'RETURN'                           : 'DEVOLUCIÓN',
-    billedDays:     en ? 'Billed days'                      : 'Días facturados',
-    pricing:        en ? 'PRICING'                          : 'IMPORTES',
-    basePrice:      en ? 'Base rental'                      : 'Alquiler base',
-    extras:         en ? 'Extras'                           : 'Extras',
-    insurance:      en ? 'Insurance'                        : 'Seguro',
-    fuel:           en ? 'Fuel charge'                      : 'Cargo combustible',
-    penalties:      en ? 'Penalties'                        : 'Penalizaciones',
+    group:          en ? 'Group'                            : 'Grupo',
+    fuelLabel:      en ? 'Fuel'                             : 'Combustible',
+    mainDriver:     en ? 'Main driver'                      : 'Conductor principal',
+    clientLabel:    en ? 'Client'                           : 'Cliente',
+    birthDate:      en ? 'Date of birth'                    : 'Fecha nacimiento',
+    document:       en ? 'Document'                         : 'Documento',
+    license:        en ? 'Driving license'                  : 'Permiso de conducir',
+    docExpiry:      en ? 'Doc. expiry'                      : 'Caducidad documento',
+    licExpiry:      en ? 'Lic. expiry'                      : 'Caducidad permiso',
+    nationality:    en ? 'Nationality'                      : 'Nacionalidad',
+    permAddress:    en ? 'PERMANENT ADDRESS'                : 'DIRECCIÓN PERMANENTE',
+    phones:         en ? 'PHONES'                           : 'TELÉFONOS',
+    phoneFix:       en ? 'Phone'                            : 'Teléfono',
+    mobile:         en ? 'Mobile'                           : 'Móvil',
+    addDrivers:     en ? 'Additional drivers'               : 'Conductores adicionales',
+    noAddDrivers:   en ? 'No additional drivers'            : 'Sin conductores adicionales',
+    companySection: en ? 'Company'                          : 'Empresa',
+    companyCIF:     en ? 'VAT no.'                          : 'CIF',
+    fiscalAddr:     en ? 'Fiscal address'                   : 'Domicilio fiscal',
+    contact:        en ? 'Contact'                          : 'Contacto',
+    rentalData:     en ? 'Rental data'                      : 'Datos del alquiler',
+    pickupLocation: en ? 'Pickup location'                  : 'Lugar entrega',
+    returnLocation: en ? 'Return location'                  : 'Lugar recogida',
+    deliveryDate:   en ? 'Delivery date'                    : 'Fecha entrega',
+    returnDate:     en ? 'Return date'                      : 'Fecha recogida',
+    deliveryTime:   en ? 'Delivery time'                    : 'Hora entrega',
+    returnTime:     en ? 'Return time'                      : 'Hora recogida',
+    deliveryFlight: en ? 'Delivery flight'                  : 'Vuelo entrega',
+    returnFlight:   en ? 'Return flight'                    : 'Vuelo recogida',
+    techData:       en ? 'Technical billing data'           : 'Datos técnicos de facturación',
+    totalDays:      en ? 'Total billed days'                : 'Total días facturados',
+    groupBilled:    en ? 'Billed / delivered group'         : 'Grupo facturado / entregado',
+    tariffCode:     en ? 'Rate code'                        : 'Código tarifa',
+    breakdown:      en ? 'Billing breakdown'                : 'Desglose de facturación',
+    base:           en ? 'Base'                             : 'Base',
     discount:       en ? 'Discount'                         : 'Descuento',
-    total:          en ? 'TOTAL'                            : 'TOTAL',
-    deposit:        en ? 'Deposit / Pre-auth'               : 'Depósito / Preautorización',
-    observations:   en ? 'OBSERVATIONS'                     : 'OBSERVACIONES',
-    signatures:     en ? 'SIGNATURES'                       : 'FIRMAS',
-    sigCompany:     en ? 'For the company'                  : 'Por la empresa arrendadora',
-    sigClient:      en ? 'Renter signature'                 : 'Firma del arrendatario',
-    sigDatePlace:   en ? 'Date and place'                   : 'Fecha y lugar',
-    backTitle:      en ? 'GENERAL TERMS AND CONDITIONS'     : 'CONDICIONES GENERALES DEL CONTRATO',
-    backPlaceholder:en ? 'Add your rental terms and conditions in Settings → Company → Contract back content.'
-                       : 'Configura las condiciones generales en Gestor → Empresa → Contenido reverso contrato.',
+    extras:         en ? 'Extras'                           : 'Extras',
+    fuelCharge:     en ? 'Fuel'                             : 'Combustible',
+    insurance:      en ? 'CDW / Insurance'                  : 'CDW / Seguro',
+    penalties:      en ? 'Penalties'                        : 'Penalizaciones',
+    total:          en ? 'Total'                            : 'Total',
+    franchise:      en ? 'Excess / Franchise'               : 'Franquicia',
+    vehicleSection: en ? 'Vehicle'                          : 'Vehículo',
+    vehicleChanges: en ? 'Vehicle changes'                  : 'Cambios de vehículo',
+    noChanges:      en ? 'No vehicle changes recorded'      : 'Sin cambios de vehículo registrados',
+    observations:   en ? 'Observations'                     : 'Observaciones',
+    noObs:          en ? 'No observations'                  : 'Sin observaciones',
+    sigTextEs:      'He leído y entiendo los términos y condiciones del presente contrato de alquiler y autorizo con mi firma que todos los importes derivados de este alquiler sean cargados en mi tarjeta de crédito.',
+    sigTextEn:      'I have read and agreed the terms of this rental agreement and I authorize with my signature that all amounts derived from this rent are charged to my credit card, deposit or others.',
+    sigRenter:      en ? 'Renter signature'                 : 'Firma arrendatario',
+    sigCompany:     en ? 'Company signature'                : 'Firma empresa',
+    na:             'N/D',
   };
 }
 
-// ─── Formatting helpers ───────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtDate(d: string | undefined, lang: string): string {
-  if (!d) return '___________';
-  const [y, m, day] = d.split('-');
-  if (!y || !m || !day) return d;
+  if (!d) return 'N/D';
+  const parts = d.split('-');
+  if (parts.length !== 3) return d;
+  const [y, m, day] = parts;
   return lang.startsWith('en') ? `${m}/${day}/${y}` : `${day}/${m}/${y}`;
 }
 
 function fmtAmt(n: number): string {
-  return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  return n.toFixed(2);
 }
 
-function blank(n = 24): string {
+function blankLine(n = 20): string {
   return '_'.repeat(n);
 }
 
-// ─── PDFKit draw helpers ──────────────────────────────────────────────────────
-
-function hRule(doc: PDFKit.PDFDocument, y: number, color = BORDER, width = 0.5) {
-  doc.save().moveTo(ML, y).lineTo(PW - MR, y).strokeColor(color).lineWidth(width).stroke().restore();
+function fuelStr(fuel: string | undefined, lang: string): string {
+  if (!fuel) return 'N/D';
+  if (lang.startsWith('en')) {
+    return ({GASOLINA: 'Petrol', DIESEL: 'Diesel', ELECTRICO: 'Electric', HIBRIDO: 'Hybrid'}[fuel] ?? fuel);
+  }
+  return ({GASOLINA: 'Gasolina', DIESEL: 'Diésel', ELECTRICO: 'Eléctrico', HIBRIDO: 'Híbrido'}[fuel] ?? fuel);
 }
 
-function sectionHeader(doc: PDFKit.PDFDocument, text: string, y: number): number {
-  doc.save().rect(ML, y, CW, 17).fillColor(PRIMARY).fill().restore();
-  doc.font('Helvetica-Bold').fontSize(7.5).fillColor('white');
-  doc.text(text, ML + 6, y + 5, { lineBreak: false });
-  doc.fillColor(TEXT_COLOR).font('Helvetica');
-  return y + 21;
+// ─── Draw helpers ─────────────────────────────────────────────────────────────
+
+function hline(doc: PDFKit.PDFDocument, y: number, x1 = ML, x2 = PW - MR, color = BORDER_CLR, lw = 0.5) {
+  doc.save().moveTo(x1, y).lineTo(x2, y).strokeColor(color).lineWidth(lw).stroke().restore();
 }
 
-function labelValue(
+// Bordered section box with blue title — returns innerY (after title row)
+function secBox(
   doc: PDFKit.PDFDocument,
-  label: string,
-  value: string,
-  x: number,
-  y: number,
-  w: number,
+  title: string,
+  x: number, y: number, w: number, h: number,
 ): number {
-  doc.font('Helvetica').fontSize(6.5).fillColor(MUTED_COLOR).text(label, x, y, { width: w, lineBreak: false });
-  doc.font('Helvetica-Bold').fontSize(8.5).fillColor(TEXT_COLOR).text(value || '—', x, y + 8, { width: w, lineBreak: false, ellipsis: true });
+  doc.save().roundedRect(x, y, w, h, 2).strokeColor(BORDER_CLR).lineWidth(0.5).stroke().restore();
+  doc.font('Helvetica-Bold').fontSize(8.5).fillColor(PRIMARY)
+     .text(title, x + 7, y + 6, { width: w - 14, lineBreak: false });
+  hline(doc, y + 17, x + 2, x + w - 2, BORDER_CLR, 0.3);
   return y + 20;
 }
 
-function inlineField(
+// Stacked label + value field
+function field(
   doc: PDFKit.PDFDocument,
-  label: string,
-  value: string,
-  x: number,
-  y: number,
-  w: number,
+  label: string, value: string,
+  x: number, y: number, w: number,
 ) {
-  const lw = 72;
-  doc.font('Helvetica').fontSize(7.5).fillColor(MUTED_COLOR).text(label + ':', x, y, { width: lw, lineBreak: false });
-  doc.font('Helvetica-Bold').fontSize(7.5).fillColor(TEXT_COLOR).text(value || '—', x + lw + 2, y, { width: w - lw - 6, lineBreak: false, ellipsis: true });
+  doc.font('Helvetica').fontSize(6).fillColor(LABEL_CLR)
+     .text(label, x, y, { width: w, lineBreak: false });
+  doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
+     .text(value || 'N/D', x, y + 7, { width: w, lineBreak: false, ellipsis: true });
 }
 
-// ─── Page header (company + title) ───────────────────────────────────────────
+// Gray subheader stripe inside a section
+function subHdr(
+  doc: PDFKit.PDFDocument,
+  text: string,
+  x: number, y: number, w: number,
+): number {
+  doc.save().rect(x, y, w, 11).fillColor(SUBHDR_BG).fill().restore();
+  doc.font('Helvetica-Bold').fontSize(6.5).fillColor(SUBHDR_CLR)
+     .text(text, x + 4, y + 3, { width: w - 8, lineBreak: false, align: 'center' });
+  return y + 13;
+}
 
-function pageHeader(doc: PDFKit.PDFDocument, settings: CompanySettings, copyLabel: string, lang: string): number {
-  let y = 30;
+// ─── Header ───────────────────────────────────────────────────────────────────
 
-  // Logo (left)
+function drawHeader(
+  doc: PDFKit.PDFDocument,
+  settings: CompanySettings,
+  contractNum: string,
+  copyLabel: string,
+  lang: string,
+): number {
+  const tr = strings(lang);
+  let y = 22;
+
+  // Logo
   if (settings.logoDataUrl) {
     try {
       const b64 = settings.logoDataUrl.replace(/^data:image\/\w+;base64,/, '');
       const buf = Buffer.from(b64, 'base64');
-      doc.image(buf, ML, y, { height: 40, fit: [110, 40] });
-    } catch { /* skip if corrupt */ }
+      doc.image(buf, ML, y, { height: 44, fit: [100, 44] });
+    } catch { /* skip */ }
   }
 
-  // Company info (right column)
-  const companyName = settings.documentName ?? settings.name ?? '';
-  const taxId       = settings.taxId ?? settings.nif ?? '';
-  const addr        = settings.fiscalAddress ?? settings.address ?? '';
-  const phone       = settings.companyPhone ?? settings.phone ?? '';
-  const email       = settings.companyEmailFrom ?? settings.email ?? '';
-  const web         = settings.companyWebsite ?? '';
+  // Company block (center-left)
+  const cx = ML + 108;
+  const cw = CW - 108 - 120;
+  const name = settings.documentName ?? settings.name ?? '';
+  const nif  = settings.taxId ?? settings.nif ?? '';
+  const addr = settings.fiscalAddress ?? settings.address ?? '';
 
-  const infoX = ML + 120;
-  const infoW = CW - 120;
+  doc.font('Helvetica-Bold').fontSize(11).fillColor(TXT_CLR)
+     .text(name, cx, y + 2, { width: cw, lineBreak: false });
+  doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
+     .text(nif, cx, y + 15, { width: cw, lineBreak: false });
+  doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
+     .text(addr, cx, y + 24, { width: cw, lineBreak: false });
 
-  doc.font('Helvetica-Bold').fontSize(10).fillColor(PRIMARY)
-     .text(companyName, infoX, y, { width: infoW, align: 'right', lineBreak: false });
-  y += 13;
-
-  const meta = [taxId, addr, phone, email, web].filter(Boolean).join('  ·  ');
-  doc.font('Helvetica').fontSize(7).fillColor(MUTED_COLOR)
-     .text(meta, infoX, y, { width: infoW, align: 'right', lineBreak: false });
-  y = 78;
-
-  hRule(doc, y, PRIMARY, 1);
-  y += 8;
-
-  // Document title
-  const t = i18n(lang);
-  doc.font('Helvetica-Bold').fontSize(12).fillColor(PRIMARY)
-     .text(t.title, ML, y, { width: CW - 88, lineBreak: false });
+  // Contract number (top-right)
+  doc.font('Helvetica-Bold').fontSize(11).fillColor(TXT_CLR)
+     .text(`${tr.contractNo} ${contractNum}`, PW - MR - 118, y + 2, { width: 118, align: 'right', lineBreak: false });
 
   // Copy badge
-  doc.save().rect(PW - MR - 86, y - 3, 86, 16).fillColor(PRIMARY).fill().restore();
+  const badgeY = y + 18;
+  doc.save().roundedRect(PW - MR - 102, badgeY, 102, 15, 3).fillColor(PRIMARY).fill().restore();
   doc.font('Helvetica-Bold').fontSize(7.5).fillColor('white')
-     .text(copyLabel, PW - MR - 86, y + 2, { width: 86, align: 'center', lineBreak: false });
-  doc.fillColor(TEXT_COLOR).font('Helvetica');
+     .text(copyLabel, PW - MR - 102, badgeY + 4, { width: 102, align: 'center', lineBreak: false });
 
-  y += 24;
-  hRule(doc, y, BORDER);
-  return y + 8;
+  y = 74;
+  hline(doc, y, ML, PW - MR, PRIMARY, 1.5);
+  y += 8;
+
+  // Title
+  doc.font('Helvetica-Bold').fontSize(18).fillColor(TXT_CLR)
+     .text(tr.titleDoc, ML, y, { lineBreak: false });
+  y += 26;
+  hline(doc, y, ML, PW - MR, BORDER_CLR, 0.5);
+  return y + 6;
 }
 
-// ─── Anverso (front page) ─────────────────────────────────────────────────────
+// ─── Anverso ──────────────────────────────────────────────────────────────────
 
 function renderAnverso(
   doc: PDFKit.PDFDocument,
@@ -209,239 +274,376 @@ function renderAnverso(
   copyLabel: string,
   isBlank: boolean,
 ): void {
-  const { contract, client, vehicle, model, category, branch, settings } = data;
+  const { contract, client, vehicle, model, category, settings } = data;
   const lang = data.language;
-  const t = i18n(lang);
+  const tr = strings(lang);
 
-  const v = <T,>(real: T | undefined | null, fallback = blank()): string =>
-    isBlank ? fallback : (real != null ? String(real) : '—');
+  // Value helper: real or blank
+  const v = (val: string | number | undefined | null, fb = 'N/D'): string =>
+    isBlank ? blankLine() : (val != null && String(val).trim() !== '' ? String(val) : fb);
 
-  let y = pageHeader(doc, settings, copyLabel, lang);
+  const num = isBlank ? '' : (contract?.number ?? '');
+  let y = drawHeader(doc, settings, num, copyLabel, lang);
 
-  // ── Contract reference row ──────────────────────────────────────────────────
-  const col3 = CW / 3;
-  inlineField(doc, t.contractNo, v(contract?.number, blank(12)), ML, y, col3);
-  inlineField(doc, t.issueDate,  v(contract ? fmtDate(contract.createdAt?.slice(0, 10), lang) : undefined, blank(10)), ML + col3, y, col3);
-  if (!isBlank && (contract as any)?.reservationId) {
-    inlineField(doc, t.reservation, String((contract as any).reservationId ?? ''), ML + col3 * 2, y, col3);
-  }
-  y += 16;
+  // ── Datos del vehículo (full width) ───────────────────────────────────────
 
-  // ── Client data ─────────────────────────────────────────────────────────────
-  y = sectionHeader(doc, t.clientData, y);
+  const VH = 50;
+  const vInner = secBox(doc, tr.vehicleData, ML, y, CW, VH);
 
-  const col2 = CW / 2;
-  const clientFullName = client ? `${client.name}${client.surname ? ' ' + client.surname : ''}` : '';
-
-  labelValue(doc, t.clientName, v(clientFullName), ML, y, col2);
-  labelValue(doc, t.nif, v(client?.nif), ML + col2, y, col2);
-  y += 20;
-
-  labelValue(doc, t.phone, v(client?.phone), ML, y, col2);
-  labelValue(doc, t.email, v(client?.email), ML + col2, y, col2);
-  y += 20;
-
-  labelValue(doc, t.licenseNo, v(client?.licenseNumber), ML, y, col3);
-  labelValue(doc, t.licenseExpiry, v(client?.licenseExpiry ? fmtDate(client.licenseExpiry, lang) : undefined), ML + col3, y, col3);
-  labelValue(doc, t.address, v(client?.address), ML + col3 * 2, y, col3);
-  y += 22;
-
-  // ── Vehicle data ────────────────────────────────────────────────────────────
-  y = sectionHeader(doc, t.vehicleData, y);
-
-  const modelLabel = model ? `${model.brand} ${model.model}` : '';
-
-  labelValue(doc, t.plate,         v(contract?.plate),    ML,             y, col3);
-  labelValue(doc, t.category,      v(category?.name),     ML + col3,      y, col3);
-  labelValue(doc, t.vehicleModel,  v(modelLabel),         ML + col3 * 2,  y, col3);
-  y += 20;
-
-  const col4 = CW / 4;
-  labelValue(doc, t.color,    v(vehicle?.color),              ML,               y, col4);
-  labelValue(doc, t.year,     v(vehicle?.year),               ML + col4,        y, col4);
-  labelValue(doc, t.kmOut,    v(contract?.checkout?.kmOut),   ML + col4 * 2,    y, col4);
-  labelValue(doc, t.kmIn,     v(contract?.checkin?.kmIn),     ML + col4 * 3,    y, col4);
-  y += 22;
-
-  // ── Rental period ───────────────────────────────────────────────────────────
-  y = sectionHeader(doc, t.period, y);
-
-  const boxW = (CW - 8) / 2;
-  const boxH = 44;
-
-  // Delivery box
-  doc.save().rect(ML, y, boxW, boxH).fillColor(LIGHT_BG).fill()
-     .strokeColor(PRIMARY).lineWidth(0.8).stroke().restore();
-  doc.font('Helvetica-Bold').fontSize(7.5).fillColor(PRIMARY)
-     .text(t.delivery, ML + 6, y + 5, { lineBreak: false });
-  const delivDate = isBlank ? blank(12) : `${fmtDate(contract?.startDate, lang)}  ${contract?.startTime ?? ''}`;
-  const delivLoc  = isBlank ? blank(20) : (contract?.pickupLocation || branch?.name || '—');
-  doc.font('Helvetica-Bold').fontSize(9).fillColor(TEXT_COLOR)
-     .text(delivDate, ML + 6, y + 16, { lineBreak: false });
-  doc.font('Helvetica').fontSize(7.5).fillColor(MUTED_COLOR)
-     .text(delivLoc, ML + 6, y + 28, { width: boxW - 12, lineBreak: false, ellipsis: true });
-
-  // Return box
-  const rx = ML + boxW + 8;
-  doc.save().rect(rx, y, boxW, boxH).fillColor(LIGHT_BG).fill()
-     .strokeColor(PRIMARY).lineWidth(0.8).stroke().restore();
-  doc.font('Helvetica-Bold').fontSize(7.5).fillColor(PRIMARY)
-     .text(t.return, rx + 6, y + 5, { lineBreak: false });
-  const retDate = isBlank ? blank(12) : `${fmtDate(contract?.endDate, lang)}  ${contract?.endTime ?? ''}`;
-  const retLoc  = isBlank ? blank(20) : (contract?.returnLocation || branch?.name || '—');
-  doc.font('Helvetica-Bold').fontSize(9).fillColor(TEXT_COLOR)
-     .text(retDate, rx + 6, y + 16, { lineBreak: false });
-  doc.font('Helvetica').fontSize(7.5).fillColor(MUTED_COLOR)
-     .text(retLoc, rx + 6, y + 28, { width: boxW - 12, lineBreak: false, ellipsis: true });
-
-  y += boxH + 6;
-  inlineField(doc, t.billedDays, v(contract?.billedDays, blank(4)), ML, y, col3);
-  y += 14;
-
-  // ── Pricing ─────────────────────────────────────────────────────────────────
-  y = sectionHeader(doc, t.pricing, y);
-
-  const labelW = CW * 0.65;
-  const amtW   = CW - labelW;
-
-  function priceRow(label: string, amount: string, strikethrough = false) {
-    doc.font('Helvetica').fontSize(8).fillColor(TEXT_COLOR)
-       .text(label, ML, y, { width: labelW, lineBreak: false });
-    doc.font(strikethrough ? 'Helvetica' : 'Helvetica').fontSize(8)
-       .fillColor(strikethrough ? MUTED_COLOR : TEXT_COLOR)
-       .text(amount, ML + labelW, y, { width: amtW, align: 'right', lineBreak: false });
-    y += 12;
-  }
-
-  if (isBlank) {
-    priceRow(t.basePrice,  blank(8));
-    priceRow(t.extras,     blank(8));
-    priceRow(t.insurance,  blank(8));
-    priceRow(t.fuel,       blank(8));
-  } else {
-    if (contract.basePrice > 0)       priceRow(t.basePrice,  fmtAmt(contract.basePrice));
-    if (contract.extrasTotal > 0)     priceRow(t.extras,     fmtAmt(contract.extrasTotal));
-    if (contract.insuranceTotal > 0)  priceRow(t.insurance,  fmtAmt(contract.insuranceTotal));
-    if (contract.fuelCharge > 0)      priceRow(t.fuel,       fmtAmt(contract.fuelCharge));
-    if (contract.penalties > 0)       priceRow(t.penalties,  fmtAmt(contract.penalties));
-    if (contract.discount > 0)        priceRow(t.discount,   '− ' + fmtAmt(contract.discount));
-  }
-
-  hRule(doc, y, BORDER);
-  y += 4;
-
-  // Total row
-  const totalVal = isBlank ? blank(8) : fmtAmt(contract.total);
-  doc.save().rect(ML + labelW - 2, y - 1, amtW + 2, 16).fillColor(PRIMARY).fill().restore();
-  doc.font('Helvetica-Bold').fontSize(9).fillColor(TEXT_COLOR)
-     .text(t.total, ML, y + 3, { width: labelW, lineBreak: false });
-  doc.font('Helvetica-Bold').fontSize(9).fillColor('white')
-     .text(totalVal, ML + labelW, y + 3, { width: amtW, align: 'right', lineBreak: false });
-  doc.fillColor(TEXT_COLOR);
-  y += 20;
-
-  // Deposit line
-  const depositVal = isBlank ? blank(8) : fmtAmt(settings.defaultDeposit ?? 0);
-  inlineField(doc, t.deposit, depositVal, ML, y, col2);
-  y += 14;
-
-  // ── Observations ────────────────────────────────────────────────────────────
-  const obs = isBlank ? '' : (contract?.notes ?? '');
-  y = sectionHeader(doc, t.observations, y);
-  const obsH = 28;
-  doc.save().rect(ML, y, CW, obsH).strokeColor(BORDER).lineWidth(0.5).stroke().restore();
-  if (obs) {
-    doc.font('Helvetica').fontSize(8).fillColor(TEXT_COLOR)
-       .text(obs, ML + 4, y + 4, { width: CW - 8, height: obsH - 8 });
-  }
-  y += obsH + 6;
-
-  // ── Signatures ──────────────────────────────────────────────────────────────
-  // Check remaining space
-  const sigH = 56;
-  if (y + sigH + 30 > PH - 30) {
-    // No room — skip signatures (rare for normal contracts)
-  } else {
-    y = sectionHeader(doc, t.signatures, y);
-
-    const sigW = (CW - 10) / 2;
-
-    // Company sig box
-    doc.save().rect(ML, y, sigW, sigH).strokeColor(BORDER).lineWidth(0.5).stroke().restore();
-    doc.font('Helvetica-Bold').fontSize(7.5).fillColor(PRIMARY)
-       .text(t.sigCompany, ML + 4, y + 4, { lineBreak: false });
-    doc.font('Helvetica').fontSize(7).fillColor(MUTED_COLOR)
-       .text(t.sigDatePlace + ':  ___________________', ML + 4, y + sigH - 12, { lineBreak: false });
-
-    // Client sig box
-    const sx = ML + sigW + 10;
-    doc.save().rect(sx, y, sigW, sigH).strokeColor(BORDER).lineWidth(0.5).stroke().restore();
-    doc.font('Helvetica-Bold').fontSize(7.5).fillColor(PRIMARY)
-       .text(t.sigClient, sx + 4, y + 4, { lineBreak: false });
-    doc.font('Helvetica').fontSize(7).fillColor(MUTED_COLOR)
-       .text(t.sigDatePlace + ':  ___________________', sx + 4, y + sigH - 12, { lineBreak: false });
-
-    // Embed digital signature if available
-    if (!isBlank && contract?.checkout?.signatureUrl) {
-      try {
-        const b64 = contract.checkout.signatureUrl.replace(/^data:image\/\w+;base64,/, '');
-        const buf = Buffer.from(b64, 'base64');
-        doc.image(buf, sx + 4, y + 14, { height: 28, fit: [sigW - 10, 28] });
-      } catch { /* ignore */ }
+  // 5 horizontal columns inside vehicle box
+  const vcols = [CW * 0.30, CW * 0.17, CW * 0.13, CW * 0.13, CW * 0.27];
+  let vx = ML + 7;
+  const modelStr = model ? `${model.brand} ${model.model}` : '';
+  const vFields: [string, string][] = [
+    [tr.brandModel,  v(modelStr)],
+    [tr.plate,       v(contract?.plate)],
+    [tr.color,       v(vehicle?.color)],
+    [tr.group,       v(category?.code ?? category?.name)],
+    [tr.fuelLabel,   v(fuelStr(model?.fuel, lang))],
+  ];
+  for (let i = 0; i < vFields.length; i++) {
+    field(doc, vFields[i][0], vFields[i][1], vx, vInner + 4, vcols[i] - 8);
+    vx += vcols[i];
+    if (i < vFields.length - 1) {
+      doc.save().moveTo(vx - 4, vInner + 2).lineTo(vx - 4, y + VH - 4)
+         .strokeColor(BORDER_CLR).lineWidth(0.3).stroke().restore();
     }
+  }
+  y += VH + 4;
 
-    y += sigH + 8;
+  // ── Row 1: Conductor principal (left) | Datos del alquiler (right) ────────
+
+  let ly = y, ry = y;
+
+  // LEFT: Conductor principal
+  const cpH = 154;
+  const cpInner = secBox(doc, tr.mainDriver, ML, ly, C1W, cpH);
+  let cpY = cpInner + 3;
+  const c2w = (C1W - 16) / 2;
+
+  const clientName = client ? `${client.name}${client.surname ? ' ' + client.surname : ''}` : '';
+  field(doc, tr.clientLabel,    v(clientName),                      ML + 7, cpY, C1W * 0.58 - 4);
+  field(doc, tr.birthDate,      'N/D',                              ML + 7 + C1W * 0.58, cpY, C1W * 0.42 - 14);
+  cpY += 20;
+
+  field(doc, tr.document,       client?.nif ? `DNI ${client.nif}` : v(undefined), ML + 7, cpY, c2w);
+  field(doc, tr.license,        v(client?.licenseNumber),           ML + 7 + c2w + 4, cpY, c2w);
+  cpY += 20;
+
+  field(doc, tr.docExpiry,      'N/D',                              ML + 7, cpY, c2w * 0.6);
+  field(doc, tr.licExpiry,      v(client?.licenseExpiry ? fmtDate(client.licenseExpiry, lang) : undefined), ML + 7 + c2w * 0.6 + 4, cpY, c2w * 0.6);
+  field(doc, tr.nationality,    'N/D',                              ML + 7 + c2w * 1.2 + 8, cpY, C1W - (7 + c2w * 1.2 + 8) - 4);
+  cpY += 20;
+
+  cpY = subHdr(doc, tr.permAddress, ML + 4, cpY, C1W - 8);
+  const addrParts = [client?.address, client?.city, client?.country].filter(Boolean);
+  const addrStr = addrParts.length > 0 ? addrParts.join(', ') : 'N/D';
+  doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
+     .text(v(addrStr !== 'N/D' ? addrStr : undefined), ML + 7, cpY, { width: C1W - 14, lineBreak: false, ellipsis: true });
+  cpY += 10;
+  doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
+     .text('N/D', ML + 7, cpY, { lineBreak: false });
+  cpY += 10;
+
+  cpY = subHdr(doc, tr.phones, ML + 4, cpY, C1W - 8);
+  field(doc, tr.phoneFix, v(client?.phone), ML + 7, cpY, c2w);
+  field(doc, tr.mobile,   'N/D',            ML + 7 + c2w + 4, cpY, c2w);
+
+  ly += cpH + 4;
+
+  // RIGHT: Datos del alquiler
+  const daH = 154;
+  const daInner = secBox(doc, tr.rentalData, C2X, ry, C2W, daH);
+  let daY = daInner + 3;
+  const rc2w = (C2W - 16) / 2;
+
+  const hasFlight = !!(data.pickupFlight || data.returnFlight);
+
+  field(doc, tr.pickupLocation, v(contract?.pickupLocation), C2X + 7, daY, rc2w);
+  field(doc, tr.returnLocation, v(contract?.returnLocation), C2X + 7 + rc2w + 4, daY, rc2w);
+  daY += 20;
+
+  field(doc, tr.deliveryDate, v(contract ? fmtDate(contract.startDate, lang) : undefined), C2X + 7, daY, rc2w);
+  field(doc, tr.returnDate,   v(contract ? fmtDate(contract.endDate, lang) : undefined),   C2X + 7 + rc2w + 4, daY, rc2w);
+  daY += 20;
+
+  field(doc, tr.deliveryTime, v(contract?.startTime), C2X + 7, daY, rc2w);
+  field(doc, tr.returnTime,   v(contract?.endTime),   C2X + 7 + rc2w + 4, daY, rc2w);
+  daY += 20;
+
+  field(doc, tr.deliveryFlight, v(data.pickupFlight), C2X + 7, daY, rc2w);
+  field(doc, tr.returnFlight,   v(data.returnFlight), C2X + 7 + rc2w + 4, daY, rc2w);
+  daY += 20;
+
+  // Extra row: billed days
+  field(doc, tr.totalDays, v(contract?.billedDays), C2X + 7, daY, rc2w);
+
+  ry += daH + 4;
+  y = Math.max(ly, ry);
+
+  // ── Row 2: Conductores adicionales (left) | Datos técnicos (right) ────────
+
+  ly = y; ry = y;
+
+  const caH = 44;
+  secBox(doc, tr.addDrivers, ML, ly, C1W, caH);
+  doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
+     .text(tr.noAddDrivers, ML + 7, ly + 24, { lineBreak: false });
+  ly += caH + 4;
+
+  const dtH = 44;
+  const dtInner = secBox(doc, tr.techData, C2X, ry, C2W, dtH);
+  let dtY = dtInner + 3;
+
+  function dtRow(lbl: string, val: string) {
+    const lw = C2W * 0.7;
+    doc.font('Helvetica').fontSize(6.5).fillColor(LABEL_CLR)
+       .text(lbl, C2X + 7, dtY, { width: lw, lineBreak: false });
+    doc.font('Helvetica').fontSize(7).fillColor(TXT_CLR)
+       .text(val, C2X + lw, dtY, { width: C2W - lw - 8, align: 'right', lineBreak: false });
+    dtY += 9;
   }
 
-  // ── Footer ──────────────────────────────────────────────────────────────────
-  const footer = settings.documentFooter ?? '';
-  if (footer && y < PH - 30) {
-    hRule(doc, PH - 28, BORDER);
-    doc.font('Helvetica').fontSize(6.5).fillColor(MUTED_COLOR)
-       .text(footer, ML, PH - 22, { width: CW, align: 'center', lineBreak: false });
+  const catCode = category?.code ?? category?.name ?? 'N/D';
+  dtRow(tr.totalDays,   v(contract?.billedDays));
+  dtRow(tr.groupBilled, isBlank ? 'N/D' : `${catCode} / ${catCode}`);
+  dtRow(tr.tariffCode,  'N/D');
+
+  ry += dtH + 4;
+  y = Math.max(ly, ry);
+
+  // ── Row 3: Empresa (left) | Desglose de facturación (right) ──────────────
+
+  ly = y; ry = y;
+
+  const emH = 72;
+  const emInner = secBox(doc, tr.companySection, ML, ly, C1W, emH);
+  let emY = emInner + 4;
+  const emPairs: [string, string][] = [
+    [tr.companySection, blankLine(22)],
+    [tr.companyCIF,     blankLine(14)],
+    [tr.fiscalAddr,     blankLine(22)],
+    [tr.contact,        blankLine(22)],
+  ];
+  for (const [lbl, val] of emPairs) {
+    field(doc, lbl, val, ML + 7, emY, C1W - 14);
+    emY += 14;
   }
+  ly += emH + 4;
+
+  // RIGHT: Desglose
+  type Row = [string, number | null, boolean];
+  let rows: Row[];
+  if (isBlank) {
+    rows = [
+      [tr.base,       null, false],
+      [tr.discount,   null, false],
+      [tr.extras,     null, false],
+      [tr.fuelCharge, null, false],
+      [tr.insurance,  null, false],
+      [tr.total,      null, true ],
+    ];
+  } else {
+    rows = [
+      [tr.base,       contract.basePrice,      false],
+      [tr.discount,   contract.discount,       false],
+      [tr.extras,     contract.extrasTotal,    false],
+      [tr.fuelCharge, contract.fuelCharge,     false],
+      [tr.insurance,  contract.insuranceTotal, false],
+    ];
+    if (contract.penalties > 0) rows.push([tr.penalties, contract.penalties, false]);
+    rows.push([tr.total, contract.total, true]);
+  }
+
+  const rowH = 12;
+  const deH = Math.max(emH, rows.length * rowH + 30);
+  const deInner = secBox(doc, tr.breakdown, C2X, ry, C2W, deH);
+  let deY = deInner + 4;
+
+  for (const [lbl, amt, bold] of rows) {
+    const valStr = isBlank ? blankLine(8) : fmtAmt(amt ?? 0);
+    if (bold) {
+      doc.save().rect(C2X + 2, deY - 2, C2W - 4, 14).fillColor(TOTAL_BG).fill().restore();
+    }
+    const lw = C2W * 0.62;
+    const vw = C2W - lw - 10;
+    doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(7.5)
+       .fillColor(bold ? PRIMARY : LABEL_CLR)
+       .text(lbl, C2X + 7, deY, { width: lw, lineBreak: false });
+    doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(7.5)
+       .fillColor(TXT_CLR)
+       .text(valStr, C2X + lw, deY, { width: vw, align: 'right', lineBreak: false });
+    deY += rowH;
+  }
+
+  // Franquicia row
+  deY += 2;
+  hline(doc, deY, C2X + 4, C2X + C2W - 4, BORDER_CLR, 0.3);
+  deY += 4;
+  const lw2 = C2W * 0.62;
+  doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
+     .text(tr.franchise, C2X + 7, deY, { width: lw2, lineBreak: false });
+  doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
+     .text('N/D', C2X + lw2, deY, { width: C2W - lw2 - 10, align: 'right', lineBreak: false });
+
+  ry += deH + 4;
+  y = Math.max(ly, ry);
+
+  // ── Row 4: Vehículo (left) | Cambios + Observaciones (right) ─────────────
+
+  ly = y; ry = y;
+
+  const vehH = 90;
+  secBox(doc, tr.vehicleSection, ML, ly, C1W, vehH);
+  // Vehicle silhouette placeholder
+  const vbx = ML + 8, vby = ly + 22, vbw = C1W - 16, vbh = vehH - 28;
+  doc.save().rect(vbx, vby, vbw, vbh).fillColor('#f9fafb').fill()
+     .strokeColor('#e5e7eb').lineWidth(0.4).stroke().restore();
+  const plateStr = isBlank ? '' : (contract?.plate ?? '');
+  if (plateStr) {
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#d1d5db')
+       .text(plateStr, vbx, vby + vbh / 2 - 5, { width: vbw, align: 'center', lineBreak: false });
+  }
+  ly += vehH + 4;
+
+  const chH = 38;
+  secBox(doc, tr.vehicleChanges, C2X, ry, C2W, chH);
+  doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
+     .text(tr.noChanges, C2X + 7, ry + 23, { lineBreak: false });
+  ry += chH + 4;
+
+  const obsText = isBlank ? '' : (contract?.notes ?? '');
+  const obsH = vehH - chH - 4;
+  secBox(doc, tr.observations, C2X, ry, C2W, obsH);
+  if (obsText) {
+    doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
+       .text(obsText, C2X + 7, ry + 22, { width: C2W - 14, height: obsH - 28, lineBreak: true });
+  } else {
+    doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
+       .text(tr.noObs, C2X + 7, ry + 23, { lineBreak: false });
+  }
+  ry += obsH + 4;
+
+  y = Math.max(ly, ry) + 4;
+
+  // ── Signature section ──────────────────────────────────────────────────────
+
+  hline(doc, y, ML, PW - MR, BORDER_CLR, 0.5);
+  y += 6;
+
+  // Both languages side by side
+  doc.font('Helvetica').fontSize(6.5).fillColor(LABEL_CLR)
+     .text(tr.sigTextEs, ML, y, { width: CW, lineBreak: false });
+  y += 9;
+  doc.font('Helvetica').fontSize(6.5).fillColor(LABEL_CLR)
+     .text('* ' + tr.sigTextEn, ML, y, { width: CW, lineBreak: false });
+  y += 14;
+
+  // Signature boxes
+  const sigW = CW / 2 - 8;
+  const sigH = 44;
+
+  doc.save().roundedRect(ML, y, sigW, sigH, 2).strokeColor(BORDER_CLR).lineWidth(0.5).stroke().restore();
+  doc.font('Helvetica-Bold').fontSize(8).fillColor(TXT_CLR)
+     .text(tr.sigRenter, ML + 6, y + 5, { lineBreak: false });
+
+  const sx2 = ML + sigW + 16;
+  doc.save().roundedRect(sx2, y, sigW, sigH, 2).strokeColor(BORDER_CLR).lineWidth(0.5).stroke().restore();
+  doc.font('Helvetica-Bold').fontSize(8).fillColor(TXT_CLR)
+     .text(tr.sigCompany, sx2 + 6, y + 5, { lineBreak: false });
+
+  // Embed digital signature if available
+  if (!isBlank && contract?.checkout?.signatureUrl) {
+    try {
+      const b64 = contract.checkout.signatureUrl.replace(/^data:image\/\w+;base64,/, '');
+      const buf = Buffer.from(b64, 'base64');
+      doc.image(buf, ML + 4, y + 14, { height: 26, fit: [sigW - 8, 26] });
+    } catch { /* ignore */ }
+  }
+
+  y += sigH + 6;
+
+  // ── Page footer ────────────────────────────────────────────────────────────
+
+  const footerText = settings.documentFooter
+    ?? [settings.documentName ?? settings.name ?? '', settings.fiscalAddress ?? settings.address ?? ''].filter(Boolean).join('  ·  ');
+
+  hline(doc, PH - 22, ML, PW - MR, BORDER_CLR, 0.3);
+  doc.font('Helvetica').fontSize(6.5).fillColor(LABEL_CLR)
+     .text(footerText, ML, PH - 16, { width: CW, align: 'center', lineBreak: false });
 }
 
-// ─── Reverso (back page — terms) ─────────────────────────────────────────────
+// ─── Reverso (two-column bilingual terms) ─────────────────────────────────────
 
-function renderReverso(doc: PDFKit.PDFDocument, settings: CompanySettings, lang: string): void {
-  const t = i18n(lang);
-  const isEn = lang.startsWith('en');
+function renderReverso(doc: PDFKit.PDFDocument, settings: CompanySettings): void {
+  const MT = 22, MB = 22;
+  const colW = Math.floor((CW - 14) / 2);
+  const col2x = ML + colW + 14;
 
-  let content = isEn
-    ? (settings.contractBackContentEn ?? settings.contractBackContent ?? '')
-    : (settings.contractBackContentEs ?? settings.contractBackContent ?? '');
+  const titleY = MT;
 
-  let y = 34;
+  // Column headers
+  doc.font('Helvetica-Bold').fontSize(8.5).fillColor(PRIMARY)
+     .text('CONDICIONES GENERALES DEL CONTRATO', ML, titleY, { width: colW, lineBreak: false });
+  doc.font('Helvetica-Bold').fontSize(8.5).fillColor(PRIMARY)
+     .text('CAR RENTAL CONTRACT', col2x, titleY, { width: colW, lineBreak: false });
 
-  doc.font('Helvetica-Bold').fontSize(11).fillColor(PRIMARY)
-     .text(t.backTitle, ML, y, { width: CW, align: 'center', lineBreak: false });
-  y += 18;
-  hRule(doc, y, PRIMARY, 1);
-  y += 10;
+  hline(doc, titleY + 14, ML, PW - MR, PRIMARY, 1);
 
-  if (!content) {
-    doc.font('Helvetica').fontSize(9).fillColor(MUTED_COLOR)
-       .text(t.backPlaceholder, ML, y, { width: CW });
-    return;
+  const contentY = titleY + 20;
+  // 95% of page height minus header
+  const contentH = Math.floor((PH - MT - MB) * 0.95) - 20;
+
+  const fontSize = Math.max(5.5, Math.min(9, settings.contractBackFontSize ?? 7));
+  const type = settings.contractBackContentType ?? 'TEXT';
+
+  function stripHtml(s: string): string {
+    return s
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<\/li>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   }
 
-  // Strip HTML tags if content is HTML
-  if ((settings.contractBackContentType ?? 'TEXT') === 'HTML') {
-    content = content.replace(/<br\s*\/?>/gi, '\n')
-                     .replace(/<\/p>/gi, '\n\n')
-                     .replace(/<[^>]+>/g, ' ')
-                     .replace(/&nbsp;/g, ' ')
-                     .replace(/&amp;/g, '&')
-                     .replace(/&lt;/g, '<')
-                     .replace(/&gt;/g, '>')
-                     .replace(/[ \t]+/g, ' ')
-                     .trim();
+  let esContent = settings.contractBackContentEs ?? settings.contractBackContent ?? '';
+  let enContent = settings.contractBackContentEn ?? '';
+
+  if (type === 'HTML') {
+    esContent = stripHtml(esContent);
+    enContent = stripHtml(enContent);
   }
 
-  const fontSize = Math.max(6, Math.min(10, settings.contractBackFontSize ?? 8));
-  doc.font('Helvetica').fontSize(fontSize).fillColor(TEXT_COLOR)
-     .text(content, ML, y, { width: CW, align: 'justify', lineBreak: true });
+  // Vertical divider
+  const divX = ML + colW + 7;
+  doc.save()
+     .moveTo(divX, contentY - 4).lineTo(divX, contentY + contentH)
+     .strokeColor(BORDER_CLR).lineWidth(0.4).stroke()
+     .restore();
+
+  // ES column
+  if (esContent) {
+    doc.font('Helvetica').fontSize(fontSize).fillColor(TXT_CLR)
+       .text(esContent, ML, contentY, { width: colW, height: contentH, align: 'justify', lineBreak: true });
+  } else {
+    doc.font('Helvetica').fontSize(8).fillColor(LABEL_CLR)
+       .text('Configura el contenido del reverso en Gestor → Empresa → Contenido reverso contrato.', ML, contentY, { width: colW });
+  }
+
+  // EN column
+  if (enContent) {
+    doc.font('Helvetica').fontSize(fontSize).fillColor(TXT_CLR)
+       .text(enContent, col2x, contentY, { width: colW, height: contentH, align: 'justify', lineBreak: true });
+  } else {
+    doc.font('Helvetica').fontSize(8).fillColor(LABEL_CLR)
+       .text('Add English content in Settings → Company → Contract back content (EN).', col2x, contentY, { width: colW });
+  }
 }
 
 // ─── Public builders ──────────────────────────────────────────────────────────
@@ -450,12 +652,9 @@ export function buildContractPdf(data: ContractPdfData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
       const lang = data.language ?? 'es';
-      const t = i18n(lang);
-
+      const tr = strings(lang);
       const doc = new PDFDocument({
-        size: 'A4',
-        margin: 0,
-        autoFirstPage: true,
+        size: 'A4', margin: 0, autoFirstPage: true,
         info: {
           Title:  data.contract?.number ?? 'Contrato',
           Author: data.settings.documentName ?? data.settings.name ?? 'RentIQ',
@@ -467,64 +666,44 @@ export function buildContractPdf(data: ContractPdfData): Promise<Buffer> {
       doc.on('end',  () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
-      // Page 1 — EMPRESA anverso
-      renderAnverso(doc, data, t.copyCompany, false);
-
-      // Page 2 — EMPRESA reverso
+      renderAnverso(doc, data, tr.copyCompany, false);
       doc.addPage();
-      renderReverso(doc, data.settings, lang);
-
-      // Page 3 — CLIENTE anverso
+      renderReverso(doc, data.settings);
       doc.addPage();
-      renderAnverso(doc, data, t.copyClient, false);
-
-      // Page 4 — CLIENTE reverso
+      renderAnverso(doc, data, tr.copyClient, false);
       doc.addPage();
-      renderReverso(doc, data.settings, lang);
+      renderReverso(doc, data.settings);
 
       doc.end();
-    } catch (err) {
-      reject(err);
-    }
+    } catch (err) { reject(err); }
   });
 }
 
 export function buildBlankContractPdf(settings: CompanySettings, lang: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
-      const t = i18n(lang);
-
+      const tr = strings(lang);
       const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
       const chunks: Buffer[] = [];
       doc.on('data', (c) => chunks.push(c));
       doc.on('end',  () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
-      const blankData: ContractPdfData = {
-        contract:  {} as Contract,
-        client:    null,
-        vehicle:   null,
-        model:     null,
-        category:  null,
-        branch:    null,
-        settings,
-        language: lang,
+      const blank: ContractPdfData = {
+        contract: {} as Contract,
+        client: null, vehicle: null, model: null, category: null, branch: null,
+        settings, language: lang,
       };
 
-      renderAnverso(doc, blankData, t.copyCompany, true);
-
+      renderAnverso(doc, blank, tr.copyCompany, true);
       doc.addPage();
-      renderReverso(doc, settings, lang);
-
+      renderReverso(doc, settings);
       doc.addPage();
-      renderAnverso(doc, blankData, t.copyClient, true);
-
+      renderAnverso(doc, blank, tr.copyClient, true);
       doc.addPage();
-      renderReverso(doc, settings, lang);
+      renderReverso(doc, settings);
 
       doc.end();
-    } catch (err) {
-      reject(err);
-    }
+    } catch (err) { reject(err); }
   });
 }
