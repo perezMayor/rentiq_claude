@@ -654,6 +654,15 @@ export default function ContratoDetail({
               {submitting ? 'Cerrando…' : 'Cerrar Contrato'}
             </button>
           )}
+          <a
+            className="btn btn-ghost btn-sm"
+            href={`/api/contratos/${contract.id}/print`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ textDecoration: 'none' }}
+          >
+            Imprimir contrato
+          </a>
           {contract.status === 'ABIERTO' && (
             <button
               className="btn btn-danger"

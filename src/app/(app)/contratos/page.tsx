@@ -330,8 +330,28 @@ function ContratosInner() {
           <h1 className="page-title">Contratos</h1>
           <p className="page-subtitle">{CONTRATOS_TABS.find((t) => t.key === tab)?.label ?? tab}</p>
         </div>
-        {tab === 'gestion' && <PrintButton label="Imprimir contrato" />}
-        {tab === 'listado' && <PrintButton />}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <a
+            className="btn btn-ghost btn-sm"
+            href="/api/contratos/blank?lang=es"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ textDecoration: 'none' }}
+          >
+            Contrato en blanco (ES)
+          </a>
+          <a
+            className="btn btn-ghost btn-sm"
+            href="/api/contratos/blank?lang=en"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ textDecoration: 'none' }}
+          >
+            Blank contract (EN)
+          </a>
+          {tab === 'gestion' && <PrintButton label="Imprimir contrato" />}
+          {tab === 'listado' && <PrintButton />}
+        </div>
       </div>
       <ContratosTabNav active={tab} />
       {tab === 'gestion' && <GestionContratoTab />}
