@@ -141,85 +141,21 @@ function subHdr(doc, text, x, y, w) {
   return y + 13;
 }
 
-// ── Car croquis ───────────────────────────────────────────────────────────────
+// ── Car silhouette ────────────────────────────────────────────────────────────
+const SILUETA_BUF = (() => {
+  try { return fs.readFileSync('public/brand/silueta.png'); } catch { return null; }
+})();
+
 function drawCarSide(doc, bx, by, bw, bh) {
-  const m  = 6;
-  const x  = bx + m, y = by + m, w = bw - m * 2, h = bh - m * 2;
-
-  const bodyStroke = '#475569', bodyFill  = '#f8fafc';
-  const cabinFill  = '#dbeafe', wheelFill = '#334155';
-  const rimFill    = '#94a3b8', groundLine = '#e2e8f0';
-
-  const bodyH   = h * 0.44;
-  const bodyY   = y + h - bodyH - h * 0.12;
-  const bodyW   = w * 0.92;
-  const bodyX   = x + (w - bodyW) / 2;
-
-  const wheelR  = h * 0.28;
-  const wheelY  = bodyY + bodyH;
-  const frontWX = bodyX + bodyW * 0.20;
-  const rearWX  = bodyX + bodyW * 0.80;
-
-  const cabinW  = bodyW * 0.50;
-  const cabinX  = bodyX + bodyW * 0.22;
-  const cabinH  = h * 0.30;
-  const cabinY  = bodyY - cabinH + 4;
-
-  doc.save();
-
-  // Ground line
-  doc.moveTo(x, wheelY + wheelR + 1).lineTo(x + w, wheelY + wheelR + 1)
-     .strokeColor(groundLine).lineWidth(0.5).stroke();
-
-  // Body
-  doc.save().roundedRect(bodyX, bodyY, bodyW, bodyH, 3)
-     .fillColor(bodyFill).strokeColor(bodyStroke).lineWidth(0.8).fillAndStroke().restore();
-
-  // Cabin
-  doc.save().roundedRect(cabinX, cabinY, cabinW, cabinH + 4, 5)
-     .fillColor(cabinFill).strokeColor(bodyStroke).lineWidth(0.7).fillAndStroke().restore();
-
-  // Pillars (A, B, C)
-  const pillarW = 2.5;
-  const wY = cabinY + 3, wH = cabinH - 2;
-  doc.save().rect(cabinX + 2, wY, pillarW, wH).fillColor(bodyStroke).fill().restore();
-  const bPillarX = cabinX + cabinW * 0.47;
-  doc.save().rect(bPillarX, wY, pillarW, wH).fillColor(bodyStroke).fill().restore();
-  doc.save().rect(cabinX + cabinW - pillarW - 2, wY, pillarW, wH).fillColor(bodyStroke).fill().restore();
-
-  // Wheels
-  for (const wx of [frontWX, rearWX]) {
-    doc.save().circle(wx, wheelY, wheelR)
-       .fillColor(wheelFill).strokeColor(bodyStroke).lineWidth(0.6).fillAndStroke().restore();
-    doc.save().circle(wx, wheelY, wheelR * 0.62)
-       .fillColor(rimFill).strokeColor(bodyStroke).lineWidth(0.4).fillAndStroke().restore();
-    doc.save().circle(wx, wheelY, wheelR * 0.18).fillColor(wheelFill).fill().restore();
-    // Spokes
-    for (let a = 0; a < 3; a++) {
-      const angle = (a * Math.PI * 2) / 3;
-      const r1 = wheelR * 0.20, r2 = wheelR * 0.58;
-      doc.save()
-         .moveTo(wx + Math.cos(angle) * r1, wheelY + Math.sin(angle) * r1)
-         .lineTo(wx + Math.cos(angle) * r2, wheelY + Math.sin(angle) * r2)
-         .strokeColor(bodyStroke).lineWidth(0.5).stroke().restore();
-    }
-  }
-
-  // Hood/trunk crease lines
-  doc.save().moveTo(bodyX + 4, bodyY + bodyH * 0.5)
-     .lineTo(bodyX + 4, bodyY + bodyH - 2)
-     .strokeColor(BORDER_CLR).lineWidth(0.5).stroke().restore();
-  doc.save().moveTo(bodyX + bodyW - 4, bodyY + bodyH * 0.5)
-     .lineTo(bodyX + bodyW - 4, bodyY + bodyH - 2)
-     .strokeColor(BORDER_CLR).lineWidth(0.5).stroke().restore();
-  doc.save().moveTo(bodyX + bodyW * 0.06, bodyY + 5)
-     .lineTo(cabinX, bodyY + 4)
-     .strokeColor(BORDER_CLR).lineWidth(0.4).stroke().restore();
-  doc.save().moveTo(cabinX + cabinW, bodyY + 4)
-     .lineTo(bodyX + bodyW - bodyW * 0.06, bodyY + 5)
-     .strokeColor(BORDER_CLR).lineWidth(0.4).stroke().restore();
-
-  doc.restore();
+  if (!SILUETA_BUF) return;
+  const margin = 4;
+  const maxW = bw - margin * 2, maxH = bh - margin * 2;
+  const aspect = 1916 / 1228;
+  let iw = maxW, ih = maxW / aspect;
+  if (ih > maxH) { ih = maxH; iw = maxH * aspect; }
+  const ix = bx + margin + (maxW - iw) / 2;
+  const iy = by + margin + (maxH - ih) / 2;
+  try { doc.image(SILUETA_BUF, ix, iy, { width: iw, height: ih }); } catch {}
 }
 
 // ── Header ────────────────────────────────────────────────────────────────────

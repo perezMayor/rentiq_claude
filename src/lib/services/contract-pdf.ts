@@ -1,5 +1,7 @@
 // contract-pdf.ts — PDFKit contract builder (2 copies × anverso + reverso)
 
+import fs from 'fs';
+import path from 'path';
 import PDFDocument from 'pdfkit';
 import type {
   Contract, Client, FleetVehicle, VehicleModel,
@@ -167,117 +169,35 @@ function subHdr(doc: PDFKit.PDFDocument, text: string, x: number, y: number, w: 
   return y + 13;
 }
 
-// ─── Car croquis (side-view silhouette) ───────────────────────────────────────
+// ─── Car silhouette image ─────────────────────────────────────────────────────
+
+// Cached buffer so we only read disk once per process lifetime
+let _siluetaBuffer: Buffer | null | undefined = undefined;
+function getSilueta(): Buffer | null {
+  if (_siluetaBuffer !== undefined) return _siluetaBuffer;
+  try {
+    _siluetaBuffer = fs.readFileSync(path.join(process.cwd(), 'public/brand/silueta.png'));
+  } catch {
+    _siluetaBuffer = null;
+  }
+  return _siluetaBuffer;
+}
 
 function drawCarSide(doc: PDFKit.PDFDocument, bx: number, by: number, bw: number, bh: number) {
-  // Leave internal margin
-  const m  = 6;
-  const x  = bx + m;
-  const y  = by + m;
-  const w  = bw - m * 2;
-  const h  = bh - m * 2;
-
-  const bodyStroke  = '#475569';
-  const bodyFill    = '#f8fafc';
-  const cabinFill   = '#dbeafe';
-  const wheelFill   = '#334155';
-  const rimFill     = '#94a3b8';
-  const groundLine  = '#e2e8f0';
-
-  // Proportions relative to bounding box
-  const bodyH    = h * 0.44;
-  const bodyY    = y + h - bodyH - h * 0.12;   // body sits above ground
-  const bodyW    = w * 0.92;
-  const bodyX    = x + (w - bodyW) / 2;
-
-  const wheelR   = h * 0.28;
-  const wheelY   = bodyY + bodyH;               // centre of wheel at body bottom
-  const frontWX  = bodyX + bodyW * 0.20;
-  const rearWX   = bodyX + bodyW * 0.80;
-
-  // Cabin sits on top of body
-  const cabinW   = bodyW * 0.50;
-  const cabinX   = bodyX + bodyW * 0.22;
-  const cabinH   = h * 0.30;
-  const cabinY   = bodyY - cabinH + 4;
-  const cabinR   = 5;
-
-  doc.save();
-
-  // Ground shadow line
-  doc.moveTo(x, wheelY + wheelR + 1).lineTo(x + w, wheelY + wheelR + 1)
-     .strokeColor(groundLine).lineWidth(0.5).stroke();
-
-  // ── Body ──
-  doc.save()
-     .roundedRect(bodyX, bodyY, bodyW, bodyH, 3)
-     .fillColor(bodyFill).strokeColor(bodyStroke).lineWidth(0.8)
-     .fillAndStroke()
-     .restore();
-
-  // ── Cabin ──
-  // Use a path: flat bottom merging with body, rounded top
-  doc.save()
-     .roundedRect(cabinX, cabinY, cabinW, cabinH + 4, cabinR)
-     .fillColor(cabinFill).strokeColor(bodyStroke).lineWidth(0.7)
-     .fillAndStroke()
-     .restore();
-
-  // Window dividers (A, B, C pillars)
-  const pillarW = 2.5;
-  const wY = cabinY + 3;
-  const wH = cabinH - 2;
-
-  // A pillar (front)
-  doc.save().rect(cabinX + 2, wY, pillarW, wH).fillColor(bodyStroke).fill().restore();
-  // B pillar (middle)
-  const bPillarX = cabinX + cabinW * 0.47;
-  doc.save().rect(bPillarX, wY, pillarW, wH).fillColor(bodyStroke).fill().restore();
-  // C pillar (rear)
-  doc.save().rect(cabinX + cabinW - pillarW - 2, wY, pillarW, wH).fillColor(bodyStroke).fill().restore();
-
-  // ── Wheels ──
-  for (const wx of [frontWX, rearWX]) {
-    // Tyre
-    doc.save().circle(wx, wheelY, wheelR)
-       .fillColor(wheelFill).strokeColor(bodyStroke).lineWidth(0.6).fillAndStroke().restore();
-    // Rim
-    doc.save().circle(wx, wheelY, wheelR * 0.62)
-       .fillColor(rimFill).strokeColor(bodyStroke).lineWidth(0.4).fillAndStroke().restore();
-    // Hub
-    doc.save().circle(wx, wheelY, wheelR * 0.18)
-       .fillColor(wheelFill).fill().restore();
-    // Spoke lines (3 spokes)
-    for (let a = 0; a < 3; a++) {
-      const angle = (a * Math.PI * 2) / 3;
-      const r1 = wheelR * 0.20, r2 = wheelR * 0.58;
-      doc.save()
-         .moveTo(wx + Math.cos(angle) * r1, wheelY + Math.sin(angle) * r1)
-         .lineTo(wx + Math.cos(angle) * r2, wheelY + Math.sin(angle) * r2)
-         .strokeColor(bodyStroke).lineWidth(0.5).stroke()
-         .restore();
-    }
-  }
-
-  // ── Hood/trunk details ──
-  // Front bumper line
-  doc.save().moveTo(bodyX + 4, bodyY + bodyH * 0.5)
-     .lineTo(bodyX + 4, bodyY + bodyH - 2)
-     .strokeColor(BORDER_CLR).lineWidth(0.5).stroke().restore();
-  // Rear bumper line
-  doc.save().moveTo(bodyX + bodyW - 4, bodyY + bodyH * 0.5)
-     .lineTo(bodyX + bodyW - 4, bodyY + bodyH - 2)
-     .strokeColor(BORDER_CLR).lineWidth(0.5).stroke().restore();
-  // Hood crease line
-  doc.save().moveTo(bodyX + bodyW * 0.06, bodyY + 5)
-     .lineTo(cabinX, bodyY + 4)
-     .strokeColor(BORDER_CLR).lineWidth(0.4).stroke().restore();
-  // Trunk crease line
-  doc.save().moveTo(cabinX + cabinW, bodyY + 4)
-     .lineTo(bodyX + bodyW - bodyW * 0.06, bodyY + 5)
-     .strokeColor(BORDER_CLR).lineWidth(0.4).stroke().restore();
-
-  doc.restore();
+  const buf = getSilueta();
+  if (!buf) return;
+  // silueta.png is 1916×1228 — fit within area preserving aspect ratio, centred
+  const margin = 4;
+  const maxW = bw - margin * 2;
+  const maxH = bh - margin * 2;
+  const aspect = 1916 / 1228;
+  let iw = maxW, ih = maxW / aspect;
+  if (ih > maxH) { ih = maxH; iw = maxH * aspect; }
+  const ix = bx + margin + (maxW - iw) / 2;
+  const iy = by + margin + (maxH - ih) / 2;
+  try {
+    doc.image(buf, ix, iy, { width: iw, height: ih });
+  } catch { /* skip if corrupt */ }
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
