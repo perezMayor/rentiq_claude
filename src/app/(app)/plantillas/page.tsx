@@ -9,8 +9,7 @@ import {
   deleteTemplate,
   updateCompanySettings,
 } from '@/src/lib/services/rental-service';
-import { decodeVisualTemplateConfig, buildVisualTemplateHtml, defaultVisualTemplateConfig } from '@/src/lib/services/template-visual-builder';
-import type { VisualTemplateType, VisualTemplateConfig } from '@/src/lib/services/template-visual-builder';
+import { decodeVisualTemplateConfig, buildVisualTemplateHtml, defaultVisualTemplateConfig, type VisualTemplateType, type VisualTemplateConfig } from '@/src/lib/services/template-visual-builder';
 import type { TemplateFunctionName } from '@/src/lib/services/template-function-catalog';
 import { TEMPLATE_MACRO_GROUPS } from '@/src/lib/services/template-macro-catalog';
 import { TemplateSelectorForm } from './template-selector-form';
@@ -176,6 +175,38 @@ async function handleDeleteTemplate(formData: FormData): Promise<void> {
   redirect('/plantillas');
 }
 
+async function handleInitBaseTemplates(): Promise<void> {
+  'use server';
+  const user = await getSessionUser();
+  if (!user || !canWrite(user.role)) return;
+
+  const BASE_TEMPLATES: Array<{ code: string; type: VisualTemplateType; lang: string; title: string }> = [
+    { code: 'CONF_RES_ES_BASE', type: 'CONFIRMACION_RESERVA', lang: 'es', title: 'Confirmación de reserva (ES)' },
+    { code: 'CONF_RES_EN_BASE', type: 'CONFIRMACION_RESERVA', lang: 'en', title: 'Reservation confirmation (EN)' },
+    { code: 'PRES_BASE_ES',     type: 'PRESUPUESTO',          lang: 'es', title: 'Presupuesto (ES)' },
+    { code: 'PRES_BASE_EN',     type: 'PRESUPUESTO',          lang: 'en', title: 'Quotation (EN)' },
+    { code: 'FAC_BASE_ES',      type: 'FACTURA',              lang: 'es', title: 'Factura (ES)' },
+    { code: 'FAC_BASE_EN',      type: 'FACTURA',              lang: 'en', title: 'Invoice (EN)' },
+  ];
+
+  const [existing, settings] = await Promise.all([listTemplates(''), getCompanySettings()]);
+  const existingCodes = new Set(existing.map((t) => t.templateCode));
+
+  for (const tpl of BASE_TEMPLATES) {
+    if (existingCodes.has(tpl.code)) continue;
+    const cfg = defaultVisualTemplateConfig(tpl.type, tpl.lang);
+    const html = buildVisualTemplateHtml(tpl.type, tpl.lang, cfg, {
+      primaryColor: settings.brandPrimaryColor,
+      secondaryColor: settings.brandSecondaryColor,
+    });
+    await createTemplate(
+      { templateCode: tpl.code, templateType: tpl.type, language: tpl.lang, title: tpl.title, templateFunction: tpl.type, htmlContent: html },
+      user,
+    );
+  }
+  redirect('/plantillas?code=CONF_RES_ES_BASE');
+}
+
 async function handleSaveContractReverse(formData: FormData): Promise<void> {
   'use server';
   const user = await getSessionUser();
@@ -291,6 +322,21 @@ export default async function PlantillasPage({
           </div>
         </div>
       </div>
+
+      {/* Banner: no hay plantillas creadas */}
+      {allTemplates.length === 0 && !isNewMode && userCanWrite && (
+        <div className="alert" style={{ background: 'var(--color-surface)', borderLeft: '4px solid var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <strong>No hay plantillas de documentos.</strong>
+            <span style={{ marginLeft: 8, color: 'var(--color-text-muted)', fontSize: 13 }}>
+              Crea las 6 plantillas base (confirmaciones, presupuestos y facturas) con un solo clic.
+            </span>
+          </div>
+          <form action={handleInitBaseTemplates}>
+            <button className="btn btn-primary" type="submit">Crear plantillas base</button>
+          </form>
+        </div>
+      )}
 
       {/* New template mode */}
       {isNewMode && (
