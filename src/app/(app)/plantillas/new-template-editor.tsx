@@ -121,7 +121,6 @@ export function NewTemplateEditor({
             <input type="hidden" name="visualIntro" value={config.intro} />
             <input type="hidden" name="visualFooter" value={config.footer} />
             <input type="hidden" name="visualAdditionalText" value={config.additionalText} />
-            <input type="hidden" name="showContractNumber" value={String(config.showContractNumber)} />
             <input type="hidden" name="showCompany" value={String(config.showCompany)} />
             <input type="hidden" name="showReservationBlock" value={String(config.showReservationBlock)} />
             <input type="hidden" name="showBaseData" value={String(config.showBaseData)} />
@@ -228,7 +227,6 @@ export function NewTemplateEditor({
                 ['showPricingBlock', 'Desglose de precio'],
                 ['showExtrasTable', 'Info adicional'],
                 ['showObservations', 'Observaciones'],
-                ['showContractNumber', 'Nº de contrato'],
                 ['showAdditionalText', 'Texto adicional'],
               ] as [keyof VisualTemplateConfig, string][]).map(([key, label]) => (
                 <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>

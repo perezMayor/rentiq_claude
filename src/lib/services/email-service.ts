@@ -146,6 +146,12 @@ export async function sendInvoiceEmail(
     iva_amount: fmtAmt(invoice.ivaAmount),
     total: fmtAmt(invoice.total),
     billed_days: String(contract?.billedDays ?? ''),
+    // Contract period & plate for occupation concept
+    delivery_date: contract ? fmt(contract.startDate, language) : '',
+    delivery_time: contract?.startTime ?? '',
+    pickup_date: contract ? fmt(contract.endDate, language) : '',
+    pickup_time: contract?.endTime ?? '',
+    assigned_plate: contract?.plate ?? '',
   };
 
   const html = renderTemplateWithMacros(template.htmlContent, macros);

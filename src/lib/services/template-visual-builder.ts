@@ -5,7 +5,6 @@ export type VisualTemplateConfig = {
   intro: string;
   footer: string;
   additionalText: string;
-  showContractNumber: boolean;
   showCompany: boolean;
   showReservationBlock: boolean;
   showBaseData: boolean;
@@ -13,6 +12,8 @@ export type VisualTemplateConfig = {
   showExtrasTable: boolean;
   showObservations: boolean;
   showAdditionalText: boolean;
+  // legacy — no longer used but kept for JSON compat
+  showContractNumber?: boolean;
 };
 
 const VISUAL_TEMPLATE_MARKER = 'data-rentiq-visual-template';
@@ -43,7 +44,6 @@ export function defaultVisualTemplateConfig(type: VisualTemplateType, language: 
     intro: intros[type],
     footer: '{company_document_footer}',
     additionalText: '',
-    showContractNumber: false,
     showCompany: true,
     showReservationBlock: true,
     showBaseData: true,
@@ -160,35 +160,34 @@ export function buildVisualTemplateHtml(
     const reservationBlock = config.showReservationBlock ? `
       <div class="doc-section">
         <div class="doc-section-title">${isEn ? 'Reservation details' : 'Detalles de la reserva'}</div>
-        <div class="doc-grid">
-          <div class="doc-field">
+        <div style="display:flex;gap:8px;margin-bottom:4px">
+          <div class="doc-field" style="flex:1">
             <span class="doc-field-label">${labels.reservationNumber}</span>
             <span class="doc-field-value">{reservation_number}</span>
           </div>
-          ${config.showContractNumber ? `<div class="doc-field"><span class="doc-field-label">${isEn ? 'Contract no.' : 'Nº contrato'}</span><span class="doc-field-value">{contract_number}</span></div>` : '<div></div>'}
-          <div class="doc-field">
-            <span class="doc-field-label">${labels.deliveryDate}</span>
-            <span class="doc-field-value">{delivery_date} {delivery_time}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+          <div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:7px;padding:12px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:${primary};margin-bottom:8px">${isEn ? 'PICK-UP' : 'ENTREGA'}</div>
+            <div class="doc-field" style="margin-bottom:6px">
+              <span class="doc-field-label">${labels.deliveryDate}</span>
+              <span class="doc-field-value">{delivery_date} &nbsp; {delivery_time}</span>
+            </div>
+            <div class="doc-field">
+              <span class="doc-field-label">${labels.deliveryPlace}</span>
+              <span class="doc-field-value">{delivery_place}</span>
+            </div>
           </div>
-          <div class="doc-field">
-            <span class="doc-field-label">${labels.deliveryPlace}</span>
-            <span class="doc-field-value">{delivery_place}</span>
-          </div>
-          <div class="doc-field">
-            <span class="doc-field-label">${labels.deliveryFlight}</span>
-            <span class="doc-field-value">{delivery_flight}</span>
-          </div>
-          <div class="doc-field">
-            <span class="doc-field-label">${labels.returnDate}</span>
-            <span class="doc-field-value">{pickup_date} {pickup_time}</span>
-          </div>
-          <div class="doc-field">
-            <span class="doc-field-label">${labels.returnPlace}</span>
-            <span class="doc-field-value">{pickup_place}</span>
-          </div>
-          <div class="doc-field">
-            <span class="doc-field-label">${labels.returnFlight}</span>
-            <span class="doc-field-value">{pickup_flight}</span>
+          <div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:7px;padding:12px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:${primary};margin-bottom:8px">${isEn ? 'RETURN' : 'RECOGIDA'}</div>
+            <div class="doc-field" style="margin-bottom:6px">
+              <span class="doc-field-label">${labels.returnDate}</span>
+              <span class="doc-field-value">{pickup_date} &nbsp; {pickup_time}</span>
+            </div>
+            <div class="doc-field">
+              <span class="doc-field-label">${labels.returnPlace}</span>
+              <span class="doc-field-value">{pickup_place}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -203,16 +202,8 @@ export function buildVisualTemplateHtml(
             <span class="doc-field-value">{billed_car_group}</span>
           </div>
           <div class="doc-field">
-            <span class="doc-field-label">${labels.plate}</span>
-            <span class="doc-field-value">{assigned_plate}</span>
-          </div>
-          <div class="doc-field">
             <span class="doc-field-label">${labels.days}</span>
             <span class="doc-field-value">{billed_days}</span>
-          </div>
-          <div class="doc-field">
-            <span class="doc-field-label">${labels.rate}</span>
-            <span class="doc-field-value">{applied_rate}</span>
           </div>
         </div>
       </div>
@@ -225,10 +216,10 @@ export function buildVisualTemplateHtml(
           <thead><tr><th>${isEn ? 'Concept' : 'Concepto'}</th><th style="text-align:right">${isEn ? 'Amount' : 'Importe'}</th></tr></thead>
           <tbody>
             <tr><td>${labels.baseAmount}</td><td style="text-align:right">{base_amount} €</td></tr>
+            <tr><td>${labels.discount} (−)</td><td style="text-align:right">{discount_amount} €</td></tr>
             <tr><td>${labels.insurance}</td><td style="text-align:right">{insurance_amount} €</td></tr>
             <tr><td>${labels.extras}</td><td style="text-align:right">{extras_amount} €</td></tr>
             <tr><td>${labels.fuel}</td><td style="text-align:right">{fuel_amount} €</td></tr>
-            <tr><td>${labels.discount} (−)</td><td style="text-align:right">{discount_amount} €</td></tr>
             <tr class="total-row"><td>${labels.total}</td><td style="text-align:right">{total_price} €</td></tr>
           </tbody>
         </table>
@@ -261,6 +252,14 @@ export function buildVisualTemplateHtml(
       <div class="doc-additional">${config.additionalText}</div>
     ` : '';
 
+    const systemNotice = `
+      <div style="margin-top:20px;padding:10px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;font-size:12px;color:${primary}">
+        ${isEn
+          ? '✓ Your reservation has been registered in our system. We will contact you shortly if we need any additional information.'
+          : '✓ Su reserva ha quedado registrada en nuestro sistema. Nos pondremos en contacto con usted si necesitamos algún dato adicional.'}
+      </div>
+    `;
+
     return `<!DOCTYPE html>
 <html lang="${language}" ${VISUAL_TEMPLATE_MARKER} data-rentiq-visual-config="${configJson}">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">${commonStyles}</head>
@@ -278,6 +277,7 @@ export function buildVisualTemplateHtml(
   ${extrasBlock}
   ${observationsBlock}
   ${additionalBlock}
+  ${systemNotice}
   <div class="doc-footer">${config.footer}</div>
 </div>
 </body></html>`;
@@ -287,23 +287,31 @@ export function buildVisualTemplateHtml(
     const reservationBlock = config.showReservationBlock ? `
       <div class="doc-section">
         <div class="doc-section-title">${isEn ? 'Rental details' : 'Detalles del alquiler'}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px">
+          <div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:7px;padding:12px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:${primary};margin-bottom:8px">${isEn ? 'PICK-UP' : 'ENTREGA'}</div>
+            <div class="doc-field" style="margin-bottom:6px">
+              <span class="doc-field-label">${labels.deliveryDate}</span>
+              <span class="doc-field-value">{delivery_date} &nbsp; {delivery_time}</span>
+            </div>
+            <div class="doc-field">
+              <span class="doc-field-label">${labels.deliveryPlace}</span>
+              <span class="doc-field-value">{delivery_place}</span>
+            </div>
+          </div>
+          <div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:7px;padding:12px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:${primary};margin-bottom:8px">${isEn ? 'RETURN' : 'RECOGIDA'}</div>
+            <div class="doc-field" style="margin-bottom:6px">
+              <span class="doc-field-label">${labels.returnDate}</span>
+              <span class="doc-field-value">{pickup_date} &nbsp; {pickup_time}</span>
+            </div>
+            <div class="doc-field">
+              <span class="doc-field-label">${labels.returnPlace}</span>
+              <span class="doc-field-value">{pickup_place}</span>
+            </div>
+          </div>
+        </div>
         <div class="doc-grid">
-          <div class="doc-field">
-            <span class="doc-field-label">${labels.deliveryDate}</span>
-            <span class="doc-field-value">{delivery_date} {delivery_time}</span>
-          </div>
-          <div class="doc-field">
-            <span class="doc-field-label">${labels.deliveryPlace}</span>
-            <span class="doc-field-value">{delivery_place}</span>
-          </div>
-          <div class="doc-field">
-            <span class="doc-field-label">${labels.returnDate}</span>
-            <span class="doc-field-value">{pickup_date} {pickup_time}</span>
-          </div>
-          <div class="doc-field">
-            <span class="doc-field-label">${labels.returnPlace}</span>
-            <span class="doc-field-value">{pickup_place}</span>
-          </div>
           <div class="doc-field">
             <span class="doc-field-label">${labels.carGroup}</span>
             <span class="doc-field-value">{billed_car_group}</span>
@@ -311,10 +319,6 @@ export function buildVisualTemplateHtml(
           <div class="doc-field">
             <span class="doc-field-label">${labels.days}</span>
             <span class="doc-field-value">{billed_days}</span>
-          </div>
-          <div class="doc-field">
-            <span class="doc-field-label">${labels.rate}</span>
-            <span class="doc-field-value">{applied_rate}</span>
           </div>
         </div>
       </div>
@@ -327,10 +331,10 @@ export function buildVisualTemplateHtml(
           <thead><tr><th>${isEn ? 'Concept' : 'Concepto'}</th><th style="text-align:right">${isEn ? 'Amount' : 'Importe'}</th></tr></thead>
           <tbody>
             <tr><td>${labels.baseAmount}</td><td style="text-align:right">{base_amount} €</td></tr>
+            <tr><td>${labels.discount} (−)</td><td style="text-align:right">{discount_amount} €</td></tr>
             <tr><td>${labels.insurance}</td><td style="text-align:right">{insurance_amount} €</td></tr>
             <tr><td>${labels.extras}</td><td style="text-align:right">{extras_amount} €</td></tr>
             <tr><td>${labels.fuel}</td><td style="text-align:right">{fuel_amount} €</td></tr>
-            <tr><td>${labels.discount} (−)</td><td style="text-align:right">{discount_amount} €</td></tr>
             <tr class="total-row"><td>${labels.total}</td><td style="text-align:right">{total_amount} €</td></tr>
           </tbody>
         </table>
@@ -340,6 +344,15 @@ export function buildVisualTemplateHtml(
     const additionalBlock = config.showAdditionalText && config.additionalText ? `
       <div class="doc-additional">${config.additionalText}</div>
     ` : '';
+
+    // Customer intro — greets client by name and presents the quote
+    const customerIntro = `
+      <div style="margin-bottom:20px;padding:14px 16px;background:#f8fafc;border-left:4px solid ${primary};border-radius:0 6px 6px 0;font-size:13px;color:#334155;line-height:1.6">
+        ${isEn
+          ? 'Dear <strong>{customer_name}</strong>,<br>Following your request, please find below the quotation for your vehicle rental. This estimate is valid for <strong>{company_name}</strong> and has been prepared exclusively for you.'
+          : 'Estimado/a <strong>{customer_name}</strong>,<br>En respuesta a su solicitud, le presentamos a continuación el presupuesto para su alquiler de vehículo. Esta estimación es válida para <strong>{company_name}</strong> y ha sido preparada exclusivamente para usted.'}
+      </div>
+    `;
 
     return `<!DOCTYPE html>
 <html lang="${language}" ${VISUAL_TEMPLATE_MARKER} data-rentiq-visual-config="${configJson}">
@@ -351,7 +364,7 @@ export function buildVisualTemplateHtml(
     ${companyBlock}
   </div>
   <div class="doc-title">${config.title}</div>
-  <p class="doc-intro">${config.intro}</p>
+  ${customerIntro}
   ${reservationBlock}
   ${pricingBlock}
   ${additionalBlock}
@@ -371,15 +384,15 @@ export function buildVisualTemplateHtml(
         </div>
         <div class="doc-field">
           <span class="doc-field-label">${labels.issuedAt}</span>
-          <span class="doc-field-value">{issued_at}</span>
+          <span class="doc-field-value">{invoice_date}</span>
         </div>
         <div class="doc-field">
           <span class="doc-field-label">${labels.contractNumber}</span>
           <span class="doc-field-value">{contract_number}</span>
         </div>
         <div class="doc-field">
-          <span class="doc-field-label">${labels.rentalPeriod}</span>
-          <span class="doc-field-value">{rental_period_detail}</span>
+          <span class="doc-field-label">${isEn ? 'Branch' : 'Sucursal'}</span>
+          <span class="doc-field-value">{branch_name}</span>
         </div>
       </div>
     </div>
@@ -395,12 +408,12 @@ export function buildVisualTemplateHtml(
           <span class="doc-field-value">{customer_tax_id}</span>
         </div>
         <div class="doc-field">
-          <span class="doc-field-label">${isEn ? 'Address' : 'Dirección'}</span>
-          <span class="doc-field-value">{customer_address}</span>
-        </div>
-        <div class="doc-field">
           <span class="doc-field-label">Email</span>
           <span class="doc-field-value">{customer_email}</span>
+        </div>
+        <div class="doc-field">
+          <span class="doc-field-label">${isEn ? 'Phone' : 'Teléfono'}</span>
+          <span class="doc-field-value">{customer_phone}</span>
         </div>
       </div>
     </div>
@@ -412,15 +425,24 @@ export function buildVisualTemplateHtml(
       <table class="doc-pricing-table">
         <thead><tr><th>${isEn ? 'Concept' : 'Concepto'}</th><th style="text-align:right">${isEn ? 'Amount' : 'Importe'}</th></tr></thead>
         <tbody>
-          <tr><td>${labels.subtotal} (${isEn ? 'vehicle occupation' : 'ocupación vehículo'})</td><td style="text-align:right">{vehicle_occupation_amount} €</td></tr>
+          <tr>
+            <td>
+              <strong>${isEn ? 'Occupation' : 'Ocupación'}</strong>
+              <div style="font-size:11px;color:#64748b;margin-top:3px;line-height:1.5">
+                ${isEn ? 'Period' : 'Período'}: {delivery_date} {delivery_time} → {pickup_date} {pickup_time} &nbsp;·&nbsp; {billed_days} ${isEn ? 'days' : 'días'}<br>
+                ${labels.contractNumber}: {contract_number} &nbsp;·&nbsp; ${isEn ? 'Plate' : 'Matr.'}: {assigned_plate}
+              </div>
+            </td>
+            <td style="text-align:right;vertical-align:top">{base_amount} €</td>
+          </tr>
+          <tr><td>${labels.discount} (−)</td><td style="text-align:right">{discount_amount} €</td></tr>
           <tr><td>${labels.extras}</td><td style="text-align:right">{extras_amount} €</td></tr>
           <tr><td>${labels.insurance}</td><td style="text-align:right">{insurance_amount} €</td></tr>
           <tr><td>${labels.fuel}</td><td style="text-align:right">{fuel_amount} €</td></tr>
-          <tr><td>${labels.penalties}</td><td style="text-align:right">{penalties_amount} €</td></tr>
-          <tr><td>${labels.discount} (−)</td><td style="text-align:right">{discount_amount} €</td></tr>
-          <tr><td>${labels.subtotal}</td><td style="text-align:right">{base_amount} €</td></tr>
+          <tr><td>${labels.penalties}</td><td style="text-align:right">{penalties} €</td></tr>
+          <tr style="border-top:2px solid #e2e8f0"><td><strong>${labels.subtotal}</strong></td><td style="text-align:right"><strong>{base_imponible} €</strong></td></tr>
           <tr><td>${labels.iva}</td><td style="text-align:right">{iva_amount} €</td></tr>
-          <tr class="total-row"><td>${labels.total}</td><td style="text-align:right">{total_amount} €</td></tr>
+          <tr class="total-row"><td>${labels.total}</td><td style="text-align:right">{total} €</td></tr>
         </tbody>
       </table>
     </div>

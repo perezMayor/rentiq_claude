@@ -122,7 +122,6 @@ async function handleSaveTemplate(formData: FormData): Promise<void> {
           intro: (formData.get('visualIntro') as string) || '',
           footer: (formData.get('visualFooter') as string) || '',
           additionalText: (formData.get('visualAdditionalText') as string) || '',
-          showContractNumber: formData.get('showContractNumber') === 'true',
           showCompany: formData.get('showCompany') === 'true',
           showReservationBlock: formData.get('showReservationBlock') === 'true',
           showBaseData: formData.get('showBaseData') === 'true',
