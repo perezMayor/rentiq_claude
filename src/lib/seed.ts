@@ -1,4 +1,21 @@
 import type { RentalStore } from './types';
+import { buildVisualTemplateHtml, defaultVisualTemplateConfig } from './services/template-visual-builder';
+
+function seedVisualTemplate(code: string, type: 'CONFIRMACION_RESERVA' | 'PRESUPUESTO' | 'FACTURA', lang: string, title: string, now: string) {
+  const cfg = defaultVisualTemplateConfig(type, lang);
+  return {
+    id: `tpl-${code.toLowerCase()}`,
+    templateCode: code,
+    templateType: type,
+    language: lang,
+    title,
+    templateFunction: type,
+    htmlContent: buildVisualTemplateHtml(type, lang, cfg, {}),
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
 
 export function createSeedStore(): RentalStore {
   const NOW = new Date().toISOString();
@@ -685,7 +702,14 @@ export function createSeedStore(): RentalStore {
         createdAt: NOW,
       },
     ],
-    templates: [],
+    templates: [
+      seedVisualTemplate('CONF_RES_ES_BASE', 'CONFIRMACION_RESERVA', 'es', 'Confirmación de reserva (ES)', NOW),
+      seedVisualTemplate('CONF_RES_EN_BASE', 'CONFIRMACION_RESERVA', 'en', 'Reservation confirmation (EN)', NOW),
+      seedVisualTemplate('PRES_BASE_ES',     'PRESUPUESTO',          'es', 'Presupuesto (ES)',             NOW),
+      seedVisualTemplate('PRES_BASE_EN',     'PRESUPUESTO',          'en', 'Quotation (EN)',               NOW),
+      seedVisualTemplate('FAC_BASE_ES',      'FACTURA',              'es', 'Factura (ES)',                 NOW),
+      seedVisualTemplate('FAC_BASE_EN',      'FACTURA',              'en', 'Invoice (EN)',                 NOW),
+    ],
     vehicleBlocks: [
       {
         id: 'block-1',

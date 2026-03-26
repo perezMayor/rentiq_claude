@@ -744,6 +744,105 @@ function CanalesTab({ myRole }: { myRole: UserRole }) {
   );
 }
 
+// ─── Plantillas tab ───────────────────────────────────────────────────────────
+
+type TemplateItem = { id: string; templateCode: string; templateType: string; language: string; title: string; active: boolean };
+
+function PlantillasTab() {
+  const [templates, setTemplates] = useState<TemplateItem[]>([]);
+  const [selected, setSelected] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/templates')
+      .then((r) => r.json())
+      .then((d) => {
+        const list: TemplateItem[] = d.templates ?? [];
+        setTemplates(list);
+        if (list.length > 0) setSelected(list[0].templateCode);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const codes = Array.from(new Set(templates.map((t) => t.templateCode)));
+
+  function editUrl(code: string) {
+    return `/plantillas?code=${encodeURIComponent(code)}`;
+  }
+
+  return (
+    <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <select
+          className="form-select"
+          style={{ minWidth: 240 }}
+          value={selected}
+          onChange={(e) => setSelected(e.target.value)}
+          disabled={loading || codes.length === 0}
+        >
+          {codes.length === 0
+            ? <option value="">— Sin plantillas —</option>
+            : codes.map((code) => {
+                const t = templates.find((x) => x.templateCode === code);
+                return <option key={code} value={code}>{t?.title || code}</option>;
+              })
+          }
+        </select>
+        <a
+          href={selected ? editUrl(selected) : '/plantillas'}
+          className="btn btn-primary"
+          style={{ pointerEvents: (!selected || loading) ? 'none' : undefined, opacity: (!selected || loading) ? 0.5 : 1 }}
+        >
+          Editar seleccionada
+        </a>
+        <a href="/plantillas?mode=new" className="btn btn-ghost">
+          + Nueva plantilla
+        </a>
+        <a href="/plantillas" className="btn btn-ghost">
+          Ir al editor completo →
+        </a>
+      </div>
+
+      {!loading && templates.length > 0 && (
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Título</th>
+              <th>Tipo</th>
+              <th>Idioma</th>
+              <th>Activa</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {templates.map((t) => (
+              <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(t.templateCode)}>
+                <td><code style={{ fontSize: 12 }}>{t.templateCode}</code></td>
+                <td>{t.title}</td>
+                <td><span className="badge">{t.templateType}</span></td>
+                <td>{t.language.toUpperCase()}</td>
+                <td>{t.active ? '✓' : '—'}</td>
+                <td>
+                  <a href={editUrl(t.templateCode)} className="btn btn-ghost btn-sm" onClick={(e) => e.stopPropagation()}>
+                    Editar
+                  </a>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {!loading && templates.length === 0 && (
+        <div className="empty-state">
+          <div className="empty-state__text">No hay plantillas. Crea una nueva o reinicia los datos del sistema para cargar las plantillas base.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Tab nav (top level) ──────────────────────────────────────────────────────
 
 const GESTOR_TABS = [
@@ -818,14 +917,7 @@ function GestorInner() {
       {tab === 'canales'       && <CanalesTab myRole={myRole} />}
       {tab === 'tarifas'       && <TarifasPage />}
       {tab === 'config'        && <ConfigOperativaTab myRole={myRole} />}
-      {tab === 'plantillas' && (
-        <div style={{ marginTop: 32 }}>
-          <p style={{ marginBottom: 16, color: 'var(--color-text-muted)', fontSize: 14 }}>
-            El editor de plantillas de documentos se abre en su propia sección.
-          </p>
-          <a href="/plantillas" className="btn btn-primary">Ir al editor de plantillas →</a>
-        </div>
-      )}
+      {tab === 'plantillas' && <PlantillasTab />}
       {tab === 'backups' && (
         <div className="empty-state" style={{ marginTop: 32 }}>
           <div className="empty-state__icon">🚧</div>
