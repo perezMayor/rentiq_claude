@@ -270,6 +270,7 @@ export function buildVisualTemplateHtml(
     ${companyBlock}
   </div>
   <div class="doc-title">${config.title}</div>
+  ${systemNotice}
   <p class="doc-intro">${config.intro}</p>
   ${reservationBlock}
   ${baseDataBlock}
@@ -277,7 +278,6 @@ export function buildVisualTemplateHtml(
   ${extrasBlock}
   ${observationsBlock}
   ${additionalBlock}
-  ${systemNotice}
   <div class="doc-footer">${config.footer}</div>
 </div>
 </body></html>`;
