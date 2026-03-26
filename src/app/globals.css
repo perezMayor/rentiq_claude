@@ -694,3 +694,77 @@ table.data-table tbody tr:hover {
     display: none !important;
   }
 }
+
+/* ── Template / utility classes ──────────────────────────────────────────── */
+.stack-sm { display: flex; flex-direction: column; gap: 0.75rem; }
+.stack-md { display: flex; flex-direction: column; gap: 1.25rem; }
+.stack-lg { display: flex; flex-direction: column; gap: 2rem; }
+
+.primary-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0.45rem 1.1rem; border: none; border-radius: 6px; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 500; text-decoration: none;
+  background: var(--color-primary); color: #fff; transition: opacity .15s;
+  white-space: nowrap;
+}
+.primary-btn:hover:not(:disabled) { opacity: .88; }
+.primary-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.secondary-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0.45rem 1.1rem; border: 1px solid var(--color-border); border-radius: 6px;
+  cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 500;
+  text-decoration: none; background: var(--color-surface); color: var(--color-text-primary);
+  transition: background .15s; white-space: nowrap;
+}
+.secondary-btn:hover:not(:disabled) { background: var(--color-surface-strong); }
+.secondary-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.field-compact {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 13px; font-weight: 500; color: var(--color-text-primary);
+}
+.field-compact input,
+.field-compact select,
+.field-compact textarea {
+  font-family: inherit; font-size: 13px;
+  padding: 0.35rem 0.6rem; border: 1px solid var(--color-border); border-radius: 5px;
+  background: var(--color-surface-strong); color: var(--color-text-primary);
+}
+.field-compact input:focus,
+.field-compact select:focus,
+.field-compact textarea:focus {
+  outline: none; border-color: var(--color-primary);
+}
+
+.danger-text { color: var(--color-danger); font-size: 13px; font-weight: 500; }
+.success-text { color: #15803d; font-size: 13px; font-weight: 500; }
+.text-center { text-align: center; }
+
+.table-header-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+
+.templates-shell { max-width: 1200px; }
+.templates-toolbar-main { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.templates-toolbar-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.templates-upload-row { display: flex; align-items: flex-end; gap: 0.75rem; flex-wrap: wrap; }
+.templates-upload-field { flex: 1; min-width: 200px; }
+
+.template-panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.template-panel-card { min-height: 300px; }
+.template-card-scroll { overflow-y: auto; max-height: 380px; }
+.template-card-scroll textarea { width: 100%; resize: vertical; }
+
+.contract-reverse-topbar { display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+.contract-reverse-font { max-width: 120px; }
+.contract-reverse-editor textarea { width: 100%; resize: vertical; min-height: 300px; font-size: 12px; font-family: monospace; }
+.contract-reverse-legacy { font-size: 12px; }
+.contract-reverse-legacy textarea { width: 100%; font-size: 12px; font-family: monospace; }
+
+.templates-editor-card { }
+.templates-editor-form { }
+.templates-toolbar-card { }
+
+@media (max-width: 700px) {
+  .template-panel-grid { grid-template-columns: 1fr; }
+  .templates-toolbar-main { flex-direction: column; align-items: flex-start; }
+}

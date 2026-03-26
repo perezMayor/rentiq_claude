@@ -55,6 +55,26 @@ export interface CompanySettings {
   nightFeeFromHour?: number;    // hora de inicio tarifa nocturna (0-23)
   nightFeeToHour?: number;      // hora de fin tarifa nocturna (0-23)
   nightFeePrice?: number;       // precio de la tarifa nocturna (€)
+  // Document / branding settings
+  documentName?: string;          // nombre en documentos
+  legalName?: string;             // nombre fiscal
+  documentBrandName?: string;     // nombre de marca en documentos
+  taxId?: string;                 // NIF/CIF alternativo para documentos
+  fiscalAddress?: string;         // dirección fiscal para documentos
+  companyEmailFrom?: string;      // email remitente
+  companyPhone?: string;          // teléfono empresa (alias)
+  companyWebsite?: string;        // web empresa
+  documentFooter?: string;        // pie de página documentos
+  logoDataUrl?: string;           // logo en base64 para documentos
+  brandPrimaryColor?: string;     // color primario marca (#hex)
+  brandSecondaryColor?: string;   // color secundario marca (#hex)
+  // Reverso contrato
+  contractBackLayout?: 'SINGLE' | 'DUAL';
+  contractBackContentType?: 'TEXT' | 'HTML';
+  contractBackFontSize?: number;
+  contractBackContentEs?: string;
+  contractBackContentEn?: string;
+  contractBackContent?: string;
 }
 
 export interface WeeklySchedule {
@@ -426,11 +446,12 @@ export interface SalesChannel {
 
 export interface TemplateDocument {
   id: string;
-  name: string;
-  type: 'CONTRATO' | 'CONFIRMACION_RESERVA' | 'FACTURA';
-  language: 'es' | 'en';
-  subject?: string;
-  htmlContent: string;
+  templateCode: string;       // código único, ej: CONF_RES_ES_BASE
+  templateType: 'CONTRATO' | 'CONFIRMACION_RESERVA' | 'PRESUPUESTO' | 'FACTURA';
+  language: string;           // 'es' | 'en'
+  title: string;              // título descriptivo
+  templateFunction?: string;  // función asociada, ej: CONFIRMACION_RESERVA
+  htmlContent: string;        // contenido HTML
   active: boolean;
   createdAt: string;
   updatedAt: string;

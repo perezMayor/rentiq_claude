@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import type { UserRole } from './types';
+// Note: cookies import is used only in getSessionUser() which is called from Server Components/Actions
 
 export const SESSION_COOKIE = 'rq_v3_session';
 
@@ -80,4 +81,15 @@ export function parseSessionFromCookieString(cookieHeader: string | null): { use
   const token = cookies[SESSION_COOKIE];
   if (!token) return null;
   return parseSession(token);
+}
+
+// Server-only helper: reads session from Next.js cookies() — call only from Server Components or Server Actions
+export async function getSessionUser(): Promise<{ id: string; role: UserRole } | null> {
+  const { cookies } = await import('next/headers');
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  const session = parseSession(token);
+  if (!session) return null;
+  return { id: session.userId, role: session.role };
 }

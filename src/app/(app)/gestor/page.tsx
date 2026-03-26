@@ -818,10 +818,18 @@ function GestorInner() {
       {tab === 'canales'       && <CanalesTab myRole={myRole} />}
       {tab === 'tarifas'       && <TarifasPage />}
       {tab === 'config'        && <ConfigOperativaTab myRole={myRole} />}
-      {(tab === 'plantillas' || tab === 'backups') && (
+      {tab === 'plantillas' && (
+        <div style={{ marginTop: 32 }}>
+          <p style={{ marginBottom: 16, color: 'var(--color-text-muted)', fontSize: 14 }}>
+            El editor de plantillas de documentos se abre en su propia sección.
+          </p>
+          <a href="/plantillas" className="btn btn-primary">Ir al editor de plantillas →</a>
+        </div>
+      )}
+      {tab === 'backups' && (
         <div className="empty-state" style={{ marginTop: 32 }}>
           <div className="empty-state__icon">🚧</div>
-          <div className="empty-state__text">{tabLabel} — Próximamente</div>
+          <div className="empty-state__text">Backups — Próximamente</div>
         </div>
       )}
     </div>
