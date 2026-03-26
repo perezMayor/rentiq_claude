@@ -355,7 +355,7 @@ export function buildVisualTemplateHtml(
     ${companyBlock}
   </div>
   <div class="doc-title">${config.title}</div>
-  <p class="doc-intro">${config.intro}</p>
+  <div style="margin-bottom:20px;padding:14px 16px;background:#f8fafc;border-left:4px solid ${primary};border-radius:0 6px 6px 0;font-size:13px;color:#334155;line-height:1.7">${config.intro}</div>
   ${reservationBlock}
   ${pricingBlock}
   ${additionalBlock}
