@@ -335,7 +335,7 @@ function renderAnverso(
   doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
      .text(isBlank ? blankLine(22) : addrLine, ML + 7, cpY, { width: C1W - 14, lineBreak: false, ellipsis: true });
   cpY += 12;
-  doc.font('Helvetica').fontSize(6).fillColor(LABEL_CLR)
+  doc.font('Helvetica-Bold').fontSize(6.5).fillColor(LABEL_CLR)
      .text(tr.vacationAddr, ML + 7, cpY, { width: C1W - 14, lineBreak: false });
   doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
      .text(isBlank ? blankLine(22) : 'N/D', ML + 7, cpY + 7, { width: C1W - 14, lineBreak: false });
