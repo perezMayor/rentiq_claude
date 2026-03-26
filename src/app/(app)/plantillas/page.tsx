@@ -576,10 +576,7 @@ export default async function PlantillasPage({
       {/* Macro catalog reference */}
       {!isNewMode && (
         <section className="card stack-sm">
-          <h3>Catálogo de macros disponibles</h3>
-          <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-            Usa estas macros en tu HTML. Serán reemplazadas por los valores reales al generar el documento.
-          </p>
+          <h3>Macros</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
             {TEMPLATE_MACRO_GROUPS.map((group) => (
               <div key={group.key} style={{ background: 'var(--color-surface)', borderRadius: 6, padding: '12px 14px' }}>
