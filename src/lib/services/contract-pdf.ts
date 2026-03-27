@@ -343,11 +343,10 @@ function renderAnverso(
   doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
      .text(isBlank ? blankLine(22) : addrLine, ML + 7, cpY, { width: cInner, lineBreak: false, ellipsis: true });
   cpY += 11;
-  doc.font('Helvetica-Bold').fontSize(6.5).fillColor(LABEL_CLR)
-     .text(tr.vacationAddr, ML + 7, cpY, { width: cInner, lineBreak: false });
+  cpY = subHdr(doc, tr.vacationAddr, ML + 4, cpY, C1W - 8);
   doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
-     .text(isBlank ? blankLine(22) : 'N/D', ML + 7, cpY + 7, { width: cInner, lineBreak: false });
-  cpY += 14;
+     .text(isBlank ? blankLine(22) : 'N/D', ML + 7, cpY, { width: cInner, lineBreak: false });
+  cpY += 11;
 
   // Phones
   cpY = subHdr(doc, tr.phones, ML + 4, cpY, C1W - 8);
