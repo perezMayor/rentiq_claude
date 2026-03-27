@@ -313,34 +313,43 @@ function renderAnverso(
   const cpInner = secBox(doc, tr.mainDriver, ML, ly, C1W, cpH);
   let cpY = cpInner + 3;
   const cHalf = (C1W - 16) / 2;
+  const cInner = C1W - 14;  // 235pt usable width
 
   const clientName = client
     ? `${client.name}${client.surname ? ' ' + client.surname : ''}`
     : '';
-  field(doc, tr.clientLabel,  v(clientName),                     ML + 7, cpY, C1W * 0.57 - 4);
-  field(doc, tr.birthDate,    'N/D',                             ML + 7 + C1W * 0.57, cpY, C1W * 0.43 - 14);
-  cpY += 20;
 
+  // Row 1: Nombre (52%) | Nacimiento (26%) | Nacionalidad (22%)
+  const n1 = cInner * 0.52, n2 = cInner * 0.26;
+  field(doc, tr.clientLabel,  v(clientName), ML + 7,          cpY, n1 - 4);
+  field(doc, tr.birthDate,    'N/D',         ML + 7 + n1,     cpY, n2 - 4);
+  field(doc, tr.nationality,  'N/D',         ML + 7 + n1 + n2, cpY, cInner - n1 - n2 - 2);
+  cpY += 19;
+
+  // Row 2: Documento (DNI/Pasaporte) + Caducidad documento — juntos
   field(doc, tr.document,  client?.nif ? `DNI ${client.nif}` : v(undefined), ML + 7, cpY, cHalf);
-  field(doc, tr.license,   v(client?.licenseNumber),                         ML + 7 + cHalf + 4, cpY, cHalf);
-  cpY += 20;
+  field(doc, tr.docExpiry, 'N/D', ML + 7 + cHalf + 4, cpY, cHalf);
+  cpY += 19;
 
-  field(doc, tr.docExpiry,  'N/D',                                            ML + 7, cpY, cHalf * 0.58);
-  field(doc, tr.licExpiry,  client?.licenseExpiry ? fmtDate(client.licenseExpiry, lang) : 'N/D', ML + 7 + cHalf * 0.58 + 4, cpY, cHalf * 0.58);
-  field(doc, tr.nationality, 'N/D',                                           ML + 7 + cHalf * 1.20 + 8, cpY, C1W - (7 + cHalf * 1.20 + 8) - 4);
-  cpY += 20;
+  // Row 3: Permiso de conducir + Caducidad permiso — juntos
+  field(doc, tr.license,   v(client?.licenseNumber), ML + 7, cpY, cHalf);
+  field(doc, tr.licExpiry, client?.licenseExpiry ? fmtDate(client.licenseExpiry, lang) : 'N/D',
+        ML + 7 + cHalf + 4, cpY, cHalf);
+  cpY += 19;
 
+  // Address
   cpY = subHdr(doc, tr.permAddress, ML + 4, cpY, C1W - 8);
   const addrLine = [client?.address, client?.city, client?.country].filter(Boolean).join(', ') || 'N/D';
   doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
-     .text(isBlank ? blankLine(22) : addrLine, ML + 7, cpY, { width: C1W - 14, lineBreak: false, ellipsis: true });
-  cpY += 12;
+     .text(isBlank ? blankLine(22) : addrLine, ML + 7, cpY, { width: cInner, lineBreak: false, ellipsis: true });
+  cpY += 11;
   doc.font('Helvetica-Bold').fontSize(6.5).fillColor(LABEL_CLR)
-     .text(tr.vacationAddr, ML + 7, cpY, { width: C1W - 14, lineBreak: false });
+     .text(tr.vacationAddr, ML + 7, cpY, { width: cInner, lineBreak: false });
   doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
-     .text(isBlank ? blankLine(22) : 'N/D', ML + 7, cpY + 7, { width: C1W - 14, lineBreak: false });
+     .text(isBlank ? blankLine(22) : 'N/D', ML + 7, cpY + 7, { width: cInner, lineBreak: false });
   cpY += 14;
 
+  // Phones
   cpY = subHdr(doc, tr.phones, ML + 4, cpY, C1W - 8);
   field(doc, tr.phoneFix, v(client?.phone), ML + 7, cpY, cHalf);
   field(doc, tr.mobile,   'N/D',            ML + 7 + cHalf + 4, cpY, cHalf);
@@ -482,22 +491,22 @@ function renderAnverso(
   drawCarSide(doc, ML + 4, vehInner + 2, C1W - 8, vehH - (vehInner - ly) - 4);
   ly += vehH + 4;
 
+  // Right — KM y combustible (primero)
+  const kmInner = secBox(doc, tr.vehicleCondition, C2X, ry, C2W, kmH);
+  let kmY = kmInner + 3;
+  const kHalf = (C2W - 16) / 2;
+  field(doc, tr.kmOut,   isBlank ? blankLine(8) : 'N/D', C2X + 7,             kmY, kHalf);
+  field(doc, tr.kmIn,    isBlank ? blankLine(8) : 'N/D', C2X + 7 + kHalf + 4, kmY, kHalf);
+  kmY += 20;
+  field(doc, tr.fuelOut, isBlank ? blankLine(8) : 'N/D', C2X + 7,             kmY, kHalf);
+  field(doc, tr.fuelIn,  isBlank ? blankLine(8) : 'N/D', C2X + 7 + kHalf + 4, kmY, kHalf);
+  ry += kmH + 4;
+
   // Right — Cambios de vehículo
   secBox(doc, tr.vehicleChanges, C2X, ry, C2W, chH);
   doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
      .text(tr.noChanges, C2X + 7, ry + 22, { lineBreak: false });
   ry += chH + 4;
-
-  // Right — KM y combustible
-  const kmInner = secBox(doc, tr.vehicleCondition, C2X, ry, C2W, kmH);
-  let kmY = kmInner + 3;
-  const kHalf = (C2W - 16) / 2;
-  field(doc, tr.kmOut,   isBlank ? blankLine(8) : 'N/D', C2X + 7,           kmY, kHalf);
-  field(doc, tr.kmIn,    isBlank ? blankLine(8) : 'N/D', C2X + 7 + kHalf + 4, kmY, kHalf);
-  kmY += 20;
-  field(doc, tr.fuelOut, isBlank ? blankLine(8) : 'N/D', C2X + 7,           kmY, kHalf);
-  field(doc, tr.fuelIn,  isBlank ? blankLine(8) : 'N/D', C2X + 7 + kHalf + 4, kmY, kHalf);
-  ry += kmH + 4;
 
   // Right — Observaciones
   const obsInner = secBox(doc, tr.observations, C2X, ry, C2W, obsH);
