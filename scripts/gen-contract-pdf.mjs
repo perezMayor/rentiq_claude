@@ -246,7 +246,7 @@ function renderAnverso(doc, data, copyLabel, isBlank) {
   // ── Row 1: Conductor | Datos alquiler ─────────────────────────────────────
   const catCode = category?.code ?? category?.name ?? 'N/D';
   let ly = y, ry = y;
-  const cpH = 158;
+  const cpH = 190;
   const cpInner = secBox(doc, tr.mainDriver, ML, ly, C1W, cpH);
   let cpY = cpInner + 3;
   const cHalf = (C1W - 16) / 2;
@@ -311,14 +311,7 @@ function renderAnverso(doc, data, copyLabel, isBlank) {
   ry += daH + 4;
   y = Math.max(ly, ry);
 
-  // ── Row 2: Conductores adicionales (full width) ───────────────────────────
-  const caH = 36;
-  secBox(doc, tr.addDrivers, ML, y, CW, caH);
-  doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
-     .text(tr.noAddDrivers, ML + 7, y + 24, { lineBreak: false });
-  y += caH + 4;
-
-  // ── Row 3: Empresa | Desglose — SAME HEIGHT ───────────────────────────────
+  // ── Row 3: (Empresa + Conductores adicionales) | Desglose ────────────────
   ly = y; ry = y;
 
   const bRows = isBlank ? [
@@ -337,10 +330,12 @@ function renderAnverso(doc, data, copyLabel, isBlank) {
   const rowH   = 13;
   const rowsH  = bRows.length * rowH + 20;
   const francH = 18;
-  const boxH   = Math.max(118, rowsH + francH);
+  const emH    = 86;
+  const caH    = 36;
+  const boxH   = Math.max(emH + 4 + caH, rowsH + francH);
 
-  // Empresa
-  const emInner = secBox(doc, tr.companySection, ML, ly, C1W, boxH);
+  // Empresa (left top)
+  const emInner = secBox(doc, tr.companySection, ML, ly, C1W, emH);
   let emY = emInner + 4;
   const emPairs = isBlank ? [
     [tr.companySection, blankLine(22)],
@@ -354,9 +349,16 @@ function renderAnverso(doc, data, copyLabel, isBlank) {
     [tr.contact,        [settings.companyPhone ?? settings.phone, settings.email].filter(Boolean).join('  ·  ')],
   ];
   for (const [lbl, val] of emPairs) { field(doc, lbl, val, ML + 7, emY, C1W - 14); emY += 14; }
+
+  // Conductores adicionales (left, below empresa)
+  const caY = ly + emH + 4;
+  secBox(doc, tr.addDrivers, ML, caY, C1W, caH);
+  doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
+     .text(tr.noAddDrivers, ML + 7, caY + 24, { lineBreak: false });
+
   ly += boxH + 4;
 
-  // Desglose
+  // Desglose (right, same total height)
   const deInner = secBox(doc, tr.breakdown, C2X, ry, C2W, boxH);
   let deY = deInner + 4;
   const deLW = C2W * 0.62;
@@ -383,9 +385,9 @@ function renderAnverso(doc, data, copyLabel, isBlank) {
 
   // ── Row 4: Vehículo (croquis) | Cambios + KM/Fuel + Obs ──────────────────
   ly = y; ry = y;
-  const chH  = 40;
-  const kmH  = 62;
-  const obsH = 94;
+  const chH  = 36;
+  const kmH  = 65;
+  const obsH = 73;
   const vehH = chH + 4 + kmH + 4 + obsH;
 
   const vehInner = secBox(doc, tr.vehicleSection, ML, ly, C1W, vehH);
@@ -423,14 +425,15 @@ function renderAnverso(doc, data, copyLabel, isBlank) {
   hline(doc, y, ML, PW - MR, BORDER_CLR, 0.5);
   y += 6;
   const trEs = strings('es'), trEn = strings('en');
+  doc.font('Helvetica').fontSize(7).fillColor(TXT_CLR)
+     .text(trEs.sigTextEs, ML, y, { width: CW, lineBreak: true });
+  y = doc.y + 3;
   doc.font('Helvetica').fontSize(6.5).fillColor(LABEL_CLR)
-     .text(trEs.sigTextEs, ML, y, { width: CW, lineBreak: false });
-  y += 9;
-  doc.font('Helvetica').fontSize(6.5).fillColor(LABEL_CLR)
-     .text('* ' + trEn.sigTextEn, ML, y, { width: CW, lineBreak: false });
-  y += 14;
+     .text('* ' + trEn.sigTextEn, ML, y, { width: CW, lineBreak: true });
+  y = doc.y + 6;
 
-  const sigW = CW / 2 - 8, sigH = 62;
+  const sigW = CW / 2 - 8;
+  const sigH = Math.max(50, PH - 28 - y);
   doc.save().roundedRect(ML, y, sigW, sigH, 2).strokeColor(BORDER_CLR).lineWidth(0.5).stroke().restore();
   doc.font('Helvetica-Bold').fontSize(8).fillColor(TXT_CLR).text(tr.sigRenter, ML + 7, y + 5, { lineBreak: false });
 
