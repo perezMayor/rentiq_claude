@@ -693,6 +693,37 @@ table.data-table tbody tr:hover {
   body.is-printing-list .no-print {
     display: none !important;
   }
+
+  /* ── Entregas / Recogidas print table ── */
+  body.is-printing-list table:not(.data-table) {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 9pt;
+    table-layout: fixed !important;
+  }
+
+  body.is-printing-list table:not(.data-table) th {
+    background: white !important;
+    color: #555 !important;
+    font-size: 7.5pt !important;
+    padding: 4pt 5pt !important;
+    border: none !important;
+    border-bottom: 1.5pt solid #333 !important;
+    text-align: left;
+  }
+
+  body.is-printing-list table:not(.data-table) td {
+    background: white !important;
+    color: black !important;
+    padding: 4pt 5pt !important;
+    border: none !important;
+    font-size: 9pt;
+  }
+
+  body.is-printing-list table:not(.data-table) tr td[style*="border-bottom: 1px solid"],
+  body.is-printing-list table:not(.data-table) td[colspan] {
+    border-bottom: 0.5pt solid #ccc !important;
+  }
 }
 
 /* ── Template / utility classes ──────────────────────────────────────────── */

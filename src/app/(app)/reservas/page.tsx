@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import type { Reservation, Client, VehicleCategory, CompanyBranch, ReservationStatus, Contract } from '@/src/lib/types';
 import DatePicker from '@/src/components/DatePicker';
@@ -89,29 +89,41 @@ interface EntregaRow {
   endTime: string;
   pickupLocation: string;
   branchId: string;
-  contratada: boolean;   // tiene contrato
-  sinMatricula: boolean; // sin matrícula asignada
+  contratada: boolean;
+  sinMatricula: boolean;
+  flightNumber: string;
+  billedDays: number;
+  total: number;
+  extras: { extraId: string; quantity: number; total: number }[];
+  notes: string;
 }
 
 function EntregasTab() {
   const today = todayStr();
-  const [dateFrom, setDateFrom]   = useState(today);
-  const [dateTo, setDateTo]       = useState(today);
-  const [filtro, setFiltro]       = useState<EntregaFiltro>('todas');
-  const [rows, setRows]               = useState<EntregaRow[]>([]);
-  const [clients, setClients]         = useState<Client[]>([]);
-  const [branches, setBranches]       = useState<CompanyBranch[]>([]);
-  const [locations, setLocations]     = useState<string[]>([]);
+  const [dateFrom, setDateFrom]         = useState(today);
+  const [dateTo, setDateTo]             = useState(today);
+  const [filtro, setFiltro]             = useState<EntregaFiltro>('todas');
+  const [rows, setRows]                 = useState<EntregaRow[]>([]);
+  const [clients, setClients]           = useState<Client[]>([]);
+  const [locations, setLocations]       = useState<string[]>([]);
+  const [extraCatalog, setExtraCatalog] = useState<Record<string, string>>({}); // extraId → name
   const [filterLocation, setFilterLocation] = useState('');
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState('');
-  const [hasSearched, setHasSearched] = useState(false);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState('');
+  const [hasSearched, setHasSearched]   = useState(false);
 
   useEffect(() => {
-    Promise.all([fetch('/api/clientes'), fetch('/api/sucursales'), fetch('/api/locations')]).then(async ([cr, br, lr]) => {
+    Promise.all([
+      fetch('/api/clientes'),
+      fetch('/api/locations'),
+      fetch('/api/vehiculos/extras'),
+    ]).then(async ([cr, lr, er]) => {
       if (cr.ok) setClients((await cr.json()).clients ?? []);
-      if (br.ok) setBranches((await br.json()).branches ?? []);
       if (lr.ok) setLocations((await lr.json()).locations ?? []);
+      if (er.ok) {
+        const extras: { id: string; name: string }[] = (await er.json()).extras ?? [];
+        setExtraCatalog(Object.fromEntries(extras.map((e) => [e.id, e.name])));
+      }
     }).catch(() => {});
   }, []);
 
@@ -120,7 +132,6 @@ function EntregasTab() {
       setLoading(true);
       setError('');
       try {
-        // Contratos con salida en el rango (no cancelados)
         const cp = new URLSearchParams({ from: dateFrom, to: dateTo });
         const [contratosRes, reservasRes] = await Promise.all([
           fetch(`/api/contratos?${cp}`),
@@ -128,9 +139,9 @@ function EntregasTab() {
         ]);
         if (!contratosRes.ok || !reservasRes.ok) throw new Error('Error al cargar datos');
 
-        const contratos: Contract[]    = ((await contratosRes.json()).contracts ?? [])
+        const contratos: Contract[]   = ((await contratosRes.json()).contracts ?? [])
           .filter((c: Contract) => c.status !== 'CANCELADO');
-        const reservas: Reservation[]  = ((await reservasRes.json()).reservations ?? [])
+        const reservas: Reservation[] = ((await reservasRes.json()).reservations ?? [])
           .filter((r: Reservation) => r.status !== 'CANCELADA' && !r.contractId);
 
         const contratoIds = new Set(contratos.map((c) => c.reservationId).filter(Boolean));
@@ -148,6 +159,11 @@ function EntregasTab() {
           branchId:      c.branchId,
           contratada:    true,
           sinMatricula:  !c.plate,
+          flightNumber:  c.flightNumber ?? '',
+          billedDays:    c.billedDays,
+          total:         c.total,
+          extras:        c.extras ?? [],
+          notes:         c.internalNotes ?? c.notes ?? '',
         }));
 
         const fromReservas: EntregaRow[] = reservas
@@ -156,15 +172,20 @@ function EntregasTab() {
             id:            r.id,
             numero:        r.number,
             clientId:      r.clientId,
-            plate:         r.plate ?? '',
+            plate:         r.assignedPlate ?? '',
             startDate:     r.startDate,
             startTime:     r.startTime ?? '',
             endDate:       r.endDate,
             endTime:       r.endTime ?? '',
-            pickupLocation: r.pickupBranch ?? '',
+            pickupLocation: r.pickupLocation ?? '',
             branchId:      r.branchId ?? '',
             contratada:    false,
-            sinMatricula:  true,
+            sinMatricula:  !r.assignedPlate,
+            flightNumber:  r.flightNumber ?? '',
+            billedDays:    r.billedDays,
+            total:         r.total,
+            extras:        r.extras ?? [],
+            notes:         r.internalNotes ?? r.notes ?? '',
           }));
 
         setRows([...fromContratos, ...fromReservas].sort((a, b) =>
@@ -180,7 +201,6 @@ function EntregasTab() {
   }, [dateFrom, dateTo]);
 
   const clientMap = Object.fromEntries(clients.map((c) => [c.id, `${c.name}${c.surname ? ' ' + c.surname : ''}`]));
-  const branchMap = Object.fromEntries(branches.map((b) => [b.id, b.name]));
 
   const filtered = rows.filter((r) => {
     if (filtro === 'contratadas'   && !r.contratada)   return false;
@@ -188,6 +208,14 @@ function EntregasTab() {
     if (filterLocation && r.pickupLocation !== filterLocation) return false;
     return true;
   });
+
+  const tdBase: React.CSSProperties = {
+    padding: '8px 10px',
+    fontSize: '0.84rem',
+    color: 'var(--color-text-primary)',
+    borderBottom: 'none',
+    verticalAlign: 'middle',
+  };
 
   return (
     <div>
@@ -206,57 +234,101 @@ function EntregasTab() {
         <span style={{ marginLeft: 'auto', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
           {filtered.length} entrega{filtered.length !== 1 ? 's' : ''}
         </span>
+        {hasSearched && filtered.length > 0 && <PrintButton label="Imprimir listado" />}
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
 
-      <div className="table-wrapper">
-        {!hasSearched ? (
-          <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', padding: '24px 0', textAlign: 'center' }}>Aplica los filtros para ver el listado.</div>
-        ) : loading ? (
-          <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Cargando…</div>
-        ) : filtered.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state__icon">🚗</div>
-            <div className="empty-state__text">No hay entregas para el período seleccionado.</div>
-          </div>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Nº</th><th>Cliente</th><th>Vehículo</th>
-                <th>Fecha</th><th>Hora</th><th>Lugar entrega</th>
-                <th>Retorno</th><th>Sucursal</th><th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((r) => (
-                <tr key={r.id}>
-                  <td style={{ fontWeight: 700, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>{r.numero}</td>
-                  <td>{clientMap[r.clientId] ?? r.clientId}</td>
-                  <td>
-                    {r.plate
-                      ? <strong style={{ fontFamily: 'monospace' }}>{r.plate}</strong>
-                      : <span style={{ color: 'var(--color-danger)', fontSize: '0.8rem' }}>Sin asignar</span>
-                    }
-                  </td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{formatDate(r.startDate)}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{r.startTime || '—'}</td>
-                  <td style={{ fontSize: '0.85rem', maxWidth: 180 }}>{r.pickupLocation || '—'}</td>
-                  <td style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>{formatDate(r.endDate)} {r.endTime}</td>
-                  <td>{branchMap[r.branchId] ?? (r.branchId || '—')}</td>
-                  <td>
-                    {r.contratada
-                      ? <span className="badge badge-confirmada">Contratada</span>
-                      : <span className="badge badge-peticion">Sin contrato</span>
-                    }
-                  </td>
-                </tr>
+      {!hasSearched ? (
+        <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', padding: '24px 0', textAlign: 'center' }}>Aplica los filtros para ver el listado.</div>
+      ) : loading ? (
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Cargando…</div>
+      ) : filtered.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state__icon">🚗</div>
+          <div className="empty-state__text">No hay entregas para el período seleccionado.</div>
+        </div>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: 88 }} />{/* Fecha */}
+            <col style={{ width: 56 }} />{/* Hora */}
+            <col style={{ width: 160 }} />{/* Lugar */}
+            <col style={{ width: 90 }} />{/* Vuelo */}
+            <col />{/* Nombre */}
+            <col style={{ width: 96 }} />{/* Matrícula */}
+            <col style={{ width: 48 }} />{/* Días */}
+            <col style={{ width: 96 }} />{/* Devolución */}
+            <col style={{ width: 80 }} />{/* Importe */}
+            <col style={{ width: 100 }} />{/* Estado */}
+          </colgroup>
+          <thead>
+            <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
+              {['Fecha','Hora','Lugar entrega','Vuelo','Nombre','Matrícula','Días','F. devolución','Importe','Estado'].map((h) => (
+                <th key={h} style={{ padding: '6px 10px', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-muted)', textAlign: 'left', whiteSpace: 'nowrap' }}>
+                  {h}
+                </th>
               ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((r) => {
+              const hasDetail = r.extras.length > 0 || !!r.notes;
+              const rowBorder = hasDetail ? undefined : '1px solid var(--color-border)';
+              return (
+                <React.Fragment key={r.id}>
+                  <tr>
+                    <td style={{ ...tdBase, borderBottom: rowBorder, whiteSpace: 'nowrap' }}>{formatDate(r.startDate)}</td>
+                    <td style={{ ...tdBase, borderBottom: rowBorder, whiteSpace: 'nowrap' }}>{r.startTime || '—'}</td>
+                    <td style={{ ...tdBase, borderBottom: rowBorder, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.pickupLocation}>{r.pickupLocation || '—'}</td>
+                    <td style={{ ...tdBase, borderBottom: rowBorder, color: 'var(--color-text-muted)' }}>{r.flightNumber || '—'}</td>
+                    <td style={{ ...tdBase, borderBottom: rowBorder, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={clientMap[r.clientId]}>{clientMap[r.clientId] ?? '—'}</td>
+                    <td style={{ ...tdBase, borderBottom: rowBorder }}>
+                      {r.plate
+                        ? <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{r.plate}</span>
+                        : <span style={{ color: 'var(--color-danger)', fontSize: '0.78rem' }}>Sin asignar</span>
+                      }
+                    </td>
+                    <td style={{ ...tdBase, borderBottom: rowBorder, textAlign: 'center' }}>{r.billedDays}</td>
+                    <td style={{ ...tdBase, borderBottom: rowBorder, whiteSpace: 'nowrap' }}>{formatDate(r.endDate)}</td>
+                    <td style={{ ...tdBase, borderBottom: rowBorder, fontWeight: 600, whiteSpace: 'nowrap' }}>{r.total.toFixed(2)} €</td>
+                    <td style={{ ...tdBase, borderBottom: rowBorder }}>
+                      {r.contratada
+                        ? <span className="badge badge-confirmada">Contratada</span>
+                        : <span className="badge badge-peticion">Sin contrato</span>
+                      }
+                    </td>
+                  </tr>
+                  {hasDetail && (
+                    <tr>
+                      <td colSpan={10} style={{ padding: '2px 10px 10px', borderBottom: '1px solid var(--color-border)', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                        {r.extras.length > 0 && (
+                          <span style={{ marginRight: 16 }}>
+                            <strong>Extras:</strong>{' '}
+                            {r.extras.map((e, i) => (
+                              <span key={e.extraId}>
+                                {extraCatalog[e.extraId] ?? e.extraId}
+                                {e.quantity > 1 ? ` ×${e.quantity}` : ''}
+                                {' '}({e.total.toFixed(2)} €)
+                                {i < r.extras.length - 1 ? ', ' : ''}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                        {r.notes && (
+                          <span>
+                            <strong>Observaciones:</strong> {r.notes}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

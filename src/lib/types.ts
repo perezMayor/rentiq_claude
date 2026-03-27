@@ -311,9 +311,11 @@ export interface Reservation {
   total: number;
   extras: ReservationExtra[];
   salesChannelId?: string;
+  flightNumber?: string;
   status: ReservationStatus;
   contractId?: string;
   notes?: string;
+  internalNotes?: string;
   confirmationSentAt?: string;
   confirmationSentTo?: string;
   createdBy: string;
@@ -364,8 +366,10 @@ export interface Contract {
   discount: number;
   total: number;
   extras: ReservationExtra[];
+  flightNumber?: string;
   status: ContractStatus;
   invoiceId?: string;
+  internalNotes?: string;
   checkout?: {
     doneAt: string;
     doneBy: string;

@@ -373,7 +373,6 @@ export default function PresupuestosTab() {
             Cálculo de presupuesto orientativo
           </span>
         </div>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>Limpiar campos</button>
       </div>
 
       {/* ── Body: left + right ── */}
