@@ -258,31 +258,33 @@ function renderAnverso(doc, data, copyLabel, isBlank) {
   field(doc, tr.clientLabel, v(clientName), ML + 7,           cpY, n1 - 4);
   field(doc, tr.birthDate,   'N/D',         ML + 7 + n1,      cpY, n2 - 4);
   field(doc, tr.nationality, 'N/D',         ML + 7 + n1 + n2, cpY, cInner - n1 - n2 - 2);
-  cpY += 19;
+  cpY += 18;
 
   // Row 2: Documento + Caducidad documento — juntos
   field(doc, tr.document,  client?.nif ? `DNI ${client.nif}` : v(undefined), ML + 7, cpY, cHalf);
   field(doc, tr.docExpiry, 'N/D', ML + 7 + cHalf + 4, cpY, cHalf);
-  cpY += 19;
+  cpY += 18;
 
   // Row 3: Permiso + Caducidad permiso — juntos
   field(doc, tr.license,   v(client?.licenseNumber), ML + 7, cpY, cHalf);
   field(doc, tr.licExpiry, client?.licenseExpiry ? fmtDate(client.licenseExpiry, lang) : 'N/D',
         ML + 7 + cHalf + 4, cpY, cHalf);
-  cpY += 19;
+  cpY += 18;
 
-  // Address
+  // Dirección permanente — permite hasta 2 líneas
   cpY = subHdr(doc, tr.permAddress, ML + 4, cpY, C1W - 8);
   const addrLine = [client?.address, client?.city, client?.country].filter(Boolean).join(', ') || 'N/D';
   doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
-     .text(isBlank ? blankLine(22) : addrLine, ML + 7, cpY, { width: cInner, lineBreak: false, ellipsis: true });
-  cpY += 11;
+     .text(isBlank ? blankLine(22) : addrLine, ML + 7, cpY, { width: cInner, lineBreak: true, height: 20 });
+  cpY = doc.y + 5;
+
+  // Dirección de vacaciones
   cpY = subHdr(doc, tr.vacationAddr, ML + 4, cpY, C1W - 8);
   doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
-     .text(isBlank ? blankLine(22) : 'N/D', ML + 7, cpY, { width: cInner, lineBreak: false });
-  cpY += 11;
+     .text(isBlank ? blankLine(22) : 'N/D', ML + 7, cpY, { width: cInner, lineBreak: true, height: 20 });
+  cpY = doc.y + 5;
 
-  // Phones
+  // Teléfonos
   cpY = subHdr(doc, tr.phones, ML + 4, cpY, C1W - 8);
   field(doc, tr.phoneFix, v(client?.phone), ML + 7, cpY, cHalf);
   field(doc, tr.mobile,   'N/D',            ML + 7 + cHalf + 4, cpY, cHalf);
