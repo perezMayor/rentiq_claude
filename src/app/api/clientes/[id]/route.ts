@@ -63,6 +63,13 @@ export async function PUT(
         [key: string]: unknown;
       };
 
+      // Backward compat: keep nif and documentNumber in sync
+      if ('documentNumber' in rest && !('nif' in rest)) {
+        (rest as Record<string, unknown>).nif = rest.documentNumber;
+      } else if ('nif' in rest && !('documentNumber' in rest)) {
+        (rest as Record<string, unknown>).documentNumber = rest.nif;
+      }
+
       const now = new Date().toISOString();
 
       const merged = {

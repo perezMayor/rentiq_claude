@@ -59,7 +59,10 @@ export function readStore(): RentalStore {
     return seed;
   }
   const raw = fs.readFileSync(STORE_FILE, 'utf-8');
-  return JSON.parse(raw) as RentalStore;
+  const store = JSON.parse(raw) as RentalStore;
+  // Migration: ensure new arrays exist in older stores
+  if (!store.promoCodes) store.promoCodes = [];
+  return store;
 }
 
 export function writeStore(store: RentalStore): void {

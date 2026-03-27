@@ -32,26 +32,56 @@ export async function POST(req: NextRequest) {
 
     const now = new Date().toISOString();
     const client = withStoreWrite((store) => {
+      // Backward compat: documentNumber <-> nif alias
+      const docNumber = body.documentNumber ?? body.nif;
       const c: Client = {
         id: generateId(),
         type: body.type ?? 'PARTICULAR',
-        name: body.name,
-        surname: body.surname,
-        nif: body.nif,
-        email: body.email,
-        phone: body.phone,
-        address: body.address,
-        city: body.city,
-        country: body.country,
-        companyName: body.companyName,
-        licenseNumber: body.licenseNumber,
-        licenseExpiry: body.licenseExpiry,
-        commissionPercent: body.commissionPercent,
-        preferredLanguage: body.preferredLanguage ?? 'es',
-        active: true,
-        notes: body.notes,
+        active: body.active !== false,
         createdAt: now,
         updatedAt: now,
+        // Personal
+        name: body.name,
+        surname: body.surname,
+        nationality: body.nationality,
+        birthPlace: body.birthPlace,
+        birthDate: body.birthDate,
+        // Document
+        documentType: body.documentType,
+        documentNumber: docNumber,
+        nif: docNumber,                      // alias
+        documentIssuePlace: body.documentIssuePlace,
+        documentIssueDate: body.documentIssueDate,
+        documentExpiryDate: body.documentExpiryDate,
+        // License
+        licenseNumber: body.licenseNumber,
+        licenseType: body.licenseType,
+        licenseIssuePlace: body.licenseIssuePlace,
+        licenseIssueDate: body.licenseIssueDate,
+        licenseExpiry: body.licenseExpiry,
+        // Contact
+        phone: body.phone,
+        phone2: body.phone2,
+        email: body.email,
+        preferredLanguage: body.preferredLanguage ?? 'es',
+        // Addresses
+        address: body.address ?? body.mainAddress?.street,
+        city: body.city ?? body.mainAddress?.city,
+        postCode: body.postCode ?? body.mainAddress?.postCode,
+        country: body.country ?? body.mainAddress?.country,
+        mainAddress: body.mainAddress,
+        localAddress: body.localAddress,
+        // Payment & notes
+        paymentMethod: body.paymentMethod,
+        notes: body.notes,
+        alerts: body.alerts,
+        // Company link
+        companyId: body.companyId,
+        // EMPRESA
+        companyName: body.companyName,
+        driverIds: body.driverIds,
+        // COMISIONISTA
+        commissionPercent: body.commissionPercent,
       };
       store.clients.push(c);
       return c;

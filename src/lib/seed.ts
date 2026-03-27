@@ -739,5 +739,6 @@ export function createSeedStore(): RentalStore {
         createdAt: NOW,
       },
     ],
+    promoCodes: [],
   };
 }

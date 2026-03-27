@@ -7,7 +7,12 @@ export type InvoiceStatus = 'BORRADOR' | 'FINAL';
 export type InvoiceType = 'F' | 'V' | 'R' | 'A';
 export type ClientType = 'PARTICULAR' | 'EMPRESA' | 'COMISIONISTA';
 export type ExpenseCategory = 'PEAJE' | 'GASOLINA' | 'COMIDA' | 'PARKING' | 'LAVADO' | 'OTRO';
-export type PaymentMethod = 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'OTRO';
+export type PaymentMethod = 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'BIZUM' | 'CHEQUE' | 'DOMICILIACION' | 'OTRO';
+
+// ─── Document & license types ────────────────────────────────────────────────
+export type DocumentType = 'DNI' | 'NIE' | 'PASAPORTE' | 'PERMISO_RESIDENCIA' | 'OTRO';
+export type LicenseType = 'B' | 'A' | 'A1' | 'A2' | 'AM' | 'BE' | 'C' | 'CE' | 'D' | 'DE' | 'OTRO';
+export type DocumentLanguage = 'es' | 'en' | 'fr' | 'de' | 'it' | 'pt' | 'nl' | 'ru' | 'zh' | 'ar';
 export type AuditAction =
   | 'AUTH_LOGIN'
   | 'AUTH_LOGOUT'
@@ -116,26 +121,75 @@ export interface CompanyBranch {
 
 // ─── Client ──────────────────────────────────────────────────────────────────
 
+export interface Address {
+  street?: string;
+  city?: string;
+  postCode?: string;
+  province?: string;
+  country?: string;
+}
+
 export interface Client {
   id: string;
   type: ClientType;
-  name: string;
-  surname?: string;
-  nif?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  country?: string;
-  companyName?: string;
-  licenseNumber?: string;
-  licenseExpiry?: string;
-  commissionPercent?: number;
-  preferredLanguage?: string; // 'es' | 'en' — idioma preferido para documentos
   active: boolean;
-  notes?: string;
   createdAt: string;
   updatedAt: string;
+
+  // ── Personal (PARTICULAR)
+  name: string;
+  surname?: string;
+  nationality?: string;
+  birthPlace?: string;
+  birthDate?: string;           // YYYY-MM-DD
+
+  // ── Document
+  documentType?: DocumentType;
+  documentNumber?: string;       // replaces nif
+  nif?: string;                  // kept for backward compat (alias for documentNumber)
+  documentIssuePlace?: string;
+  documentIssueDate?: string;    // YYYY-MM-DD
+  documentExpiryDate?: string;   // YYYY-MM-DD
+
+  // ── Driving license
+  licenseNumber?: string;
+  licenseType?: LicenseType;
+  licenseIssuePlace?: string;
+  licenseIssueDate?: string;     // YYYY-MM-DD
+  licenseExpiry?: string;        // YYYY-MM-DD (caducidad)
+
+  // ── Contact
+  phone?: string;
+  phone2?: string;
+  email?: string;
+
+  // ── Language for documents
+  preferredLanguage?: DocumentLanguage;
+
+  // ── Addresses
+  address?: string;              // kept for compat (= mainAddress.street)
+  city?: string;                 // kept for compat
+  postCode?: string;
+  country?: string;              // kept for compat
+  mainAddress?: Address;
+  localAddress?: Address;
+
+  // ── Payment
+  paymentMethod?: PaymentMethod;
+
+  // ── Notes and alerts
+  notes?: string;
+  alerts?: string;               // shows popup when client is selected in a form
+
+  // ── Company link (for PARTICULAR — belongs to a company)
+  companyId?: string;            // ID of EMPRESA client they belong to
+
+  // ── EMPRESA specific
+  companyName?: string;
+  driverIds?: string[];          // IDs of Client (PARTICULAR) who are company drivers
+
+  // ── COMISIONISTA specific
+  commissionPercent?: number;
 }
 
 // ─── Fleet ───────────────────────────────────────────────────────────────────
@@ -488,6 +542,30 @@ export interface VehicleBlock {
   createdAt: string;
 }
 
+// ─── Promo codes & discounts ─────────────────────────────────────────────────
+
+export type DiscountType = 'PERCENT' | 'FIXED';
+export type PromoScope = 'ALL' | 'CATEGORY' | 'CLIENT' | 'COMISIONISTA';
+
+export interface PromoCode {
+  id: string;
+  code: string;                  // unique code (e.g. VERANO20)
+  description?: string;
+  discountType: DiscountType;    // PERCENT or FIXED amount
+  discountValue: number;         // e.g. 20 (for 20% or €20)
+  scope: PromoScope;
+  categoryId?: string;           // if scope === CATEGORY
+  clientId?: string;             // if scope === CLIENT
+  comisionistaId?: string;       // if scope === COMISIONISTA
+  validFrom?: string;            // YYYY-MM-DD
+  validTo?: string;              // YYYY-MM-DD
+  maxUses?: number;              // null = unlimited
+  usedCount: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ─── Store Shape ─────────────────────────────────────────────────────────────
 
 export interface RentalStore {
@@ -512,4 +590,5 @@ export interface RentalStore {
   salesChannels: SalesChannel[];
   templates: TemplateDocument[];
   vehicleBlocks: VehicleBlock[];
+  promoCodes: PromoCode[];
 }
