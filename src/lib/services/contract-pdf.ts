@@ -93,8 +93,8 @@ function str(lang: string) {
     totalDays:      en ? 'Total billed days'                : 'Total días facturados',
     groupBilled:    en ? 'Billed / delivered group'         : 'Grupo facturado / entregado',
     tariffCode:     en ? 'Rate code'                        : 'Código tarifa',
-    breakdown:      en ? 'Billing breakdown'                : 'Desglose de facturación',
-    base:           en ? 'Base'                             : 'Base',
+    breakdown:      en ? 'Settlement'                       : 'Liquidación',
+    base:           en ? 'Occupancy'                        : 'Ocupación',
     discount:       en ? 'Discount'                         : 'Descuento',
     extras:         en ? 'Extras'                           : 'Extras',
     fuelCharge:     en ? 'Fuel'                             : 'Combustible',
@@ -304,13 +304,15 @@ function renderAnverso(
   }
   y += VH + 4;
 
-  // ── Row 1: Conductor principal | Datos del alquiler ───────────────────────
+  // ── Bloque principal: Conductor+Empresa+Conductores (izq) | Datos+Liquidación (der) ──
 
-  let ly = y, ry = y;
+  const ly0 = y;
 
-  // LEFT: Conductor principal
+  // ── COLUMNA IZQUIERDA ──────────────────────────────────────────────────────
+
+  // Conductor principal
   const cpH = 190;
-  const cpInner = secBox(doc, tr.mainDriver, ML, ly, C1W, cpH);
+  const cpInner = secBox(doc, tr.mainDriver, ML, ly0, C1W, cpH);
   let cpY = cpInner + 3;
   const cHalf = (C1W - 16) / 2;
   const cInner = C1W - 14;  // 235pt usable width
@@ -319,35 +321,35 @@ function renderAnverso(
     ? `${client.name}${client.surname ? ' ' + client.surname : ''}`
     : '';
 
-  // Row 1: Nombre (52%) | Nacimiento (26%) | Nacionalidad (22%)
+  // Nombre (52%) | Nacimiento (26%) | Nacionalidad (22%)
   const n1 = cInner * 0.52, n2 = cInner * 0.26;
   field(doc, tr.clientLabel,  v(clientName), ML + 7,           cpY, n1 - 4);
   field(doc, tr.birthDate,    'N/D',         ML + 7 + n1,      cpY, n2 - 4);
   field(doc, tr.nationality,  'N/D',         ML + 7 + n1 + n2, cpY, cInner - n1 - n2 - 2);
   cpY += 18;
 
-  // Row 2: Documento (DNI/Pasaporte) + Caducidad documento — juntos
+  // Documento + Caducidad
   field(doc, tr.document,  client?.nif ? `DNI ${client.nif}` : v(undefined), ML + 7, cpY, cHalf);
   field(doc, tr.docExpiry, 'N/D', ML + 7 + cHalf + 4, cpY, cHalf);
   cpY += 18;
 
-  // Row 3: Permiso de conducir + Caducidad permiso — juntos
+  // Permiso + Caducidad
   field(doc, tr.license,   v(client?.licenseNumber), ML + 7, cpY, cHalf);
   field(doc, tr.licExpiry, client?.licenseExpiry ? fmtDate(client.licenseExpiry, lang) : 'N/D',
         ML + 7 + cHalf + 4, cpY, cHalf);
   cpY += 18;
 
-  // Dirección permanente — permite hasta 2 líneas
+  // Dirección permanente — hasta 3 líneas
   cpY = subHdr(doc, tr.permAddress, ML + 4, cpY, C1W - 8);
   const addrLine = [client?.address, client?.city, client?.country].filter(Boolean).join(', ') || 'N/D';
   doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
-     .text(isBlank ? blankLine(22) : addrLine, ML + 7, cpY, { width: cInner, lineBreak: true, height: 20 });
+     .text(isBlank ? blankLine(22) : addrLine, ML + 7, cpY, { width: cInner, lineBreak: true, height: 30 });
   cpY = doc.y + 5;
 
-  // Dirección de vacaciones
+  // Dirección de vacaciones — hasta 3 líneas
   cpY = subHdr(doc, tr.vacationAddr, ML + 4, cpY, C1W - 8);
   doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
-     .text(isBlank ? blankLine(22) : 'N/D', ML + 7, cpY, { width: cInner, lineBreak: true, height: 20 });
+     .text(isBlank ? blankLine(22) : 'N/D', ML + 7, cpY, { width: cInner, lineBreak: true, height: 30 });
   cpY = doc.y + 5;
 
   // Teléfonos
@@ -355,70 +357,10 @@ function renderAnverso(
   field(doc, tr.phoneFix, v(client?.phone), ML + 7, cpY, cHalf);
   field(doc, tr.mobile,   'N/D',            ML + 7 + cHalf + 4, cpY, cHalf);
 
-  ly += cpH + 4;
-
-  // RIGHT: Datos del alquiler — same height as conductor
-  const daH = cpH;
-  const catCode = category?.code ?? category?.name ?? 'N/D';
-  const daInner = secBox(doc, tr.rentalData, C2X, ry, C2W, daH);
-  let daY = daInner + 3;
-  const rHalf = (C2W - 16) / 2;
-
-  field(doc, tr.pickupLocation, v(contract?.pickupLocation), C2X + 7, daY, rHalf);
-  field(doc, tr.returnLocation, v(contract?.returnLocation), C2X + 7 + rHalf + 4, daY, rHalf);
-  daY += 20;
-
-  field(doc, tr.deliveryDate, v(contract ? fmtDate(contract.startDate, lang) : undefined), C2X + 7, daY, rHalf);
-  field(doc, tr.returnDate,   v(contract ? fmtDate(contract.endDate,   lang) : undefined), C2X + 7 + rHalf + 4, daY, rHalf);
-  daY += 20;
-
-  field(doc, tr.deliveryTime, v(contract?.startTime), C2X + 7, daY, rHalf);
-  field(doc, tr.returnTime,   v(contract?.endTime),   C2X + 7 + rHalf + 4, daY, rHalf);
-  daY += 20;
-
-  field(doc, tr.deliveryFlight, v(data.pickupFlight), C2X + 7, daY, rHalf);
-  field(doc, tr.returnFlight,   v(data.returnFlight), C2X + 7 + rHalf + 4, daY, rHalf);
-  daY += 20;
-
-  field(doc, tr.totalDays,  v(contract?.billedDays), C2X + 7, daY, rHalf);
-  field(doc, tr.tariffCode, 'N/D',                   C2X + 7 + rHalf + 4, daY, rHalf);
-  daY += 20;
-
-  field(doc, tr.groupBilled, isBlank ? blankLine(16) : `${catCode} / ${catCode}`, C2X + 7, daY, C2W - 14);
-
-  ry += daH + 4;
-  y = Math.max(ly, ry);
-
-  // ── Row 3: (Empresa + Conductores adicionales) | Desglose ────────────────
-
-  ly = y; ry = y;
-
-  // Calculate desglose rows first so both boxes share the same height
-  type BRow = [string, number | null, boolean];
-  const bRows: BRow[] = isBlank
-    ? ([
-        [tr.base, null, false], [tr.discount, null, false], [tr.extras, null, false],
-        [tr.fuelCharge, null, false], [tr.insurance, null, false], [tr.total, null, true],
-      ] as BRow[])
-    : ([
-        [tr.base,       contract.basePrice,      false],
-        [tr.discount,   contract.discount,       false],
-        [tr.extras,     contract.extrasTotal,    false],
-        [tr.fuelCharge, contract.fuelCharge,     false],
-        [tr.insurance,  contract.insuranceTotal, false],
-        ...(contract.penalties > 0 ? [[tr.penalties, contract.penalties, false]] as BRow[] : []),
-        [tr.total, contract.total, true],
-      ] as BRow[]);
-
-  const rowH     = 13;
-  const rowsH    = bRows.length * rowH + 20;  // content height
-  const francH   = 18;                        // franquicia row below separator
-  const emH      = 86;                        // empresa box height
-  const caH      = 36;                        // conductores adicionales box height
-  const boxH     = Math.max(emH + 4 + caH, rowsH + francH);
-
-  // Empresa box (left top)
-  const emInner = secBox(doc, tr.companySection, ML, ly, C1W, emH);
+  // Empresa (izq, bajo conductor)
+  const emH = 86;
+  const emY0 = ly0 + cpH + 4;
+  const emInner = secBox(doc, tr.companySection, ML, emY0, C1W, emH);
   let emY = emInner + 4;
   const emPairs: [string, string][] = isBlank
     ? [
@@ -438,49 +380,102 @@ function renderAnverso(
     emY += 14;
   }
 
-  // Conductores adicionales (left, below empresa)
-  const caY = ly + emH + 4;
+  // Conductores adicionales (izq, bajo empresa)
+  const caH = 36;
+  const caY = emY0 + emH + 4;
   secBox(doc, tr.addDrivers, ML, caY, C1W, caH);
   doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
      .text(tr.noAddDrivers, ML + 7, caY + 24, { lineBreak: false });
 
-  ly += boxH + 4;
+  // Altura total columna izquierda
+  const leftH = cpH + 4 + emH + 4 + caH;  // 320
 
-  // Desglose box (right, same total height)
-  const deInner = secBox(doc, tr.breakdown, C2X, ry, C2W, boxH);
-  let deY = deInner + 4;
+  // ── COLUMNA DERECHA ───────────────────────────────────────────────────────
+
+  // Datos del alquiler (compacto, parte alta)
+  const daH = 150;
+  const catCode = category?.code ?? category?.name ?? 'N/D';
+  const daInner = secBox(doc, tr.rentalData, C2X, ly0, C2W, daH);
+  let daY = daInner + 3;
+  const rHalf = (C2W - 16) / 2;
+
+  field(doc, tr.pickupLocation, v(contract?.pickupLocation), C2X + 7, daY, rHalf);
+  field(doc, tr.returnLocation, v(contract?.returnLocation), C2X + 7 + rHalf + 4, daY, rHalf);
+  daY += 19;
+
+  field(doc, tr.deliveryDate, v(contract ? fmtDate(contract.startDate, lang) : undefined), C2X + 7, daY, rHalf);
+  field(doc, tr.returnDate,   v(contract ? fmtDate(contract.endDate,   lang) : undefined), C2X + 7 + rHalf + 4, daY, rHalf);
+  daY += 19;
+
+  field(doc, tr.deliveryTime, v(contract?.startTime), C2X + 7, daY, rHalf);
+  field(doc, tr.returnTime,   v(contract?.endTime),   C2X + 7 + rHalf + 4, daY, rHalf);
+  daY += 19;
+
+  field(doc, tr.deliveryFlight, v(data.pickupFlight), C2X + 7, daY, rHalf);
+  field(doc, tr.returnFlight,   v(data.returnFlight), C2X + 7 + rHalf + 4, daY, rHalf);
+  daY += 19;
+
+  field(doc, tr.totalDays,  v(contract?.billedDays), C2X + 7, daY, rHalf);
+  field(doc, tr.tariffCode, 'N/D',                   C2X + 7 + rHalf + 4, daY, rHalf);
+  daY += 19;
+
+  field(doc, tr.groupBilled, isBlank ? blankLine(16) : `${catCode} / ${catCode}`, C2X + 7, daY, C2W - 14);
+
+  // Liquidación (parte baja, ocupa el resto de la columna derecha)
+  const francH  = 22;
+  const desH    = leftH - daH - 4;  // remaining right height (≈166pt)
+  type BRow = [string, number | null, boolean];
+  const bRows: BRow[] = isBlank
+    ? ([
+        [tr.base, null, false], [tr.discount, null, false], [tr.extras, null, false],
+        [tr.fuelCharge, null, false], [tr.insurance, null, false], [tr.total, null, true],
+      ] as BRow[])
+    : ([
+        [tr.base,       contract.basePrice,      false],
+        [tr.discount,   contract.discount,       false],
+        [tr.extras,     contract.extrasTotal,    false],
+        [tr.fuelCharge, contract.fuelCharge,     false],
+        [tr.insurance,  contract.insuranceTotal, false],
+        ...(contract.penalties > 0 ? [[tr.penalties, contract.penalties, false]] as BRow[] : []),
+        [tr.total, contract.total, true],
+      ] as BRow[]);
+
+  // rowH dinámico para distribuir bien el espacio disponible
+  const desRowH = Math.min(20, Math.floor((desH - 20 - francH) / bRows.length));
+  const deY0    = ly0 + daH + 4;
+  const deInner = secBox(doc, tr.breakdown, C2X, deY0, C2W, desH);
+  let deY = deInner + 6;
   const deLW = C2W * 0.62;
   const deVW = C2W - deLW - 10;
 
   for (const [lbl, amt, bold] of bRows) {
     const valStr = isBlank ? blankLine(8) : fmtAmt(amt ?? 0);
     if (bold) {
-      doc.save().rect(C2X + 2, deY - 2, C2W - 4, rowH + 1).fillColor(TOTAL_BG).fill().restore();
+      doc.save().rect(C2X + 2, deY - 2, C2W - 4, desRowH + 1).fillColor(TOTAL_BG).fill().restore();
     }
-    doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(7.5)
+    doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(8)
        .fillColor(bold ? PRIMARY : LABEL_CLR)
        .text(lbl, C2X + 7, deY, { width: deLW, lineBreak: false });
-    doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(7.5)
+    doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(8)
        .fillColor(TXT_CLR)
        .text(valStr, C2X + deLW, deY, { width: deVW, align: 'right', lineBreak: false });
-    deY += rowH;
+    deY += desRowH;
   }
 
   // Franquicia
-  deY += 3;
-  hline(doc, deY, C2X + 4, C2X + C2W - 4, BORDER_CLR, 0.3);
   deY += 4;
-  doc.font('Helvetica').fontSize(7.5).fillColor(LABEL_CLR)
+  hline(doc, deY, C2X + 4, C2X + C2W - 4, BORDER_CLR, 0.3);
+  deY += 5;
+  doc.font('Helvetica').fontSize(8).fillColor(LABEL_CLR)
      .text(tr.franchise, C2X + 7, deY, { width: deLW, lineBreak: false });
-  doc.font('Helvetica').fontSize(7.5).fillColor(TXT_CLR)
+  doc.font('Helvetica').fontSize(8).fillColor(TXT_CLR)
      .text('N/D', C2X + deLW, deY, { width: deVW, align: 'right', lineBreak: false });
 
-  ry += boxH + 4;
-  y = Math.max(ly, ry);
+  y = ly0 + leftH + 4;
 
   // ── Row 4: Vehículo (con croquis) | Cambios + KM/Fuel + Observaciones ─────
 
-  ly = y; ry = y;
+  let ly = y, ry = y;
 
   // Right height = 3 boxes stacked
   const chH  = 36;
@@ -529,7 +524,7 @@ function renderAnverso(
   hline(doc, y, ML, PW - MR, BORDER_CLR, 0.5);
   y += 6;
 
-  doc.font('Helvetica').fontSize(7).fillColor(TXT_CLR)
+  doc.font('Helvetica').fontSize(6.5).fillColor(TXT_CLR)
      .text(str('es').sigTextEs, ML, y, { width: CW, lineBreak: true });
   y = doc.y + 3;
   doc.font('Helvetica').fontSize(6.5).fillColor(LABEL_CLR)
