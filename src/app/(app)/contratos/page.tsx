@@ -7,6 +7,8 @@ import type {
   ContractStatus,
   Client,
   VehicleCategory,
+  FleetVehicle,
+  Reservation,
   CompanyBranch,
 } from '@/src/lib/types';
 import DatePicker from '@/src/components/DatePicker';
@@ -285,6 +287,375 @@ function ContratosContent() {
   );
 }
 
+// ─── Asignación matrícula tab ─────────────────────────────────────────────────
+
+type AsignItem =
+  | { kind: 'contrato'; data: Contract }
+  | { kind: 'reserva'; data: Reservation };
+
+function calcDays(start: string, end: string): number {
+  if (!start || !end) return 0;
+  const ms = new Date(end).getTime() - new Date(start).getTime();
+  return Math.max(1, Math.round(ms / 86400000));
+}
+
+function AsignacionMatriculaTab() {
+  const [items, setItems] = useState<AsignItem[]>([]);
+  const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [categories, setCategories] = useState<VehicleCategory[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
+
+  // Filters
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterSearch, setFilterSearch] = useState('');
+
+  // Assign modal
+  const [assignTarget, setAssignTarget] = useState<AsignItem | null>(null);
+  const [selectedPlate, setSelectedPlate] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  // Load support data on mount
+  useEffect(() => {
+    async function loadSupportData() {
+      try {
+        const [vehiclesRes, clientsRes, categoriesRes] = await Promise.all([
+          fetch('/api/vehiculos/flota?active=true'),
+          fetch('/api/clientes'),
+          fetch('/api/categorias'),
+        ]);
+        if (vehiclesRes.ok) {
+          const d = await vehiclesRes.json();
+          setVehicles(d.vehicles ?? []);
+        }
+        if (clientsRes.ok) {
+          const d = await clientsRes.json();
+          setClients(d.clients ?? []);
+        }
+        if (categoriesRes.ok) {
+          const d = await categoriesRes.json();
+          setCategories(d.categories ?? []);
+        }
+      } catch {
+        // non-critical
+      }
+    }
+    loadSupportData();
+  }, []);
+
+  const loadItems = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [contractsRes, reservationsRes] = await Promise.all([
+        fetch('/api/contratos?status=ABIERTO'),
+        fetch('/api/reservas?status=CONFIRMADA'),
+      ]);
+
+      const contractsData = contractsRes.ok ? await contractsRes.json() : { contracts: [] };
+      const reservationsData = reservationsRes.ok ? await reservationsRes.json() : { reservations: [] };
+
+      const contracts: Contract[] = contractsData.contracts ?? [];
+      const reservations: Reservation[] = reservationsData.reservations ?? [];
+
+      const contractItems: AsignItem[] = contracts
+        .filter((c) => !c.plate)
+        .map((c) => ({ kind: 'contrato', data: c }));
+
+      const reservationItems: AsignItem[] = reservations
+        .filter((r) => !r.assignedPlate && !r.contractId)
+        .map((r) => ({ kind: 'reserva', data: r }));
+
+      setItems([...contractItems, ...reservationItems]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al cargar datos');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  function handleSearch() {
+    setHasSearched(true);
+    loadItems();
+  }
+
+  const clientMap = Object.fromEntries(
+    clients.map((c) => [c.id, `${c.name}${c.surname ? ' ' + c.surname : ''}`])
+  );
+  const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c.name]));
+
+  function getItemCategoryId(item: AsignItem): string {
+    return item.kind === 'contrato' ? item.data.categoryId : item.data.categoryId;
+  }
+
+  function getItemClientId(item: AsignItem): string {
+    return item.kind === 'contrato' ? item.data.clientId : item.data.clientId;
+  }
+
+  function getItemNumber(item: AsignItem): string {
+    return item.kind === 'contrato' ? item.data.number : item.data.number;
+  }
+
+  function getItemStartDate(item: AsignItem): string {
+    return item.kind === 'contrato' ? item.data.startDate : item.data.startDate;
+  }
+
+  function getItemEndDate(item: AsignItem): string {
+    return item.kind === 'contrato' ? item.data.endDate : item.data.endDate;
+  }
+
+  function getItemPlate(item: AsignItem): string | undefined {
+    return item.kind === 'contrato' ? (item.data.plate || undefined) : item.data.assignedPlate;
+  }
+
+  const filteredItems = items.filter((item) => {
+    if (filterStartDate) {
+      const startDate = getItemStartDate(item);
+      if (startDate < filterStartDate) return false;
+    }
+    if (filterCategory) {
+      if (getItemCategoryId(item) !== filterCategory) return false;
+    }
+    if (filterSearch) {
+      const search = filterSearch.toLowerCase();
+      const number = getItemNumber(item).toLowerCase();
+      const clientName = (clientMap[getItemClientId(item)] ?? '').toLowerCase();
+      if (!number.includes(search) && !clientName.includes(search)) return false;
+    }
+    return true;
+  });
+
+  function openAssignModal(item: AsignItem) {
+    setAssignTarget(item);
+    setSelectedPlate('');
+    setSaveError('');
+  }
+
+  function closeAssignModal() {
+    setAssignTarget(null);
+    setSelectedPlate('');
+    setSaveError('');
+  }
+
+  async function handleAssign() {
+    if (!assignTarget || !selectedPlate) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      let res: Response;
+      if (assignTarget.kind === 'contrato') {
+        res = await fetch(`/api/contratos/${assignTarget.data.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plate: selectedPlate }),
+        });
+      } else {
+        res = await fetch(`/api/reservas/${assignTarget.data.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assignedPlate: selectedPlate }),
+        });
+      }
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error ?? 'Error al asignar matrícula');
+      }
+      closeAssignModal();
+      loadItems();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Error desconocido');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const modalCategoryId = assignTarget ? getItemCategoryId(assignTarget) : '';
+  const availableVehicles = vehicles.filter(
+    (v) => v.active && (!modalCategoryId || v.categoryId === modalCategoryId)
+  );
+
+  return (
+    <div>
+      {/* Filters */}
+      <div className="filters-bar">
+        <DatePicker
+          className="form-input"
+          value={filterStartDate}
+          onChange={(v) => setFilterStartDate(v)}
+          style={{ width: 'auto' }}
+        />
+        <select
+          className="form-select"
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+          style={{ width: 'auto' }}
+        >
+          <option value="">Todas las categorías</option>
+          {categories.map((cat) => (
+            <option key={cat.id} value={cat.id}>{cat.name}</option>
+          ))}
+        </select>
+        <input
+          type="search"
+          className="form-input"
+          value={filterSearch}
+          onChange={(e) => setFilterSearch(e.target.value)}
+          placeholder="Buscar número, cliente…"
+          style={{ minWidth: 200 }}
+        />
+        <button className="btn btn-primary btn-sm" onClick={handleSearch}>
+          Buscar
+        </button>
+        <button
+          className="btn btn-ghost btn-sm"
+          onClick={() => { setFilterStartDate(''); setFilterCategory(''); setFilterSearch(''); setHasSearched(false); setItems([]); }}
+        >
+          Limpiar
+        </button>
+        {hasSearched && (
+          <span style={{ marginLeft: 'auto', fontSize: '0.82rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+            {filteredItems.length} pendiente{filteredItems.length !== 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
+
+      {error && <div className="alert alert-danger">{error}</div>}
+
+      {/* Table */}
+      <div className="table-wrapper">
+        {!hasSearched ? (
+          <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', padding: '24px 0', textAlign: 'center' }}>
+            Aplica los filtros para ver asignaciones pendientes.
+          </div>
+        ) : loading ? (
+          <div className={styles.loadingRow}>Cargando…</div>
+        ) : filteredItems.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state__text">
+              No hay contratos ni reservas con matrícula pendiente de asignar.
+            </div>
+          </div>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Número</th>
+                <th>Cliente</th>
+                <th>Categoría</th>
+                <th>Entrada</th>
+                <th>Salida</th>
+                <th>Días</th>
+                <th>Vehículo asignado</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredItems.map((item) => {
+                const plate = getItemPlate(item);
+                const startDate = getItemStartDate(item);
+                const endDate = getItemEndDate(item);
+                const days = calcDays(startDate, endDate);
+                const id = item.kind === 'contrato' ? item.data.id : item.data.id;
+                return (
+                  <tr key={`${item.kind}-${id}`}>
+                    <td>
+                      <span className={`badge ${item.kind === 'contrato' ? 'badge-confirmada' : 'badge-peticion'}`}>
+                        {item.kind === 'contrato' ? 'Contrato' : 'Reserva'}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: '0.85rem' }}>
+                        {getItemNumber(item)}
+                      </span>
+                    </td>
+                    <td>{clientMap[getItemClientId(item)] ?? getItemClientId(item)}</td>
+                    <td>{categoryMap[getItemCategoryId(item)] ?? getItemCategoryId(item)}</td>
+                    <td style={{ whiteSpace: 'nowrap', fontSize: '0.825rem' }}>{formatDate(startDate)}</td>
+                    <td style={{ whiteSpace: 'nowrap', fontSize: '0.825rem' }}>{formatDate(endDate)}</td>
+                    <td style={{ textAlign: 'center' }}>{days}</td>
+                    <td>
+                      {plate ? (
+                        <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{plate}</span>
+                      ) : (
+                        <span style={{ color: 'var(--color-danger)', fontSize: '0.82rem', fontWeight: 500 }}>Sin asignar</span>
+                      )}
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() => openAssignModal(item)}
+                      >
+                        Asignar
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Assign modal */}
+      {assignTarget && (
+        <div className="modal-overlay" onClick={closeAssignModal}>
+          <div className="modal" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>
+                Asignar matrícula — {getItemNumber(assignTarget)}
+              </h3>
+            </div>
+            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--color-text-muted)', marginBottom: 4 }}>
+                  Categoría: <strong>{categoryMap[getItemCategoryId(assignTarget)] ?? getItemCategoryId(assignTarget)}</strong>
+                </label>
+                <select
+                  className="form-select"
+                  value={selectedPlate}
+                  onChange={(e) => setSelectedPlate(e.target.value)}
+                  style={{ width: '100%' }}
+                  autoFocus
+                >
+                  <option value="">— Selecciona un vehículo —</option>
+                  {availableVehicles.length === 0 && (
+                    <option value="" disabled>No hay vehículos activos en esta categoría</option>
+                  )}
+                  {availableVehicles.map((v) => (
+                    <option key={v.id} value={v.plate}>
+                      {v.plate}{v.color ? ` — ${v.color}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {saveError && (
+                <div className="alert alert-danger" style={{ margin: 0 }}>{saveError}</div>
+              )}
+            </div>
+            <div className="modal__footer">
+              <button className="btn btn-ghost btn-sm" onClick={closeAssignModal} disabled={saving}>
+                Cancelar
+              </button>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleAssign}
+                disabled={saving || !selectedPlate}
+              >
+                {saving ? 'Guardando…' : 'Confirmar asignación'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Sub-tab wrapper ──────────────────────────────────────────────────────────
 
 const CONTRATOS_TABS = [
@@ -356,7 +727,8 @@ function ContratosInner() {
       <ContratosTabNav active={tab} />
       {tab === 'gestion' && <GestionContratoTab />}
       {tab === 'listado' && <ContratosContent />}
-      {tab !== 'gestion' && tab !== 'listado' && (
+      {tab === 'matricula' && <AsignacionMatriculaTab />}
+      {tab !== 'gestion' && tab !== 'listado' && tab !== 'matricula' && (
         <div className="empty-state" style={{ marginTop: 32 }}>
           <div className="empty-state__icon">🚧</div>
           <div className="empty-state__text">{CONTRATOS_TABS.find((t) => t.key === tab)?.label ?? tab} — Próximamente</div>

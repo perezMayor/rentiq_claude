@@ -7,6 +7,21 @@ import DatePicker from '@/src/components/DatePicker';
 import styles from './clientes.module.css';
 import PrintButton from '@/src/components/PrintButton';
 
+// ─── Extended reservation shape from API ─────────────────────────────────────
+
+interface ReservationFull {
+  id: string;
+  number: string;
+  clientId: string;
+  startDate: string;
+  endDate: string;
+  assignedPlate?: string;
+  billedDays: number;
+  total: number;
+  status: ReservationStatus;
+  contractId?: string;
+}
+
 // ─── Local types ─────────────────────────────────────────────────────────────
 
 interface Client {
@@ -154,6 +169,10 @@ function reservationStatusBadge(r: ReservationSummary): string {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 function ClientesContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   // Data
   const [clients, setClients] = useState<Client[]>([]);
   const [userRole, setUserRole] = useState<string>('');
@@ -339,6 +358,15 @@ function ClientesContent() {
     setHistoryReservations([]);
   }
 
+  // ─── Navigate to ficha tab ─────────────────────────────────────────────────
+
+  function openFicha(c: Client) {
+    const p = new URLSearchParams(searchParams.toString());
+    p.set('tab', 'ficha');
+    p.set('clientId', c.id);
+    router.push(`${pathname}?${p.toString()}`);
+  }
+
   // ─── Check if client has reservations (for delete guard) ─────────────────
   // We detect this from the 409 response, but we can also pre-check via list
   function clientHasActivity(c: Client): boolean {
@@ -437,7 +465,7 @@ function ClientesContent() {
               filtered.map((c) => {
                 const hasActivity = clientHasActivity(c);
                 return (
-                  <tr key={c.id}>
+                  <tr key={c.id} style={{ cursor: 'pointer' }} onClick={() => openFicha(c)}>
                     <td>
                       <div className={styles.clientName}>{displayName(c)}</div>
                       {c.type === 'EMPRESA' && c.name && (
@@ -460,12 +488,18 @@ function ClientesContent() {
                       )}
                     </td>
                     <td>
-                      <div className={styles.actionsCell}>
+                      <div className={styles.actionsCell} onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => openFicha(c)}
+                        >
+                          Ver ficha
+                        </button>
                         <button
                           className="btn btn-ghost btn-sm"
                           onClick={() => void openHistory(c)}
                         >
-                          Ver historial
+                          Historial
                         </button>
 
                         {canWrite && (
@@ -834,6 +868,529 @@ function ClientesContent() {
   );
 }
 
+// ─── Tab: Ficha de cliente ────────────────────────────────────────────────────
+
+function ClienteFichaTab({ clientId }: { clientId: string }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [client, setClient] = useState<Client | null>(null);
+  const [reservations, setReservations] = useState<ReservationSummary[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Edit modal state (re-using same form pattern)
+  const [editModal, setEditModal] = useState(false);
+  const [form, setForm] = useState<ClientFormData>(blankForm());
+  const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!clientId) return;
+    setLoading(true);
+    setError(null);
+
+    void Promise.all([
+      fetch(`/api/clientes/${clientId}`).then((r) => r.ok ? r.json() as Promise<{ client: Client }> : null),
+      fetch(`/api/clientes/${clientId}/reservas`).then((r) => r.ok ? r.json() as Promise<{ reservations: ReservationSummary[] }> : null),
+    ]).then(([cd, rd]) => {
+      if (!cd) {
+        setError('No se encontró el cliente');
+      } else {
+        setClient(cd.client);
+      }
+      setReservations(rd?.reservations ?? []);
+    }).catch(() => {
+      setError('Error al cargar los datos del cliente');
+    }).finally(() => {
+      setLoading(false);
+    });
+  }, [clientId]);
+
+  function goBack() {
+    const p = new URLSearchParams(searchParams.toString());
+    p.set('tab', 'listado');
+    p.delete('clientId');
+    router.push(`${pathname}?${p.toString()}`);
+  }
+
+  function openEdit() {
+    if (!client) return;
+    setForm(clientToForm(client));
+    setFormError(null);
+    setEditModal(true);
+  }
+
+  async function handleSave() {
+    if (!client) return;
+    setFormError(null);
+    if (!form.name.trim()) {
+      setFormError('El nombre es obligatorio');
+      return;
+    }
+    const payload: Record<string, unknown> = {
+      name: form.name.trim(),
+      surname: form.surname.trim() || undefined,
+      nif: form.nif.trim() || undefined,
+      email: form.email.trim() || undefined,
+      phone: form.phone.trim() || undefined,
+      address: form.address.trim() || undefined,
+      city: form.city.trim() || undefined,
+      country: form.country.trim() || undefined,
+      companyName: form.companyName.trim() || undefined,
+      licenseNumber: form.licenseNumber.trim() || undefined,
+      licenseExpiry: form.licenseExpiry || undefined,
+      notes: form.notes.trim() || undefined,
+      active: form.active,
+    };
+    if (form.type === 'COMISIONISTA' && form.commissionPercent !== '') {
+      const pct = parseFloat(form.commissionPercent);
+      if (!isNaN(pct) && pct >= 0 && pct <= 100) payload.commissionPercent = pct;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/clientes/${client.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json() as { error?: string; client?: Client };
+      if (!res.ok) {
+        setFormError(data.error ?? 'Error al guardar');
+        return;
+      }
+      if (data.client) setClient(data.client);
+      setEditModal(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const infoLabelStyle: React.CSSProperties = {
+    fontSize: '0.78rem',
+    color: 'var(--color-text-muted)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+    marginBottom: 2,
+  };
+  const infoValueStyle: React.CSSProperties = {
+    fontSize: '0.9rem',
+    color: 'var(--color-text-primary)',
+    fontWeight: 500,
+  };
+  const cardStyle: React.CSSProperties = {
+    background: 'var(--color-surface-strong)',
+    border: '1px solid var(--color-border)',
+    borderRadius: 8,
+    padding: 20,
+  };
+
+  if (!clientId) {
+    return (
+      <div className="empty-state" style={{ marginTop: 32 }}>
+        <div className="empty-state__text">Selecciona un cliente desde el Listado para ver su ficha.</div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="empty-state" style={{ marginTop: 32 }}>
+        <div className="empty-state__text">Cargando ficha...</div>
+      </div>
+    );
+  }
+
+  if (error || !client) {
+    return (
+      <div style={{ marginTop: 32 }}>
+        <div className="alert alert-danger">{error ?? 'Cliente no encontrado'}</div>
+        <button className="btn btn-ghost btn-sm" onClick={goBack} style={{ marginTop: 12 }}>
+          ← Volver al listado
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+              {displayName(client)}
+            </h2>
+            {typeBadge(client.type) ?? <span className="badge" style={{ background: 'var(--color-surface)', color: 'var(--color-text-muted)' }}>{typeLabel(client.type)}</span>}
+            {client.active ? (
+              <span className="badge" style={{ background: '#dcfce7', color: '#15803d', fontSize: '0.75rem' }}>Activo</span>
+            ) : (
+              <span className="badge badge-cancelada">Inactivo</span>
+            )}
+          </div>
+          {client.nif && (
+            <div style={{ marginTop: 4, fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+              {client.type === 'EMPRESA' ? 'CIF' : 'DNI/Pasaporte'}: {client.nif}
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-ghost btn-sm" onClick={goBack}>← Listado</button>
+          <button className="btn btn-primary btn-sm" onClick={openEdit}>Editar</button>
+        </div>
+      </div>
+
+      {/* Info grid */}
+      <div style={{ ...cardStyle, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 20 }}>
+          {[
+            { label: client.type === 'EMPRESA' ? 'CIF' : 'DNI / Pasaporte', value: client.nif },
+            { label: 'Email', value: client.email },
+            { label: 'Teléfono', value: client.phone },
+            { label: 'Dirección', value: client.address },
+            { label: 'Ciudad', value: client.city },
+            { label: 'País', value: client.country },
+            { label: 'Número licencia', value: client.licenseNumber },
+            { label: 'Vencimiento licencia', value: client.licenseExpiry ? formatDate(client.licenseExpiry) : undefined },
+          ].map(({ label, value }) => (
+            <div key={label}>
+              <div style={infoLabelStyle}>{label}</div>
+              <div style={infoValueStyle}>{value ?? '—'}</div>
+            </div>
+          ))}
+          {client.notes && (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <div style={infoLabelStyle}>Notas</div>
+              <div style={{ ...infoValueStyle, whiteSpace: 'pre-wrap' }}>{client.notes}</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Reservation history */}
+      <div style={cardStyle}>
+        <h3 style={{ margin: '0 0 16px', fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text-primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          Historial de reservas
+        </h3>
+        {reservations.length === 0 ? (
+          <div className="empty-state" style={{ padding: '20px 0' }}>
+            <div className="empty-state__text">Este cliente no tiene reservas registradas.</div>
+          </div>
+        ) : (
+          <div className="table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Número</th>
+                  <th>Fechas</th>
+                  <th>Matrícula</th>
+                  <th>Días</th>
+                  <th>Importe</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reservations.map((r) => (
+                  <tr key={r.id}>
+                    <td><strong>{r.number}</strong></td>
+                    <td className="text-muted">{formatDate(r.startDate)} — {formatDate(r.endDate)}</td>
+                    <td className="text-muted">—</td>
+                    <td className="text-muted">—</td>
+                    <td>{r.total.toFixed(2)} €</td>
+                    <td>
+                      <span className={`badge ${reservationStatusBadge(r)}`}>
+                        {reservationStatusLabel(r)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Edit modal */}
+      {editModal && (
+        <div className="modal-overlay" onClick={() => setEditModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 680 }}>
+            <div className="modal__header">
+              <h2 className="modal__title">Editar Cliente</h2>
+              <button className="modal__close" onClick={() => setEditModal(false)}>×</button>
+            </div>
+            <div className="modal__body">
+              {formError && <div className="alert alert-danger">{formError}</div>}
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Tipo de cliente</label>
+                  <input className="form-input" value={typeLabel(form.type)} readOnly style={{ opacity: 0.6 }} />
+                  <span className={styles.typeNote}>El tipo no puede modificarse</span>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Estado</label>
+                  <select className="form-select" value={form.active ? 'true' : 'false'} onChange={(e) => setForm({ ...form, active: e.target.value === 'true' })}>
+                    <option value="true">Activo</option>
+                    <option value="false">Inactivo</option>
+                  </select>
+                </div>
+                {form.type === 'EMPRESA' && (
+                  <div className="form-group col-span-2">
+                    <label className="form-label">Nombre empresa *</label>
+                    <input className="form-input" value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} placeholder="Razón social" />
+                  </div>
+                )}
+                <div className="form-group">
+                  <label className="form-label">{form.type === 'EMPRESA' ? 'Nombre contacto *' : 'Nombre *'}</label>
+                  <input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                </div>
+                {form.type !== 'EMPRESA' && (
+                  <div className="form-group">
+                    <label className="form-label">Apellidos</label>
+                    <input className="form-input" value={form.surname} onChange={(e) => setForm({ ...form, surname: e.target.value })} />
+                  </div>
+                )}
+                <div className="form-group">
+                  <label className="form-label">{form.type === 'EMPRESA' ? 'CIF' : 'DNI / Pasaporte'}</label>
+                  <input className="form-input" value={form.nif} onChange={(e) => setForm({ ...form, nif: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email</label>
+                  <input type="email" className="form-input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Teléfono</label>
+                  <input type="tel" className="form-input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                </div>
+                {form.type === 'COMISIONISTA' && (
+                  <div className="form-group">
+                    <label className="form-label">Comisión (%)</label>
+                    <input type="number" className="form-input" value={form.commissionPercent} onChange={(e) => setForm({ ...form, commissionPercent: e.target.value })} min={0} max={100} step={0.1} placeholder="0 — 100" />
+                  </div>
+                )}
+                <div className="form-group col-span-2">
+                  <label className="form-label">Dirección</label>
+                  <input className="form-input" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Ciudad</label>
+                  <input className="form-input" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">País</label>
+                  <input className="form-input" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+                </div>
+                <hr className={styles.sectionDivider} />
+                <span className={styles.sectionTitle}>Permiso de conducir</span>
+                <div className="form-group">
+                  <label className="form-label">Número de licencia</label>
+                  <input className="form-input" value={form.licenseNumber} onChange={(e) => setForm({ ...form, licenseNumber: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Vencimiento licencia</label>
+                  <DatePicker className="form-input" value={form.licenseExpiry} onChange={(v) => setForm({ ...form, licenseExpiry: v })} />
+                </div>
+                <div className="form-group col-span-2">
+                  <label className="form-label">Notas</label>
+                  <textarea className="form-textarea" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} />
+                </div>
+              </div>
+            </div>
+            <div className="modal__footer">
+              <button className="btn btn-ghost" onClick={() => setEditModal(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>
+                {saving ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── Tab: Histórico global ────────────────────────────────────────────────────
+
+function ClienteHistoricoTab() {
+  const [reservations, setReservations] = useState<ReservationFull[]>([]);
+  const [clientMap, setClientMap] = useState<Record<string, Client>>({});
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  // Filters
+  const [filterSearch, setFilterSearch] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+
+  const cardStyle: React.CSSProperties = {
+    background: 'var(--color-surface-strong)',
+    border: '1px solid var(--color-border)',
+    borderRadius: 8,
+    padding: 20,
+  };
+
+  const applyFilters = useCallback(async () => {
+    setLoading(true);
+    setHasSearched(true);
+    try {
+      const params = new URLSearchParams();
+      if (filterStatus) params.set('status', filterStatus);
+      if (filterDateFrom) params.set('startFrom', filterDateFrom);
+      if (filterDateTo) params.set('startTo', filterDateTo);
+
+      const [resData, clientsData] = await Promise.all([
+        fetch(`/api/reservas?${params.toString()}`).then((r) => r.ok ? r.json() as Promise<{ reservations: ReservationFull[] }> : { reservations: [] }),
+        fetch('/api/clientes').then((r) => r.ok ? r.json() as Promise<{ clients: Client[] }> : { clients: [] }),
+      ]);
+
+      const map: Record<string, Client> = {};
+      for (const c of clientsData.clients ?? []) map[c.id] = c;
+      setClientMap(map);
+
+      let list = resData.reservations ?? [];
+
+      // Client-side search filter (name / DNI)
+      if (filterSearch.trim()) {
+        const q = filterSearch.toLowerCase();
+        list = list.filter((r) => {
+          const c = map[r.clientId];
+          if (!c) return false;
+          const hay = [c.name, c.surname, c.nif, c.companyName, c.email].filter(Boolean).join(' ').toLowerCase();
+          return hay.includes(q);
+        });
+      }
+
+      setReservations(list);
+    } catch {
+      setReservations([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [filterSearch, filterDateFrom, filterDateTo, filterStatus]);
+
+  function clientDisplayName(clientId: string): string {
+    const c = clientMap[clientId];
+    if (!c) return clientId;
+    return displayName(c);
+  }
+
+  function clientNif(clientId: string): string {
+    return clientMap[clientId]?.nif ?? '—';
+  }
+
+  function resStatusLabel(r: ReservationFull): string {
+    if (r.contractId) return 'Contratada';
+    const map: Record<ReservationStatus, string> = { PETICION: 'Petición', CONFIRMADA: 'Confirmada', CANCELADA: 'Cancelada' };
+    return map[r.status] ?? r.status;
+  }
+
+  function resStatusBadge(r: ReservationFull): string {
+    if (r.contractId) return 'badge-contratado';
+    const map: Record<ReservationStatus, string> = { PETICION: 'badge-peticion', CONFIRMADA: 'badge-confirmada', CANCELADA: 'badge-cancelada' };
+    return map[r.status] ?? 'badge-cancelada';
+  }
+
+  return (
+    <div>
+      {/* Filters */}
+      <div style={{ ...cardStyle, marginBottom: 20 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
+          <div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
+              Buscar cliente
+            </div>
+            <input
+              className="form-input"
+              placeholder="Nombre, DNI, CIF..."
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              style={{ minWidth: 220 }}
+            />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
+              Desde
+            </div>
+            <DatePicker className="form-input" value={filterDateFrom} onChange={setFilterDateFrom} />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
+              Hasta
+            </div>
+            <DatePicker className="form-input" value={filterDateTo} onChange={setFilterDateTo} />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
+              Estado
+            </div>
+            <select className="form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              <option value="">Todos</option>
+              <option value="PETICION">Petición</option>
+              <option value="CONFIRMADA">Confirmada</option>
+              <option value="CANCELADA">Cancelada</option>
+            </select>
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={() => void applyFilters()} disabled={loading}>
+            {loading ? 'Buscando...' : 'Buscar'}
+          </button>
+        </div>
+      </div>
+
+      {/* Results */}
+      {!hasSearched ? (
+        <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', padding: '32px 0', textAlign: 'center' }}>
+          Aplica los filtros para ver el histórico de reservas.
+        </div>
+      ) : loading ? (
+        <div className="empty-state"><div className="empty-state__text">Buscando...</div></div>
+      ) : reservations.length === 0 ? (
+        <div className="empty-state"><div className="empty-state__text">No hay reservas que coincidan con los filtros.</div></div>
+      ) : (
+        <div style={cardStyle}>
+          <div style={{ marginBottom: 12, fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+            {reservations.length} reserva{reservations.length !== 1 ? 's' : ''}
+          </div>
+          <div className="table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>DNI / CIF</th>
+                  <th>Nº Reserva</th>
+                  <th>Entrada</th>
+                  <th>Salida</th>
+                  <th>Matrícula</th>
+                  <th>Importe</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reservations.map((r) => (
+                  <tr key={r.id}>
+                    <td><strong>{clientDisplayName(r.clientId)}</strong></td>
+                    <td className="text-muted">{clientNif(r.clientId)}</td>
+                    <td><strong>{r.number}</strong></td>
+                    <td className="text-muted">{formatDate(r.startDate)}</td>
+                    <td className="text-muted">{formatDate(r.endDate)}</td>
+                    <td className="text-muted">{r.assignedPlate ?? '—'}</td>
+                    <td>{r.total.toFixed(2)} €</td>
+                    <td>
+                      <span className={`badge ${resStatusBadge(r)}`}>
+                        {resStatusLabel(r)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Sub-tab wrapper ──────────────────────────────────────────────────────────
 
 const CLIENTES_TABS = [
@@ -867,6 +1424,7 @@ function ClientesTabNav({ active }: { active: string }) {
 function ClientesInner() {
   const searchParams = useSearchParams();
   const tab = searchParams.get('tab') ?? 'listado';
+  const clientId = searchParams.get('clientId') ?? '';
 
   return (
     <div>
@@ -879,7 +1437,9 @@ function ClientesInner() {
       </div>
       <ClientesTabNav active={tab} />
       {tab === 'listado' && <ClientesContent />}
-      {tab !== 'listado' && (
+      {tab === 'ficha' && <ClienteFichaTab clientId={clientId} />}
+      {tab === 'historico' && <ClienteHistoricoTab />}
+      {tab !== 'listado' && tab !== 'ficha' && tab !== 'historico' && (
         <div className="empty-state" style={{ marginTop: 32 }}>
           <div className="empty-state__icon">🚧</div>
           <div className="empty-state__text">{CLIENTES_TABS.find((t) => t.key === tab)?.label ?? tab} — Próximamente</div>
