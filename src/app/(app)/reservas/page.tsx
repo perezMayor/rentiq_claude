@@ -731,6 +731,142 @@ function LogConfirmacionesTab() {
   );
 }
 
+// ─── Informes tab ────────────────────────────────────────────────────────────
+
+const MESES_RV = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+function InformesReservasTab() {
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [branches, setBranches] = useState<CompanyBranch[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [hasSearched, setHasSearched] = useState(false);
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [filterBranch, setFilterBranch] = useState('');
+
+  useEffect(() => {
+    fetch('/api/sucursales').then(async (r) => { if (r.ok) setBranches((await r.json()).branches ?? []); }).catch(() => {});
+  }, []);
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const params = new URLSearchParams({ startFrom: `${year}-01-01`, startTo: `${year}-12-31` });
+      if (filterBranch) params.set('branchId', filterBranch);
+      const res = await fetch(`/api/reservas?${params}`);
+      if (!res.ok) throw new Error('Error al cargar');
+      setReservations((await res.json()).reservations ?? []);
+      setHasSearched(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error');
+    } finally { setLoading(false); }
+  }, [year, filterBranch]);
+
+  const monthly = MESES_RV.map((label, i) => {
+    const mc = reservations.filter((r) => new Date(r.startDate).getMonth() === i);
+    return {
+      label,
+      total: mc.length,
+      peticion: mc.filter((r) => r.status === 'PETICION' && !r.contractId).length,
+      confirmada: mc.filter((r) => r.status === 'CONFIRMADA' && !r.contractId).length,
+      contratada: mc.filter((r) => !!r.contractId).length,
+      cancelada: mc.filter((r) => r.status === 'CANCELADA').length,
+      importe: mc.filter((r) => r.status !== 'CANCELADA').reduce((s, r) => s + r.total, 0),
+    };
+  });
+
+  const totals = {
+    total: reservations.length,
+    peticion: reservations.filter((r) => r.status === 'PETICION' && !r.contractId).length,
+    confirmada: reservations.filter((r) => r.status === 'CONFIRMADA' && !r.contractId).length,
+    contratada: reservations.filter((r) => !!r.contractId).length,
+    cancelada: reservations.filter((r) => r.status === 'CANCELADA').length,
+    importe: reservations.filter((r) => r.status !== 'CANCELADA').reduce((s, r) => s + r.total, 0),
+  };
+  const maxTotal = Math.max(...monthly.map((m) => m.total), 1);
+
+  return (
+    <div>
+      <div className="filters-bar">
+        <input type="number" className="form-input" value={year} min={2020} max={2100} onChange={(e) => setYear(Number(e.target.value))} style={{ width: 90 }} />
+        <select className="form-select" value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)} style={{ width: 'auto' }}>
+          <option value="">Todas las sucursales</option>
+          {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+        </select>
+        <button className="btn btn-primary btn-sm" onClick={() => void load()}>Listar</button>
+      </div>
+
+      {error && <div className="alert alert-danger">{error}</div>}
+      {loading && <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Cargando…</div>}
+
+      {hasSearched && !loading && (
+        <>
+          <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+            {[
+              { label: 'Total reservas', value: String(totals.total) },
+              { label: 'Contratadas', value: String(totals.contratada) },
+              { label: 'Canceladas', value: String(totals.cancelada) },
+              { label: 'Importe (no canceladas)', value: `${totals.importe.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €` },
+            ].map((card) => (
+              <div key={card.label} style={{ flex: '1 1 130px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '10px 14px' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>{card.label}</div>
+                <div style={{ fontSize: '1.05rem', fontWeight: 700 }}>{card.value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Mes</th>
+                  <th style={{ textAlign: 'right' }}>Total</th>
+                  <th style={{ textAlign: 'right' }}>Petición</th>
+                  <th style={{ textAlign: 'right' }}>Confirmada</th>
+                  <th style={{ textAlign: 'right' }}>Contratada</th>
+                  <th style={{ textAlign: 'right' }}>Cancelada</th>
+                  <th style={{ textAlign: 'right' }}>Importe</th>
+                  <th>Volumen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthly.map((row) => (
+                  <tr key={row.label}>
+                    <td style={{ fontWeight: 500 }}>{row.label}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 600 }}>{row.total || '—'}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--color-status-peticion)', fontVariantNumeric: 'tabular-nums' }}>{row.peticion || '—'}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--color-status-confirmada)', fontVariantNumeric: 'tabular-nums' }}>{row.confirmada || '—'}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--color-status-contratado)', fontVariantNumeric: 'tabular-nums' }}>{row.contratada || '—'}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--color-danger)', fontVariantNumeric: 'tabular-nums' }}>{row.cancelada || '—'}</td>
+                    <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: row.importe === 0 ? 'var(--color-text-muted)' : undefined }}>
+                      {row.importe > 0 ? `${row.importe.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €` : '—'}
+                    </td>
+                    <td>
+                      <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--color-border)', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${(row.total / maxTotal) * 100}%`, background: 'var(--color-primary)', borderRadius: 3 }} />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                <tr style={{ fontWeight: 700 }}>
+                  <td>TOTAL {year}</td>
+                  <td style={{ textAlign: 'right' }}>{totals.total}</td>
+                  <td style={{ textAlign: 'right' }}>{totals.peticion}</td>
+                  <td style={{ textAlign: 'right' }}>{totals.confirmada}</td>
+                  <td style={{ textAlign: 'right' }}>{totals.contratada}</td>
+                  <td style={{ textAlign: 'right' }}>{totals.cancelada}</td>
+                  <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{totals.importe.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €</td>
+                  <td />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Reservation list tab ─────────────────────────────────────────────────────
 
 type StoreData = {
@@ -966,7 +1102,7 @@ function ReservasPageInner() {
       {tab === 'canales'     && <CanalesTab />}
       {tab === 'log'         && <LogConfirmacionesTab />}
       {tab === 'planning'    && <PlanningRedirect />}
-      {tab === 'informes'    && <PlaceholderTab label="Informes de reservas" />}
+      {tab === 'informes'    && <InformesReservasTab />}
       {tab === 'presupuesto' && <PresupuestosTab />}
     </div>
   );

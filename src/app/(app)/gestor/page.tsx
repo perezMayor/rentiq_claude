@@ -959,6 +959,134 @@ function PlantillasTab() {
   );
 }
 
+// ─── Backups Tab ──────────────────────────────────────────────────────────────
+
+interface BackupFile { name: string; size: number; createdAt: string; }
+
+function BackupsTab({ myRole }: { myRole: UserRole }) {
+  const [backups, setBackups] = useState<BackupFile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const isSuperAdmin = myRole === 'SUPER_ADMIN';
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const res = await fetch('/api/backups');
+      if (!res.ok) throw new Error('Error al cargar backups');
+      setBackups((await res.json()).backups ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error');
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  async function create() {
+    setCreating(true); setError(''); setSuccess('');
+    try {
+      const res = await fetch('/api/backups', { method: 'POST' });
+      const data = await res.json() as { error?: string; backup?: BackupFile };
+      if (!res.ok) throw new Error(data.error ?? 'Error al crear backup');
+      setSuccess(`Backup creado: ${data.backup?.name}`);
+      void load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error');
+    } finally { setCreating(false); }
+  }
+
+  async function remove(name: string) {
+    if (!confirm(`¿Eliminar el backup "${name}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      const res = await fetch(`/api/backups/${encodeURIComponent(name)}`, { method: 'DELETE' });
+      const data = await res.json() as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Error al eliminar');
+      void load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error');
+    }
+  }
+
+  function formatSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  function formatDate(iso: string): string {
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      + ' ' + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16, gap: 8, alignItems: 'center' }}>
+        {error && <span style={{ fontSize: '0.85rem', color: 'var(--color-danger)', flex: 1 }}>{error}</span>}
+        {success && <span style={{ fontSize: '0.85rem', color: 'var(--color-status-contratado)', flex: 1 }}>{success}</span>}
+        <button className="btn btn-primary" onClick={() => void create()} disabled={creating}>
+          {creating ? 'Creando…' : '+ Crear backup ahora'}
+        </button>
+      </div>
+
+      <div className="table-wrapper">
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Cargando…</div>
+        ) : backups.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state__icon">💾</div>
+            <div className="empty-state__text">No hay backups. Crea uno ahora.</div>
+          </div>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Archivo</th>
+                <th style={{ textAlign: 'right' }}>Tamaño</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {backups.map((b) => (
+                <tr key={b.name}>
+                  <td style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>{b.name}</td>
+                  <td style={{ textAlign: 'right', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>{formatSize(b.size)}</td>
+                  <td style={{ fontSize: '0.85rem' }}>{formatDate(b.createdAt)}</td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <a
+                        className="btn btn-ghost btn-sm"
+                        href={`/api/backups/${encodeURIComponent(b.name)}`}
+                        download={b.name}
+                      >
+                        Descargar
+                      </a>
+                      {isSuperAdmin && (
+                        <button className="btn btn-danger btn-sm" onClick={() => void remove(b.name)}>
+                          Eliminar
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div style={{ marginTop: 24, padding: 16, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+        <strong style={{ color: 'var(--color-text-primary)' }}>Información:</strong> Los backups son copias del archivo de datos en el servidor.
+        Para restaurar un backup, descárgalo y reemplaza manualmente el archivo <code>rental-store.json</code> en el directorio de datos,
+        o contacta con el administrador del sistema.
+      </div>
+    </div>
+  );
+}
+
 // ─── Tab nav (top level) ──────────────────────────────────────────────────────
 
 const GESTOR_TABS = [
@@ -1034,12 +1162,7 @@ function GestorInner() {
       {tab === 'tarifas'       && <TarifasPage />}
       {tab === 'config'        && <ConfigOperativaTab myRole={myRole} />}
       {tab === 'plantillas' && <PlantillasTab />}
-      {tab === 'backups' && (
-        <div className="empty-state" style={{ marginTop: 32 }}>
-          <div className="empty-state__icon">🚧</div>
-          <div className="empty-state__text">Backups — Próximamente</div>
-        </div>
-      )}
+      {tab === 'backups' && <BackupsTab myRole={myRole} />}
     </div>
   );
 }
