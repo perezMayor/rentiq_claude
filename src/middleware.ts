@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from './lib/auth';
 
-const PUBLIC_PATHS = ['/login', '/api/login', '/api/rbac-denied'];
+const PUBLIC_PATHS = ['/login', '/api/login', '/api/rbac-denied', '/api/public'];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
