@@ -26,11 +26,15 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { code, name, description, defaultInsuranceId, active } = body as {
+    const { code, name, description, defaultInsuranceId, insuranceCode, insuranceAmount, franchiseAmount, fuelChargeAmount, active } = body as {
       code?: string;
       name?: string;
       description?: string;
       defaultInsuranceId?: string | null;
+      insuranceCode?: string;
+      insuranceAmount?: number;
+      franchiseAmount?: number;
+      fuelChargeAmount?: number;
       active?: boolean;
     };
 
@@ -56,6 +60,10 @@ export async function PUT(
         ...(name !== undefined && { name }),
         ...(description !== undefined && { description }),
         ...(defaultInsuranceId !== undefined && { defaultInsuranceId: defaultInsuranceId ?? undefined }),
+        ...(insuranceCode !== undefined && { insuranceCode }),
+        ...(insuranceAmount !== undefined && { insuranceAmount }),
+        ...(franchiseAmount !== undefined && { franchiseAmount }),
+        ...(fuelChargeAmount !== undefined && { fuelChargeAmount }),
         ...(active !== undefined && { active }),
       };
 

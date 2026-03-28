@@ -26,12 +26,13 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { code, name, pricingMode, unitPrice, maxDays, active } = body as {
+    const { code, name, pricingMode, unitPrice, maxDays, applicableGroupIds, active } = body as {
       code?: string;
       name?: string;
       pricingMode?: 'FIXED' | 'PER_DAY';
       unitPrice?: number;
       maxDays?: number | null;
+      applicableGroupIds?: string[];
       active?: boolean;
     };
 
@@ -58,6 +59,7 @@ export async function PUT(
         ...(pricingMode !== undefined && { pricingMode }),
         ...(unitPrice !== undefined && { unitPrice }),
         ...(maxDays !== undefined && { maxDays: maxDays === null ? undefined : maxDays }),
+        ...(applicableGroupIds !== undefined && { applicableGroupIds }),
         ...(active !== undefined && { active }),
       };
 

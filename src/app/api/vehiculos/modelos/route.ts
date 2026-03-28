@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { brand, model, categoryId, transmission, fuel, seats, features, active } =
+    const { brand, model, categoryId, transmission, fuel, seats, doors, year, features, active } =
       body as {
         brand: string;
         model: string;
@@ -52,6 +52,8 @@ export async function POST(req: NextRequest) {
         transmission: 'MANUAL' | 'AUTOMATICO';
         fuel: 'GASOLINA' | 'DIESEL' | 'ELECTRICO' | 'HIBRIDO';
         seats: number;
+        doors?: number;
+        year?: number;
         features?: string[];
         active?: boolean;
       };
@@ -77,6 +79,8 @@ export async function POST(req: NextRequest) {
         transmission: transmission ?? 'MANUAL',
         fuel: fuel ?? 'GASOLINA',
         seats: seats ?? 5,
+        ...(doors !== undefined && { doors }),
+        ...(year !== undefined && { year }),
         features: features ?? [],
         active: active ?? true,
         createdAt: now,

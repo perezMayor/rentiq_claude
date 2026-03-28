@@ -200,6 +200,10 @@ export interface VehicleCategory {
   name: string;
   description?: string;
   defaultInsuranceId?: string;
+  insuranceCode?: string;
+  insuranceAmount?: number;
+  franchiseAmount?: number;
+  fuelChargeAmount?: number;
   active: boolean;
   createdAt: string;
 }
@@ -212,6 +216,8 @@ export interface VehicleModel {
   transmission: 'MANUAL' | 'AUTOMATICO';
   fuel: 'GASOLINA' | 'DIESEL' | 'ELECTRICO' | 'HIBRIDO';
   seats: number;
+  doors?: number;
+  year?: number;
   features: string[];
   active: boolean;
   createdAt: string;
@@ -243,6 +249,7 @@ export interface VehicleExtra {
   pricingMode: 'FIXED' | 'PER_DAY';
   unitPrice: number;
   maxDays?: number;
+  applicableGroupIds?: string[];
   active: boolean;
   createdAt: string;
 }
@@ -254,6 +261,7 @@ export interface VehicleInsurance {
   pricingMode: 'FIXED' | 'PER_DAY';
   unitPrice: number;
   maxDays?: number;
+  applicableGroupIds?: string[];
   active: boolean;
   createdAt: string;
 }

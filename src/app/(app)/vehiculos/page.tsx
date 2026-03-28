@@ -22,6 +22,8 @@ interface VehicleModel {
   transmission: 'MANUAL' | 'AUTOMATICO';
   fuel: 'GASOLINA' | 'DIESEL' | 'ELECTRICO' | 'HIBRIDO';
   seats: number;
+  doors?: number;
+  year?: number;
   features: string[];
   active: boolean;
 }
@@ -50,6 +52,7 @@ interface VehicleExtra {
   pricingMode: 'FIXED' | 'PER_DAY';
   unitPrice: number;
   maxDays?: number;
+  applicableGroupIds?: string[];
   active: boolean;
 }
 
@@ -60,6 +63,7 @@ interface VehicleInsurance {
   pricingMode: 'FIXED' | 'PER_DAY';
   unitPrice: number;
   maxDays?: number;
+  applicableGroupIds?: string[];
   active: boolean;
 }
 
@@ -69,6 +73,10 @@ interface VehicleCategory {
   name: string;
   description?: string;
   defaultInsuranceId?: string;
+  insuranceCode?: string;
+  insuranceAmount?: number;
+  franchiseAmount?: number;
+  fuelChargeAmount?: number;
   active: boolean;
 }
 
@@ -94,6 +102,10 @@ const blankCategory = (): Partial<VehicleCategory> => ({
   code: '',
   name: '',
   description: '',
+  insuranceCode: '',
+  insuranceAmount: 0,
+  franchiseAmount: 0,
+  fuelChargeAmount: 0,
   active: true,
 });
 
@@ -104,7 +116,9 @@ const blankModel = (): {
   transmission: 'MANUAL' | 'AUTOMATICO';
   fuel: 'GASOLINA' | 'DIESEL' | 'ELECTRICO' | 'HIBRIDO';
   seats: number;
-  features: string;
+  doors: number;
+  year: number;
+  features: string[];
   active: boolean;
 } => ({
   brand: '',
@@ -113,7 +127,9 @@ const blankModel = (): {
   transmission: 'MANUAL',
   fuel: 'GASOLINA',
   seats: 5,
-  features: '',
+  doors: 5,
+  year: new Date().getFullYear(),
+  features: [],
   active: true,
 });
 
@@ -122,6 +138,7 @@ const blankExtra = (): Partial<VehicleExtra> => ({
   name: '',
   pricingMode: 'FIXED',
   unitPrice: 0,
+  applicableGroupIds: [],
   active: true,
 });
 
@@ -131,8 +148,19 @@ const blankInsurance = (): Partial<VehicleInsurance> => ({
   pricingMode: 'PER_DAY',
   unitPrice: 0,
   maxDays: undefined,
+  applicableGroupIds: [],
   active: true,
 });
+
+// ─── Vehicle features list ──────────────────────────────────────────────────
+
+const VEHICLE_FEATURES = [
+  'Aire acondicionado', 'GPS / Navegador', 'Bluetooth', 'USB / AUX',
+  'Cámara trasera', 'Sensores aparcamiento', 'Control crucero',
+  'Arranque sin llave', 'Techo solar / panorámico', 'Apple CarPlay / Android Auto',
+  'Asientos calefactados', '4x4 / AWD', 'Cargador eléctrico',
+  'Asistente de carril', 'Freno de emergencia autónomo',
+];
 
 // ─── Component ─────────────────────────────────────────────────────────────
 
@@ -426,7 +454,9 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
       transmission: m.transmission,
       fuel: m.fuel,
       seats: m.seats,
-      features: m.features.join(', '),
+      doors: m.doors ?? 5,
+      year: m.year ?? new Date().getFullYear(),
+      features: m.features ?? [],
       active: m.active,
     });
     setEditingModelId(m.id);
@@ -444,12 +474,13 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
         : '/api/vehiculos/modelos';
       const method = isEdit ? 'PUT' : 'POST';
 
-      const features = modelForm.features
-        .split(',')
-        .map((f) => f.trim())
-        .filter(Boolean);
-
-      const payload = { ...modelForm, features, seats: Number(modelForm.seats) };
+      const payload = {
+        ...modelForm,
+        features: modelForm.features,
+        seats: Number(modelForm.seats),
+        doors: Number(modelForm.doors),
+        year: Number(modelForm.year),
+      };
 
       const res = await fetch(url, {
         method,
@@ -489,7 +520,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
   };
 
   const openEditExtra = (e: VehicleExtra) => {
-    setExtraForm({ ...e });
+    setExtraForm({ ...e, applicableGroupIds: e.applicableGroupIds ?? [] });
     setEditingExtraId(e.id);
     setError(null);
     setExtraModal('edit');
@@ -549,7 +580,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
   };
 
   const openEditInsurance = (i: VehicleInsurance) => {
-    setInsuranceForm({ ...i });
+    setInsuranceForm({ ...i, applicableGroupIds: i.applicableGroupIds ?? [] });
     setEditingInsuranceId(i.id);
     setError(null);
     setInsuranceModal('edit');
@@ -606,19 +637,14 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
     <>
       <div className="page-header">
         <div />
-        {activeTab === 'flota' && (
-          <button className="btn btn-primary" onClick={openCreateVehicle}>
-            + Nuevo Vehículo
-          </button>
-        )}
         {activeTab === 'categorias' && (
           <button className="btn btn-primary" onClick={openCreateCategory}>
-            + Nuevo Grupo
+            + Añadir grupo
           </button>
         )}
         {activeTab === 'modelos' && (
           <button className="btn btn-primary" onClick={openCreateModel}>
-            + Nuevo Modelo
+            + Añadir modelo
           </button>
         )}
         {activeTab === 'extras' && (
@@ -1221,6 +1247,60 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
                     }
                   />
                 </div>
+                <div style={{ gridColumn: '1/-1', borderBottom: '1px solid var(--color-border)', paddingBottom: 4, marginTop: 8, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--color-text-muted)' }}>Seguro del grupo</div>
+                <div className="form-group">
+                  <label className="form-label">Código seguro</label>
+                  <input
+                    className="form-input"
+                    placeholder="Código seguro"
+                    value={categoryForm.insuranceCode ?? ''}
+                    onChange={(e) =>
+                      setCategoryForm({ ...categoryForm, insuranceCode: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Importe seguro (€)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="Importe €"
+                    value={categoryForm.insuranceAmount ?? 0}
+                    onChange={(e) =>
+                      setCategoryForm({ ...categoryForm, insuranceAmount: Number(e.target.value) })
+                    }
+                    step={0.01}
+                    min={0}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Franquicia (€)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="Importe franquicia €"
+                    value={categoryForm.franchiseAmount ?? 0}
+                    onChange={(e) =>
+                      setCategoryForm({ ...categoryForm, franchiseAmount: Number(e.target.value) })
+                    }
+                    step={0.01}
+                    min={0}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Cargo combustible (€)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="Cargo combustible €"
+                    value={categoryForm.fuelChargeAmount ?? 0}
+                    onChange={(e) =>
+                      setCategoryForm({ ...categoryForm, fuelChargeAmount: Number(e.target.value) })
+                    }
+                    step={0.01}
+                    min={0}
+                  />
+                </div>
                 <div className="form-group">
                   <label className="form-label">Estado</label>
                   <select
@@ -1363,12 +1443,41 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
                   <input
                     type="number"
                     className="form-input"
+                    placeholder="Plazas"
                     value={modelForm.seats}
                     onChange={(e) =>
                       setModelForm({ ...modelForm, seats: Number(e.target.value) })
                     }
                     min={1}
                     max={50}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Puertas</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="Puertas"
+                    value={modelForm.doors}
+                    onChange={(e) =>
+                      setModelForm({ ...modelForm, doors: Number(e.target.value) })
+                    }
+                    min={2}
+                    max={10}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Año del modelo</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="Año del modelo"
+                    value={modelForm.year}
+                    onChange={(e) =>
+                      setModelForm({ ...modelForm, year: Number(e.target.value) })
+                    }
+                    min={1990}
+                    max={new Date().getFullYear() + 1}
                   />
                 </div>
                 <div className="form-group">
@@ -1384,19 +1493,26 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
                     <option value="false">Inactivo</option>
                   </select>
                 </div>
-                <div className="form-group col-span-2">
-                  <label className="form-label">
-                    Características (separadas por coma)
-                  </label>
-                  <textarea
-                    className="form-textarea"
-                    value={modelForm.features}
-                    onChange={(e) =>
-                      setModelForm({ ...modelForm, features: e.target.value })
-                    }
-                    placeholder="Ej: GPS, Bluetooth, Cámara trasera"
-                    rows={2}
-                  />
+                <div style={{ gridColumn: '1/-1', borderBottom: '1px solid var(--color-border)', paddingBottom: 4, marginTop: 8, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--color-text-muted)' }}>Características</div>
+                <div className="form-group" style={{ gridColumn: '1/-1' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                    {VEHICLE_FEATURES.map((feat) => (
+                      <label key={feat} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={modelForm.features.includes(feat)}
+                          onChange={(e) => {
+                            const current = modelForm.features;
+                            const updated = e.target.checked
+                              ? [...current, feat]
+                              : current.filter((f) => f !== feat);
+                            setModelForm({ ...modelForm, features: updated });
+                          }}
+                        />
+                        {feat}
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1514,6 +1630,41 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
                     <option value="false">Inactivo</option>
                   </select>
                 </div>
+                <div style={{ gridColumn: '1/-1', borderBottom: '1px solid var(--color-border)', paddingBottom: 4, marginTop: 8, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--color-text-muted)' }}>Grupos aplicables</div>
+                <div className="form-group" style={{ gridColumn: '1/-1' }}>
+                  <div style={{ maxHeight: 160, overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: 6, padding: 8 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', cursor: 'pointer', marginBottom: 4 }}>
+                      <input
+                        type="checkbox"
+                        checked={(extraForm.applicableGroupIds ?? []).includes('__all__') || (extraForm.applicableGroupIds ?? []).length === 0}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setExtraForm({ ...extraForm, applicableGroupIds: [] });
+                          } else {
+                            setExtraForm({ ...extraForm, applicableGroupIds: [] });
+                          }
+                        }}
+                      />
+                      Todos los grupos
+                    </label>
+                    {categories.map((cat) => (
+                      <label key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', cursor: 'pointer', marginBottom: 2 }}>
+                        <input
+                          type="checkbox"
+                          checked={(extraForm.applicableGroupIds ?? []).includes(cat.id)}
+                          onChange={(e) => {
+                            const current = (extraForm.applicableGroupIds ?? []).filter((id) => id !== '__all__');
+                            const updated = e.target.checked
+                              ? [...current, cat.id]
+                              : current.filter((id) => id !== cat.id);
+                            setExtraForm({ ...extraForm, applicableGroupIds: updated });
+                          }}
+                        />
+                        {cat.code} — {cat.name}
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
             <div className="modal__footer">
@@ -1626,6 +1777,39 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
                     <option value="true">Activo</option>
                     <option value="false">Inactivo</option>
                   </select>
+                </div>
+                <div style={{ gridColumn: '1/-1', borderBottom: '1px solid var(--color-border)', paddingBottom: 4, marginTop: 8, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--color-text-muted)' }}>Grupos aplicables</div>
+                <div className="form-group" style={{ gridColumn: '1/-1' }}>
+                  <div style={{ maxHeight: 160, overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: 6, padding: 8 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', cursor: 'pointer', marginBottom: 4 }}>
+                      <input
+                        type="checkbox"
+                        checked={(insuranceForm.applicableGroupIds ?? []).length === 0}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setInsuranceForm({ ...insuranceForm, applicableGroupIds: [] });
+                          }
+                        }}
+                      />
+                      Todos los grupos
+                    </label>
+                    {categories.map((cat) => (
+                      <label key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', cursor: 'pointer', marginBottom: 2 }}>
+                        <input
+                          type="checkbox"
+                          checked={(insuranceForm.applicableGroupIds ?? []).includes(cat.id)}
+                          onChange={(e) => {
+                            const current = (insuranceForm.applicableGroupIds ?? []).filter((id) => id !== '__all__');
+                            const updated = e.target.checked
+                              ? [...current, cat.id]
+                              : current.filter((id) => id !== cat.id);
+                            setInsuranceForm({ ...insuranceForm, applicableGroupIds: updated });
+                          }}
+                        />
+                        {cat.code} — {cat.name}
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

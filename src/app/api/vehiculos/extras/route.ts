@@ -34,12 +34,13 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { code, name, pricingMode, unitPrice, maxDays, active } = body as {
+    const { code, name, pricingMode, unitPrice, maxDays, applicableGroupIds, active } = body as {
       code: string;
       name: string;
       pricingMode: 'FIXED' | 'PER_DAY';
       unitPrice: number;
       maxDays?: number;
+      applicableGroupIds?: string[];
       active?: boolean;
     };
 
@@ -71,6 +72,7 @@ export async function POST(req: NextRequest) {
         pricingMode: pricingMode ?? 'FIXED',
         unitPrice,
         maxDays: maxDays ?? undefined,
+        ...(applicableGroupIds !== undefined && { applicableGroupIds }),
         active: active ?? true,
         createdAt: now,
       };

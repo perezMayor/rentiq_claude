@@ -26,7 +26,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { brand, model, categoryId, transmission, fuel, seats, features, active } =
+    const { brand, model, categoryId, transmission, fuel, seats, doors, year, features, active } =
       body as {
         brand?: string;
         model?: string;
@@ -34,6 +34,8 @@ export async function PUT(
         transmission?: 'MANUAL' | 'AUTOMATICO';
         fuel?: 'GASOLINA' | 'DIESEL' | 'ELECTRICO' | 'HIBRIDO';
         seats?: number;
+        doors?: number;
+        year?: number;
         features?: string[];
         active?: boolean;
       };
@@ -56,6 +58,8 @@ export async function PUT(
         ...(transmission !== undefined && { transmission }),
         ...(fuel !== undefined && { fuel }),
         ...(seats !== undefined && { seats }),
+        ...(doors !== undefined && { doors }),
+        ...(year !== undefined && { year }),
         ...(features !== undefined && { features }),
         ...(active !== undefined && { active }),
       };

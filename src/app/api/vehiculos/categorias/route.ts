@@ -34,10 +34,14 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { code, name, description, active } = body as {
+    const { code, name, description, insuranceCode, insuranceAmount, franchiseAmount, fuelChargeAmount, active } = body as {
       code: string;
       name: string;
       description?: string;
+      insuranceCode?: string;
+      insuranceAmount?: number;
+      franchiseAmount?: number;
+      fuelChargeAmount?: number;
       active?: boolean;
     };
 
@@ -62,6 +66,10 @@ export async function POST(req: NextRequest) {
         code: code.toUpperCase(),
         name,
         description,
+        ...(insuranceCode !== undefined && { insuranceCode }),
+        ...(insuranceAmount !== undefined && { insuranceAmount }),
+        ...(franchiseAmount !== undefined && { franchiseAmount }),
+        ...(fuelChargeAmount !== undefined && { fuelChargeAmount }),
         active: active ?? true,
         createdAt: now,
       };
