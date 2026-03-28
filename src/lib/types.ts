@@ -60,6 +60,8 @@ export interface CompanySettings {
   nightFeeFromHour?: number;    // hora de inicio tarifa nocturna (0-23)
   nightFeeToHour?: number;      // hora de fin tarifa nocturna (0-23)
   nightFeePrice?: number;       // precio de la tarifa nocturna (€)
+  backupRetentionDays?: number; // días de retención de backups antes de purgar
+  backupScheduleHour?: number;  // hora (0-23) del backup automático programado
   // Document / branding settings
   documentName?: string;          // nombre en documentos
   legalName?: string;             // nombre fiscal

@@ -36,6 +36,7 @@ export async function PUT(req: NextRequest) {
       dayChangeCutoffHour, minReservationDays, minAdvanceHours,
       quoteValidityDays, defaultDeposit,
       nightFeeFromHour, nightFeeToHour, nightFeePrice,
+      backupRetentionDays, backupScheduleHour,
     } = body as {
       name?: string; nif?: string; address?: string; phone?: string; email?: string;
       invoiceSeries?: string; ivaPercent?: number; defaultBranchId?: string;
@@ -44,6 +45,7 @@ export async function PUT(req: NextRequest) {
       minAdvanceHours?: number | null; quoteValidityDays?: number | null;
       defaultDeposit?: number | null;
       nightFeeFromHour?: number | null; nightFeeToHour?: number | null; nightFeePrice?: number | null;
+      backupRetentionDays?: number | null; backupScheduleHour?: number | null;
     };
 
     const updated = withStoreWrite((store) => {
@@ -80,6 +82,8 @@ export async function PUT(req: NextRequest) {
       if (nightFeeFromHour !== undefined) store.settings.nightFeeFromHour = nightFeeFromHour ?? undefined;
       if (nightFeeToHour !== undefined) store.settings.nightFeeToHour = nightFeeToHour ?? undefined;
       if (nightFeePrice !== undefined) store.settings.nightFeePrice = nightFeePrice ?? undefined;
+      if (backupRetentionDays !== undefined) store.settings.backupRetentionDays = backupRetentionDays ?? undefined;
+      if (backupScheduleHour !== undefined) store.settings.backupScheduleHour = backupScheduleHour ?? undefined;
       // Branding / document fields
       const s = store.settings as unknown as Record<string, unknown>;
       const strField = (k: string) => { if ((body as Record<string,unknown>)[k] !== undefined) s[k] = String((body as Record<string,unknown>)[k] ?? ''); };

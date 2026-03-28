@@ -33,6 +33,18 @@ const ROLE_CLASS: Record<UserRole, string> = {
 function ConfigOperativaTab({ myRole }: { myRole: UserRole }) {
   const isSuperAdmin = myRole === 'SUPER_ADMIN';
 
+  // Datos de empresa
+  const [companyName, setCompanyName] = useState('');
+  const [companyNif, setCompanyNif] = useState('');
+  const [companyAddress, setCompanyAddress] = useState('');
+  const [companyPhone, setCompanyPhone] = useState('');
+  const [companyEmail, setCompanyEmail] = useState('');
+  const [invoiceSeries, setInvoiceSeries] = useState('');
+  const [ivaPercent, setIvaPercent] = useState('');
+  const [defaultBranchId, setDefaultBranchId] = useState('');
+  const [branches, setBranches] = useState<CompanyBranch[]>([]);
+
+  // Config operativa
   const [graceHours, setGraceHours] = useState('');
   const [overlapMinHours, setOverlapMinHours] = useState('');
   const [dayChangeCutoffHour, setDayChangeCutoffHour] = useState('');
@@ -43,6 +55,11 @@ function ConfigOperativaTab({ myRole }: { myRole: UserRole }) {
   const [nightFeeFromHour, setNightFeeFromHour] = useState('');
   const [nightFeeToHour, setNightFeeToHour] = useState('');
   const [nightFeePrice, setNightFeePrice] = useState('');
+
+  // Backups
+  const [backupRetentionDays, setBackupRetentionDays] = useState('');
+  const [backupScheduleHour, setBackupScheduleHour] = useState('');
+
   const [cfgLoading, setCfgLoading] = useState(false);
   const [cfgSaving, setCfgSaving] = useState(false);
   const [cfgError, setCfgError] = useState('');
@@ -51,10 +68,23 @@ function ConfigOperativaTab({ myRole }: { myRole: UserRole }) {
   const loadConfig = useCallback(async () => {
     setCfgLoading(true); setCfgError('');
     try {
-      const res = await fetch('/api/gestor/empresa');
-      if (!res.ok) throw new Error((await res.json()).error ?? 'Error');
-      const s = (await res.json()).settings ?? {};
+      const [settingsRes, branchesRes] = await Promise.all([
+        fetch('/api/gestor/empresa'),
+        fetch('/api/gestor/sucursales'),
+      ]);
+      if (!settingsRes.ok) throw new Error((await settingsRes.json()).error ?? 'Error');
+      const s = (await settingsRes.json()).settings ?? {};
+      const br = branchesRes.ok ? (await branchesRes.json()).branches ?? [] : [];
+      setBranches(br);
       const str = (v: unknown) => v != null ? String(v) : '';
+      setCompanyName(str(s.name));
+      setCompanyNif(str(s.nif));
+      setCompanyAddress(str(s.address));
+      setCompanyPhone(str(s.phone));
+      setCompanyEmail(str(s.email));
+      setInvoiceSeries(str(s.invoiceSeries));
+      setIvaPercent(str(s.ivaPercent));
+      setDefaultBranchId(str(s.defaultBranchId));
       setGraceHours(str(s.graceHours));
       setOverlapMinHours(str(s.overlapMinHours));
       setDayChangeCutoffHour(str(s.dayChangeCutoffHour));
@@ -65,6 +95,8 @@ function ConfigOperativaTab({ myRole }: { myRole: UserRole }) {
       setNightFeeFromHour(str(s.nightFeeFromHour));
       setNightFeeToHour(str(s.nightFeeToHour));
       setNightFeePrice(str(s.nightFeePrice));
+      setBackupRetentionDays(str(s.backupRetentionDays));
+      setBackupScheduleHour(str(s.backupScheduleHour));
     } catch (e) { setCfgError(e instanceof Error ? e.message : 'Error'); }
     finally { setCfgLoading(false); }
   }, []);
@@ -76,6 +108,14 @@ function ConfigOperativaTab({ myRole }: { myRole: UserRole }) {
     try {
       function numOrNull(v: string) { const n = parseFloat(v); return v === '' ? null : isNaN(n) ? null : n; }
       const body = {
+        name:                 companyName.trim() || undefined,
+        nif:                  companyNif.trim() || undefined,
+        address:              companyAddress.trim() || undefined,
+        phone:                companyPhone.trim() || undefined,
+        email:                companyEmail.trim() || undefined,
+        invoiceSeries:        invoiceSeries.trim() || undefined,
+        ivaPercent:           numOrNull(ivaPercent),
+        defaultBranchId:      defaultBranchId || undefined,
         graceHours:           numOrNull(graceHours),
         overlapMinHours:      numOrNull(overlapMinHours),
         dayChangeCutoffHour:  numOrNull(dayChangeCutoffHour),
@@ -86,6 +126,8 @@ function ConfigOperativaTab({ myRole }: { myRole: UserRole }) {
         nightFeeFromHour:     numOrNull(nightFeeFromHour),
         nightFeeToHour:       numOrNull(nightFeeToHour),
         nightFeePrice:        numOrNull(nightFeePrice),
+        backupRetentionDays:  numOrNull(backupRetentionDays),
+        backupScheduleHour:   numOrNull(backupScheduleHour),
       };
       const res = await fetch('/api/gestor/empresa', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -95,11 +137,15 @@ function ConfigOperativaTab({ myRole }: { myRole: UserRole }) {
       if (!res.ok) throw new Error(data.error ?? 'Error');
       const s = data.settings ?? {};
       const str = (v: unknown) => v != null ? String(v) : '';
+      setCompanyName(str(s.name)); setCompanyNif(str(s.nif));
+      setCompanyAddress(str(s.address)); setCompanyPhone(str(s.phone)); setCompanyEmail(str(s.email));
+      setInvoiceSeries(str(s.invoiceSeries)); setIvaPercent(str(s.ivaPercent)); setDefaultBranchId(str(s.defaultBranchId));
       setGraceHours(str(s.graceHours)); setOverlapMinHours(str(s.overlapMinHours));
       setDayChangeCutoffHour(str(s.dayChangeCutoffHour)); setMinReservationDays(str(s.minReservationDays));
       setMinAdvanceHours(str(s.minAdvanceHours)); setQuoteValidityDays(str(s.quoteValidityDays));
       setDefaultDeposit(str(s.defaultDeposit));
       setNightFeeFromHour(str(s.nightFeeFromHour)); setNightFeeToHour(str(s.nightFeeToHour)); setNightFeePrice(str(s.nightFeePrice));
+      setBackupRetentionDays(str(s.backupRetentionDays)); setBackupScheduleHour(str(s.backupScheduleHour));
       setCfgOk(true);
       setTimeout(() => setCfgOk(false), 3000);
     } catch (e) { setCfgError(e instanceof Error ? e.message : 'Error'); }
@@ -112,6 +158,59 @@ function ConfigOperativaTab({ myRole }: { myRole: UserRole }) {
     <div style={{ maxWidth: 900 }}>
       {cfgError && <div className="alert alert-danger" style={{ marginBottom: 16 }}>{cfgError}</div>}
       {cfgOk && <div className="alert alert-success" style={{ marginBottom: 16 }}>Configuración guardada</div>}
+
+      {/* Datos de empresa */}
+      <div className={styles.cfgSection}>
+        <div className={styles.cfgSectionTitle}>Datos de empresa</div>
+        <div className="form-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+          <div className="form-group" style={{ gridColumn: 'span 2' }}>
+            <label className="form-label">Razón social *</label>
+            <input type="text" className="form-input" value={companyName} placeholder="Mi Empresa S.L." disabled={!isSuperAdmin} onChange={(e) => setCompanyName(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">NIF / CIF *</label>
+            <input type="text" className="form-input" value={companyNif} placeholder="B12345678" disabled={!isSuperAdmin} onChange={(e) => setCompanyNif(e.target.value.toUpperCase())} />
+          </div>
+          <div className="form-group" style={{ gridColumn: 'span 3' }}>
+            <label className="form-label">Dirección fiscal</label>
+            <input type="text" className="form-input" value={companyAddress} placeholder="Calle Mayor 1, 28001 Madrid" disabled={!isSuperAdmin} onChange={(e) => setCompanyAddress(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Teléfono</label>
+            <input type="text" className="form-input" value={companyPhone} placeholder="+34 900 000 000" disabled={!isSuperAdmin} onChange={(e) => setCompanyPhone(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Email de empresa</label>
+            <input type="email" className="form-input" value={companyEmail} placeholder="info@empresa.com" disabled={!isSuperAdmin} onChange={(e) => setCompanyEmail(e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      {/* Facturación */}
+      <div className={styles.cfgSection}>
+        <div className={styles.cfgSectionTitle}>Facturación</div>
+        <div className="form-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+          <div className="form-group">
+            <label className="form-label">Serie de factura</label>
+            <input type="text" className="form-input" value={invoiceSeries} placeholder="F" maxLength={6} disabled={!isSuperAdmin} onChange={(e) => setInvoiceSeries(e.target.value.toUpperCase())} />
+            <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Prefijo usado en la numeración de facturas. Ej: F → F-2025-000001</p>
+          </div>
+          <div className="form-group">
+            <label className="form-label">IVA por defecto (%)</label>
+            <input type="number" className="form-input" value={ivaPercent} min={0} max={100} step={0.1} placeholder="21" disabled={!isSuperAdmin} onChange={(e) => setIvaPercent(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Sucursal por defecto</label>
+            <select className="form-select" value={defaultBranchId} disabled={!isSuperAdmin} onChange={(e) => setDefaultBranchId(e.target.value)}>
+              <option value="">— Sin seleccionar —</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+            <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Sucursal preseleccionada al crear reservas.</p>
+          </div>
+        </div>
+      </div>
 
       {/* Reservas */}
       <div className={styles.cfgSection}>
@@ -181,6 +280,23 @@ function ConfigOperativaTab({ myRole }: { myRole: UserRole }) {
             <label className="form-label">Precio tarifa nocturna (€)</label>
             <input type="number" className="form-input" value={nightFeePrice} min={0} step={0.01} placeholder="0.00 — vacío = no aplica" disabled={!isSuperAdmin} onChange={(e) => setNightFeePrice(e.target.value)} />
             <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Recargo aplicable a entregas y recogidas fuera del horario habitual. Dejar vacío para desactivar.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Backups */}
+      <div className={styles.cfgSection}>
+        <div className={styles.cfgSectionTitle}>Backups</div>
+        <div className="form-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+          <div className="form-group">
+            <label className="form-label">Retención de backups (días)</label>
+            <input type="number" className="form-input" value={backupRetentionDays} min={1} max={365} step={1} placeholder="30" disabled={!isSuperAdmin} onChange={(e) => setBackupRetentionDays(e.target.value)} />
+            <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Días antes de purgar backups antiguos. Dejar vacío para no purgar automáticamente.</p>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Hora del backup automático (0–23)</label>
+            <input type="number" className="form-input" value={backupScheduleHour} min={0} max={23} step={1} placeholder="Ej: 3" disabled={!isSuperAdmin} onChange={(e) => setBackupScheduleHour(e.target.value)} />
+            <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '3px 0 0' }}>Hora a la que se ejecuta el backup programado vía endpoint protegido.</p>
           </div>
         </div>
       </div>
