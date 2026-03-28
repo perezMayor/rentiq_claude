@@ -41,7 +41,8 @@ export async function POST(req: NextRequest) {
       }
 
       const store = readStore();
-      const user = store.users.find((u) => u.email === email && u.active);
+      const emailLower = email.toLowerCase();
+      const user = store.users.find((u) => u.email.toLowerCase() === emailLower && u.active);
       if (!user) {
         return new NextResponse(null, {
           status: 303,
