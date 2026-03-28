@@ -1433,7 +1433,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Categoría *</label>
+                  <label className="form-label">Grupo *</label>
                   <select
                     className="form-select"
                     value={modelForm.categoryId}
@@ -1441,7 +1441,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
                       setModelForm({ ...modelForm, categoryId: e.target.value })
                     }
                   >
-                    <option value="">Seleccionar categoría</option>
+                    <option value="">Seleccionar grupo</option>
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.code} — {c.name}
