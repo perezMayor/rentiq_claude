@@ -1115,7 +1115,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Categoría *</label>
+                  <label className="form-label">Grupo *</label>
                   <select
                     className="form-select"
                     value={vehicleForm.categoryId ?? ''}
@@ -1127,7 +1127,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
                       })
                     }
                   >
-                    <option value="">Seleccionar categoría</option>
+                    <option value="">Seleccionar grupo</option>
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.code} — {c.name}
@@ -2142,7 +2142,7 @@ function AltasBajasTab() {
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Categoría *</label>
+                  <label className="form-label">Grupo *</label>
                   <select className="form-select" value={form.categoryId ?? ''} onChange={e => setForm({ ...form, categoryId: e.target.value, modelId: '' })}>
                     <option value="">— Seleccionar —</option>
                     {categories.map(c => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
