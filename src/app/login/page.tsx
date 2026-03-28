@@ -1,40 +1,48 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styles from './login.module.css';
 
-const DEMO_MODE = process.env.NEXT_PUBLIC_RENTIQ_DEMO_MODE === 'true';
-
-const DEMO_ROLES = [
-  { value: 'SUPER_ADMIN', label: 'Super Admin', description: 'Acceso completo al sistema' },
-  { value: 'ADMIN', label: 'Administrador', description: 'Gestión operativa completa' },
-  { value: 'LECTOR', label: 'Lector', description: 'Solo lectura' },
-];
+interface Branch {
+  id: string;
+  name: string;
+}
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [branchId, setBranchId] = useState('');
 
-  async function handleDemoLogin(role: string) {
-    setLoading(true);
-    setError('');
-    const fd = new FormData();
-    fd.append('role', role);
-    const res = await fetch('/api/login', { method: 'POST', body: fd, redirect: 'follow' });
-    if (res.ok || res.redirected) {
-      window.location.href = res.url || '/dashboard';
-    } else {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? 'Error al iniciar sesión');
-      setLoading(false);
+  useEffect(() => {
+    // Leer parámetro de error de URL
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('error') === 'invalid') {
+      setError('Email o contraseña incorrectos');
     }
-  }
 
-  async function handlePasswordLogin(e: React.FormEvent<HTMLFormElement>) {
+    // Cargar nombre de empresa y sucursales (endpoint público, sin auth)
+    fetch('/api/public/empresa')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.companyName) setCompanyName(d.companyName);
+        if (Array.isArray(d.branches)) {
+          setBranches(d.branches);
+          // Preseleccionar sucursal por defecto
+          if (d.defaultBranchId) setBranchId(d.defaultBranchId);
+          else if (d.branches.length > 0) setBranchId(d.branches[0].id);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setError('');
     const fd = new FormData(e.currentTarget);
+    if (branchId) fd.set('branchId', branchId);
     const res = await fetch('/api/login', { method: 'POST', body: fd, redirect: 'follow' });
     if (res.ok || res.redirected) {
       window.location.href = res.url || '/dashboard';
@@ -61,65 +69,68 @@ export default function LoginPage() {
         </div>
         <p className={styles.subtitle}>Gestión de Rent a Car</p>
 
+        {companyName && (
+          <div className={styles.companyName}>{companyName}</div>
+        )}
+
         {error && (
           <div className={styles.error} role="alert">
             {error}
           </div>
         )}
 
-        {DEMO_MODE ? (
-          <div className={styles.demoSection}>
-            <p className={styles.demoHint}>Modo demo — selecciona un rol para entrar</p>
-            <div className={styles.demoRoles}>
-              {DEMO_ROLES.map((r) => (
-                <button
-                  key={r.value}
-                  className={styles.demoBtn}
-                  onClick={() => handleDemoLogin(r.value)}
-                  disabled={loading}
-                  type="button"
-                >
-                  <span className={styles.demoBtnTitle}>{r.label}</span>
-                  <span className={styles.demoBtnDesc}>{r.description}</span>
-                </button>
-              ))}
-            </div>
+        <form className={styles.form} onSubmit={handleLogin}>
+          <div className={styles.formGroup}>
+            <label className={styles.label} htmlFor="email">
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              className={styles.input}
+              placeholder="usuario@empresa.com"
+              autoComplete="email"
+            />
           </div>
-        ) : (
-          <form className={styles.form} onSubmit={handlePasswordLogin}>
+          <div className={styles.formGroup}>
+            <label className={styles.label} htmlFor="password">
+              Contraseña
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              required
+              className={styles.input}
+              placeholder="••••••••"
+              autoComplete="current-password"
+            />
+          </div>
+
+          {branches.length > 0 && (
             <div className={styles.formGroup}>
-              <label className={styles.label} htmlFor="email">
-                Email
+              <label className={styles.label} htmlFor="branchId">
+                Sucursal
               </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                className={styles.input}
-                placeholder="usuario@empresa.com"
-                autoComplete="email"
-              />
+              <select
+                id="branchId"
+                className={styles.select}
+                value={branchId}
+                onChange={(e) => setBranchId(e.target.value)}
+              >
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
             </div>
-            <div className={styles.formGroup}>
-              <label className={styles.label} htmlFor="password">
-                Contraseña
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className={styles.input}
-                placeholder="••••••••"
-                autoComplete="current-password"
-              />
-            </div>
-            <button type="submit" className={styles.submitBtn} disabled={loading}>
-              {loading ? 'Accediendo…' : 'Acceder'}
-            </button>
-          </form>
-        )}
+          )}
+
+          <button type="submit" className={styles.submitBtn} disabled={loading}>
+            {loading ? 'Accediendo…' : 'Acceder'}
+          </button>
+        </form>
       </div>
     </div>
   );

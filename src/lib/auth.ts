@@ -10,21 +10,23 @@ export const SESSION_COOKIE = 'rq_v3_session';
 interface SessionPayload {
   userId: string;
   role: UserRole;
+  branchId?: string;
   exp: number; // unix timestamp seconds
 }
 
 const SESSION_DURATION_SECONDS = 60 * 60 * 8; // 8 hours
 
-export function createSession(role: UserRole, userId: string): string {
+export function createSession(role: UserRole, userId: string, branchId?: string): string {
   const payload: SessionPayload = {
     userId,
     role,
+    branchId,
     exp: Math.floor(Date.now() / 1000) + SESSION_DURATION_SECONDS,
   };
   return Buffer.from(JSON.stringify(payload)).toString('base64');
 }
 
-export function parseSession(token: string): { userId: string; role: UserRole } | null {
+export function parseSession(token: string): { userId: string; role: UserRole; branchId?: string } | null {
   try {
     const decoded = Buffer.from(token, 'base64').toString('utf-8');
     const payload = JSON.parse(decoded) as SessionPayload;
@@ -45,13 +47,13 @@ export function parseSession(token: string): { userId: string; role: UserRole } 
       return null;
     }
 
-    return { userId: payload.userId, role: payload.role };
+    return { userId: payload.userId, role: payload.role, branchId: payload.branchId };
   } catch {
     return null;
   }
 }
 
-export function getSessionFromRequest(req: NextRequest): { userId: string; role: UserRole } | null {
+export function getSessionFromRequest(req: NextRequest): { userId: string; role: UserRole; branchId?: string } | null {
   const cookie = req.cookies.get(SESSION_COOKIE);
   if (!cookie?.value) return null;
   return parseSession(cookie.value);
@@ -84,12 +86,12 @@ export function parseSessionFromCookieString(cookieHeader: string | null): { use
 }
 
 // Server-only helper: reads session from Next.js cookies() — call only from Server Components or Server Actions
-export async function getSessionUser(): Promise<{ id: string; role: UserRole } | null> {
+export async function getSessionUser(): Promise<{ id: string; role: UserRole; branchId?: string } | null> {
   const { cookies } = await import('next/headers');
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const session = parseSession(token);
   if (!session) return null;
-  return { id: session.userId, role: session.role };
+  return { id: session.userId, role: session.role, branchId: session.branchId };
 }

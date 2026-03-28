@@ -23,7 +23,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect('/login');
   }
 
-  const branch = store.branches.find((b) => b.id === store.settings.defaultBranchId);
+  const resolvedBranchId = session.branchId ?? store.settings.defaultBranchId;
+  const branch = store.branches.find((b) => b.id === resolvedBranchId);
 
   return (
     <AppShell

@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
 
     let userId: string;
     let role: UserRole;
+    let branchId: string | undefined;
 
     if (DEMO_MODE) {
       const roleInput = formData.get('role')?.toString().toUpperCase() ?? '';
@@ -27,6 +28,10 @@ export async function POST(req: NextRequest) {
       }
       userId = entry.userId;
       role = entry.role;
+      const store = readStore();
+      const bid = formData.get('branchId')?.toString() ?? '';
+      const branch = store.branches.find((b) => b.id === bid && b.active);
+      branchId = branch ? branch.id : store.settings.defaultBranchId;
     } else {
       const email = formData.get('email')?.toString() ?? '';
       const password = formData.get('password')?.toString() ?? '';
@@ -55,9 +60,13 @@ export async function POST(req: NextRequest) {
 
       userId = user.id;
       role = user.role;
+
+      const bid = formData.get('branchId')?.toString() ?? '';
+      const branch = store.branches.find((b) => b.id === bid && b.active);
+      branchId = branch ? branch.id : store.settings.defaultBranchId;
     }
 
-    const token = createSession(role, userId);
+    const token = createSession(role, userId, branchId);
 
     await appendEvent({
       action: 'AUTH_LOGIN',
