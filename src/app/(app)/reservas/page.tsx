@@ -231,6 +231,9 @@ function EntregasTab() {
           <option value="">Todos los lugares</option>
           {locations.map((l) => <option key={l} value={l}>{l}</option>)}
         </select>
+        <button className="btn btn-primary btn-sm" onClick={() => setHasSearched(true)}>
+          Listar
+        </button>
         <span style={{ marginLeft: 'auto', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
           {filtered.length} entrega{filtered.length !== 1 ? 's' : ''}
         </span>
@@ -405,6 +408,9 @@ function RecogidasTab() {
           <option value="">Todos los lugares</option>
           {locations.map((l) => <option key={l} value={l}>{l}</option>)}
         </select>
+        <button className="btn btn-primary btn-sm" onClick={() => setHasSearched(true)}>
+          Listar
+        </button>
         <span style={{ marginLeft: 'auto', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
           {filtered.length} recogida{filtered.length !== 1 ? 's' : ''}
         </span>
@@ -673,6 +679,9 @@ function LogConfirmacionesTab() {
           <label className="form-label">Hasta</label>
           <DatePicker value={dateTo} onChange={(v) => { setDateTo(v); setHasSearched(true); }} style={{ width: 150 }} />
         </div>
+        <button className="btn btn-primary btn-sm" onClick={() => setHasSearched(true)}>
+          Listar
+        </button>
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
@@ -845,7 +854,7 @@ function ListadoTab() {
         <DatePicker className="form-input" value={filterFrom} onChange={(v) => { setFilterFrom(v); setHasSearched(true); }} style={{ width: 'auto' }} />
         <DatePicker className="form-input" value={filterTo} onChange={(v) => { setFilterTo(v); setHasSearched(true); }} style={{ width: 'auto' }} />
         <input type="search" className="form-input" value={filterSearch} onChange={(e) => { setFilterSearch(e.target.value); setHasSearched(true); }} placeholder="Buscar número, matrícula…" style={{ minWidth: 200 }} />
-        <button className="btn btn-ghost btn-sm" onClick={() => { setHasSearched(true); loadReservations(); }}>Actualizar</button>
+        <button className="btn btn-primary btn-sm" onClick={() => { setHasSearched(true); loadReservations(); }}>Listar</button>
         <span style={{ marginLeft: 'auto', fontSize: '0.82rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
           {reservations.length} reserva{reservations.length !== 1 ? 's' : ''}
         </span>

@@ -26,9 +26,12 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { code, name, pricingMode, unitPrice, maxDays, applicableGroupIds, active } = body as {
+    const { code, name, coverageType, franquicia, description, pricingMode, unitPrice, maxDays, applicableGroupIds, active } = body as {
       code?: string;
       name?: string;
+      coverageType?: 'BASICO' | 'TERCEROS' | 'TODO_RIESGO_CON' | 'TODO_RIESGO_SIN' | 'OTRO';
+      franquicia?: number | null;
+      description?: string;
       pricingMode?: 'FIXED' | 'PER_DAY';
       unitPrice?: number;
       maxDays?: number | null;
@@ -56,6 +59,9 @@ export async function PUT(
         ...store.vehicleInsurances[idx],
         ...(code !== undefined && { code: code.toUpperCase() }),
         ...(name !== undefined && { name }),
+        ...(coverageType !== undefined && { coverageType }),
+        ...(franquicia !== undefined && { franquicia: franquicia === null ? undefined : franquicia }),
+        ...(description !== undefined && { description }),
         ...(pricingMode !== undefined && { pricingMode }),
         ...(unitPrice !== undefined && { unitPrice }),
         ...(maxDays !== undefined && { maxDays: maxDays === null ? undefined : maxDays }),

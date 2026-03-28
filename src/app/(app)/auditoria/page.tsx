@@ -129,8 +129,8 @@ export default function AuditoriaPage() {
               <option key={n} value={n}>Últimos {n}</option>
             ))}
           </select>
-          <button className="btn btn-ghost btn-sm" onClick={loadEvents}>
-            Actualizar
+          <button className="btn btn-primary btn-sm" onClick={loadEvents}>
+            Listar
           </button>
         </div>
       </div>

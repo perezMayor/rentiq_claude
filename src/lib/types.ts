@@ -260,6 +260,9 @@ export interface VehicleInsurance {
   id: string;
   code: string;
   name: string;
+  coverageType: 'BASICO' | 'TERCEROS' | 'TODO_RIESGO_CON' | 'TODO_RIESGO_SIN' | 'OTRO';
+  franquicia?: number;
+  description?: string;
   pricingMode: 'FIXED' | 'PER_DAY';
   unitPrice: number;
   maxDays?: number;

@@ -244,8 +244,8 @@ function FacturacionContent() {
           placeholder="Buscar número, contrato, cliente…"
           style={{ minWidth: 200 }}
         />
-        <button className="btn btn-ghost btn-sm" onClick={() => { setHasSearched(true); loadInvoices(); }}>
-          Actualizar
+        <button className="btn btn-primary btn-sm" onClick={() => { setHasSearched(true); loadInvoices(); }}>
+          Listar
         </button>
       </div>
 

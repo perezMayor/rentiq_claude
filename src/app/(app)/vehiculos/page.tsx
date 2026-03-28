@@ -60,6 +60,9 @@ interface VehicleInsurance {
   id: string;
   code: string;
   name: string;
+  coverageType: 'BASICO' | 'TERCEROS' | 'TODO_RIESGO_CON' | 'TODO_RIESGO_SIN' | 'OTRO';
+  franquicia?: number;
+  description?: string;
   pricingMode: 'FIXED' | 'PER_DAY';
   unitPrice: number;
   maxDays?: number;
@@ -155,12 +158,23 @@ const blankExtra = (): Partial<VehicleExtra> => ({
 const blankInsurance = (): Partial<VehicleInsurance> => ({
   code: '',
   name: '',
+  coverageType: 'TODO_RIESGO_CON',
+  franquicia: undefined,
+  description: '',
   pricingMode: 'PER_DAY',
   unitPrice: 0,
   maxDays: undefined,
   applicableGroupIds: [],
   active: true,
 });
+
+const COVERAGE_LABELS: Record<string, string> = {
+  BASICO: 'Básico',
+  TERCEROS: 'Terceros',
+  TODO_RIESGO_CON: 'Todo Riesgo con franquicia',
+  TODO_RIESGO_SIN: 'Todo Riesgo sin franquicia',
+  OTRO: 'Otro',
+};
 
 // ─── Vehicle features list ──────────────────────────────────────────────────
 
@@ -186,7 +200,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
   const [insurances, setInsurances] = useState<VehicleInsurance[]>([]);
 
   // Flota filters
-  const [filterActive, setFilterActive] = useState(true);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('active');
   const [filterBranch, setFilterBranch] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterPlate, setFilterPlate] = useState('');
@@ -258,7 +272,11 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
   const fetchVehicles = useCallback(async () => {
     try {
       const params = new URLSearchParams();
-      params.set('active', String(filterActive));
+      if (filterStatus === 'all') {
+        params.set('includeInactive', 'true');
+      } else {
+        params.set('active', filterStatus === 'active' ? 'true' : 'false');
+      }
       if (filterBranch) params.set('branchId', filterBranch);
       if (filterCategory) params.set('categoryId', filterCategory);
       if (filterPlate) params.set('search', filterPlate);
@@ -271,7 +289,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
     } catch {
       // non-critical
     }
-  }, [filterActive, filterBranch, filterCategory, filterPlate]);
+  }, [filterStatus, filterBranch, filterCategory, filterPlate]);
 
   const fetchExtras = useCallback(async () => {
     try {
@@ -590,7 +608,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
   };
 
   const openEditInsurance = (i: VehicleInsurance) => {
-    setInsuranceForm({ ...i, applicableGroupIds: i.applicableGroupIds ?? [] });
+    setInsuranceForm({ ...i, applicableGroupIds: i.applicableGroupIds ?? [], coverageType: i.coverageType ?? 'OTRO' });
     setEditingInsuranceId(i.id);
     setError(null);
     setInsuranceModal('edit');
@@ -611,6 +629,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
         code: (insuranceForm.code ?? '').toUpperCase(),
         unitPrice: Number(insuranceForm.unitPrice),
         maxDays: insuranceForm.maxDays ? Number(insuranceForm.maxDays) : undefined,
+        franquicia: insuranceForm.franquicia ? Number(insuranceForm.franquicia) : undefined,
       };
 
       const res = await fetch(url, {
@@ -673,44 +692,44 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
       {activeTab === 'flota' && (
         <>
           <div className="filters-bar">
-            <label className={styles.filterCheckbox}>
-              <input
-                type="checkbox"
-                checked={filterActive}
-                onChange={(e) => { setFilterActive(e.target.checked); setHasSearchedFlota(true); }}
-              />
-              Solo activos
-            </label>
+            <select
+              className="form-select"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'inactive')}
+            >
+              <option value="active">Solo activos</option>
+              <option value="inactive">Solo inactivos</option>
+              <option value="all">Todos</option>
+            </select>
             <select
               className="form-select"
               value={filterBranch}
-              onChange={(e) => { setFilterBranch(e.target.value); setHasSearchedFlota(true); }}
+              onChange={(e) => setFilterBranch(e.target.value)}
             >
               <option value="">Todas las sucursales</option>
               {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
+                <option key={b.id} value={b.id}>{b.name}</option>
               ))}
             </select>
             <select
               className="form-select"
               value={filterCategory}
-              onChange={(e) => { setFilterCategory(e.target.value); setHasSearchedFlota(true); }}
+              onChange={(e) => setFilterCategory(e.target.value)}
             >
               <option value="">Todas las categorías</option>
               {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code} — {c.name}
-                </option>
+                <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
               ))}
             </select>
             <input
               className="form-input"
               placeholder="Buscar matrícula..."
               value={filterPlate}
-              onChange={(e) => { setFilterPlate(e.target.value); setHasSearchedFlota(true); }}
+              onChange={(e) => setFilterPlate(e.target.value)}
             />
+            <button className="btn btn-primary btn-sm" onClick={() => { setHasSearchedFlota(true); void fetchVehicles(); }}>
+              Listar
+            </button>
           </div>
 
           {!hasSearchedFlota ? (
@@ -986,9 +1005,10 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
               <tr>
                 <th>Código</th>
                 <th>Nombre</th>
-                <th>Tipo precio</th>
-                <th>Precio ud.</th>
-                <th>Máx. días</th>
+                <th>Cobertura</th>
+                <th>Franquicia</th>
+                <th>Precio/día</th>
+                <th>Grupos</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
@@ -996,39 +1016,56 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
             <tbody>
               {insurances.length === 0 ? (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={8}>
                     <div className="empty-state">
                       <div className="empty-state__text">No hay seguros definidos.</div>
                     </div>
                   </td>
                 </tr>
               ) : (
-                insurances.map((ins) => (
-                  <tr key={ins.id}>
-                    <td><strong>{ins.code}</strong></td>
-                    <td>{ins.name}</td>
-                    <td>{ins.pricingMode === 'FIXED' ? 'Precio fijo' : 'Por día'}</td>
-                    <td>{ins.unitPrice.toFixed(2)} €</td>
-                    <td style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                      {ins.maxDays ?? '—'}
-                    </td>
-                    <td>
-                      <span className={`badge ${ins.active ? 'badge-confirmada' : 'badge-cancelada'}`}>
-                        {ins.active ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className={styles.actionsCell}>
-                        <button className="btn btn-ghost btn-sm" onClick={() => openEditInsurance(ins)}>
-                          Editar
-                        </button>
-                        <button className="btn btn-danger btn-sm" onClick={() => void deleteInsurance(ins.id)}>
-                          Eliminar
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                insurances.map((ins) => {
+                  const allGroups = (ins.applicableGroupIds ?? []).includes('__all__') || (ins.applicableGroupIds ?? []).length === 0;
+                  return (
+                    <tr key={ins.id}>
+                      <td><strong>{ins.code}</strong></td>
+                      <td>
+                        <div>{ins.name}</div>
+                        {ins.description && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{ins.description}</div>
+                        )}
+                      </td>
+                      <td>
+                        <span className="badge badge-sistema" style={{ fontSize: '0.75rem' }}>
+                          {COVERAGE_LABELS[ins.coverageType ?? 'OTRO'] ?? ins.coverageType}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        {ins.franquicia != null ? `${ins.franquicia.toFixed(2)} €` : <span style={{ color: 'var(--color-text-muted)' }}>Sin franq.</span>}
+                      </td>
+                      <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        {ins.unitPrice.toFixed(2)} €
+                      </td>
+                      <td style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                        {allGroups ? 'Todos' : (ins.applicableGroupIds ?? []).map((id) => getCategoryName(id)).join(', ')}
+                      </td>
+                      <td>
+                        <span className={`badge ${ins.active ? 'badge-confirmada' : 'badge-cancelada'}`}>
+                          {ins.active ? 'Activo' : 'Inactivo'}
+                        </span>
+                      </td>
+                      <td>
+                        <div className={styles.actionsCell}>
+                          <button className="btn btn-ghost btn-sm" onClick={() => openEditInsurance(ins)}>
+                            Editar
+                          </button>
+                          <button className="btn btn-danger btn-sm" onClick={() => void deleteInsurance(ins.id)}>
+                            Eliminar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -1696,7 +1733,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
       {/* ── MODAL: SEGURO ───────────────────────────────────────────────────── */}
       {insuranceModal !== null && (
         <div className="modal-overlay" onClick={() => setInsuranceModal(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
             <div className="modal__header">
               <h2 className="modal__title">
                 {insuranceModal === 'create' ? 'Nuevo Seguro' : 'Editar Seguro'}
@@ -1708,14 +1745,14 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
             <div className="modal__body">
               {error && <div className="alert alert-danger">{error}</div>}
               <div className="form-grid">
+                {/* Identificación */}
                 <div className="form-group">
                   <label className="form-label">Código</label>
                   <input
                     className="form-input"
                     value={insuranceForm.code ?? ''}
-                    onChange={(e) =>
-                      setInsuranceForm({ ...insuranceForm, code: e.target.value.toUpperCase() })
-                    }
+                    onChange={(e) => setInsuranceForm({ ...insuranceForm, code: e.target.value.toUpperCase() })}
+                    placeholder="TR-SIN"
                   />
                 </div>
                 <div className="form-group">
@@ -1723,22 +1760,57 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
                   <input
                     className="form-input"
                     value={insuranceForm.name ?? ''}
-                    onChange={(e) =>
-                      setInsuranceForm({ ...insuranceForm, name: e.target.value })
-                    }
+                    onChange={(e) => setInsuranceForm({ ...insuranceForm, name: e.target.value })}
+                    placeholder="Todo Riesgo sin franquicia"
                   />
                 </div>
+                <div className="form-group" style={{ gridColumn: '1/-1' }}>
+                  <label className="form-label">Descripción (opcional)</label>
+                  <input
+                    className="form-input"
+                    value={insuranceForm.description ?? ''}
+                    onChange={(e) => setInsuranceForm({ ...insuranceForm, description: e.target.value })}
+                    placeholder="Descripción breve visible al cliente"
+                  />
+                </div>
+
+                {/* Tipo de cobertura + franquicia */}
+                <div style={{ gridColumn: '1/-1', borderBottom: '1px solid var(--color-border)', paddingBottom: 4, marginTop: 4, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--color-text-muted)' }}>Cobertura</div>
+                <div className="form-group">
+                  <label className="form-label">Tipo de cobertura *</label>
+                  <select
+                    className="form-select"
+                    value={insuranceForm.coverageType ?? 'TODO_RIESGO_CON'}
+                    onChange={(e) => setInsuranceForm({ ...insuranceForm, coverageType: e.target.value as VehicleInsurance['coverageType'] })}
+                  >
+                    <option value="BASICO">Básico</option>
+                    <option value="TERCEROS">Terceros</option>
+                    <option value="TODO_RIESGO_CON">Todo Riesgo con franquicia</option>
+                    <option value="TODO_RIESGO_SIN">Todo Riesgo sin franquicia</option>
+                    <option value="OTRO">Otro</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Franquicia (€)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={insuranceForm.franquicia ?? ''}
+                    onChange={(e) => setInsuranceForm({ ...insuranceForm, franquicia: e.target.value ? Number(e.target.value) : undefined })}
+                    min={0}
+                    step={0.01}
+                    placeholder="Sin franquicia"
+                  />
+                </div>
+
+                {/* Precio */}
+                <div style={{ gridColumn: '1/-1', borderBottom: '1px solid var(--color-border)', paddingBottom: 4, marginTop: 4, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--color-text-muted)' }}>Precio</div>
                 <div className="form-group">
                   <label className="form-label">Modo precio</label>
                   <select
                     className="form-select"
                     value={insuranceForm.pricingMode ?? 'PER_DAY'}
-                    onChange={(e) =>
-                      setInsuranceForm({
-                        ...insuranceForm,
-                        pricingMode: e.target.value as 'FIXED' | 'PER_DAY',
-                      })
-                    }
+                    onChange={(e) => setInsuranceForm({ ...insuranceForm, pricingMode: e.target.value as 'FIXED' | 'PER_DAY' })}
                   >
                     <option value="PER_DAY">Por día</option>
                     <option value="FIXED">Precio fijo</option>
@@ -1750,9 +1822,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
                     type="number"
                     className="form-input"
                     value={insuranceForm.unitPrice ?? 0}
-                    onChange={(e) =>
-                      setInsuranceForm({ ...insuranceForm, unitPrice: Number(e.target.value) })
-                    }
+                    onChange={(e) => setInsuranceForm({ ...insuranceForm, unitPrice: Number(e.target.value) })}
                     min={0}
                     step={0.01}
                   />
@@ -1764,12 +1834,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
                       type="number"
                       className="form-input"
                       value={insuranceForm.maxDays ?? ''}
-                      onChange={(e) =>
-                        setInsuranceForm({
-                          ...insuranceForm,
-                          maxDays: e.target.value ? Number(e.target.value) : undefined,
-                        })
-                      }
+                      onChange={(e) => setInsuranceForm({ ...insuranceForm, maxDays: e.target.value ? Number(e.target.value) : undefined })}
                       min={1}
                       placeholder="Sin límite"
                     />
@@ -1780,17 +1845,17 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
                   <select
                     className="form-select"
                     value={insuranceForm.active ? 'true' : 'false'}
-                    onChange={(e) =>
-                      setInsuranceForm({ ...insuranceForm, active: e.target.value === 'true' })
-                    }
+                    onChange={(e) => setInsuranceForm({ ...insuranceForm, active: e.target.value === 'true' })}
                   >
                     <option value="true">Activo</option>
                     <option value="false">Inactivo</option>
                   </select>
                 </div>
-                <div style={{ gridColumn: '1/-1', borderBottom: '1px solid var(--color-border)', paddingBottom: 4, marginTop: 8, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--color-text-muted)' }}>Grupos aplicables</div>
+
+                {/* Grupos aplicables */}
+                <div style={{ gridColumn: '1/-1', borderBottom: '1px solid var(--color-border)', paddingBottom: 4, marginTop: 4, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'var(--color-text-muted)' }}>Grupos aplicables</div>
                 <div className="form-group" style={{ gridColumn: '1/-1' }}>
-                  <div style={{ maxHeight: 160, overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: 6, padding: 8 }}>
+                  <div style={{ maxHeight: 140, overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: 6, padding: 8 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', cursor: 'pointer', marginBottom: 4 }}>
                       <input
                         type="checkbox"

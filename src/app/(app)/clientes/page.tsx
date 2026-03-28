@@ -1136,6 +1136,9 @@ function ClientesContent() {
           onChange={(e) => { setFilterSearch(e.target.value); setHasSearched(true); }}
           style={{ minWidth: 220 }}
         />
+        <button className="btn btn-primary btn-sm" onClick={() => setHasSearched(true)}>
+          Listar
+        </button>
         <span style={{ marginLeft: 'auto', fontSize: '0.82rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
           {loading ? '…' : `${filtered.length} cliente${filtered.length !== 1 ? 's' : ''}`}
         </span>

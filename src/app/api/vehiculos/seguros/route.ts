@@ -34,9 +34,12 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { code, name, pricingMode, unitPrice, maxDays, applicableGroupIds, active } = body as {
+    const { code, name, coverageType, franquicia, description, pricingMode, unitPrice, maxDays, applicableGroupIds, active } = body as {
       code: string;
       name: string;
+      coverageType?: 'BASICO' | 'TERCEROS' | 'TODO_RIESGO_CON' | 'TODO_RIESGO_SIN' | 'OTRO';
+      franquicia?: number;
+      description?: string;
       pricingMode: 'FIXED' | 'PER_DAY';
       unitPrice: number;
       maxDays?: number;
@@ -70,6 +73,9 @@ export async function POST(req: NextRequest) {
         id: generateId(),
         code: code ? code.toUpperCase() : '',
         name,
+        coverageType: coverageType ?? 'OTRO',
+        ...(franquicia !== undefined && { franquicia }),
+        ...(description !== undefined && description !== '' && { description }),
         pricingMode: pricingMode ?? 'PER_DAY',
         unitPrice,
         ...(maxDays !== undefined && maxDays > 0 && { maxDays }),

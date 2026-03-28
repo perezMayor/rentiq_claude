@@ -188,8 +188,8 @@ function ContratosContent() {
           placeholder="Buscar número, matrícula, cliente…"
           style={{ minWidth: 220 }}
         />
-        <button className="btn btn-ghost btn-sm" onClick={() => { setHasSearched(true); loadContracts(); }}>
-          Actualizar
+        <button className="btn btn-primary btn-sm" onClick={() => { setHasSearched(true); loadContracts(); }}>
+          Listar
         </button>
         <span style={{ marginLeft: 'auto', fontSize: '0.82rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
           {contracts.length} contrato{contracts.length !== 1 ? 's' : ''}

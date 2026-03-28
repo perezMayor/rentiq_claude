@@ -454,7 +454,7 @@ function HistorialTab({ vehicles }: { vehicles: FleetVehicle[] }) {
           <option value="">Todas las categorías</option>
           {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
         </select>
-        <button className="btn btn-ghost btn-sm" onClick={() => { setHasSearched(true); loadExpenses(); }}>Actualizar</button>
+        <button className="btn btn-primary btn-sm" onClick={() => { setHasSearched(true); loadExpenses(); }}>Listar</button>
         {(filterFrom || filterTo || filterPlate || filterCategory) && (
           <button className="btn btn-ghost btn-sm" onClick={() => { setFilterFrom(''); setFilterTo(''); setFilterPlate(''); setFilterCategory(''); }}>
             Limpiar
