@@ -69,10 +69,6 @@ export default function LoginPage() {
         </div>
         <p className={styles.subtitle}>Gestión de Rent a Car</p>
 
-        {companyName && (
-          <div className={styles.companyName}>{companyName}</div>
-        )}
-
         {error && (
           <div className={styles.error} role="alert">
             {error}
@@ -108,6 +104,10 @@ export default function LoginPage() {
               autoComplete="current-password"
             />
           </div>
+
+          {companyName && (
+            <div className={styles.companyName}>{companyName}</div>
+          )}
 
           {branches.length > 0 && (
             <div className={styles.formGroup}>
