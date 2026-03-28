@@ -82,6 +82,16 @@ interface VehicleCategory {
 
 type Tab = 'flota' | 'categorias' | 'modelos' | 'extras' | 'seguros';
 
+interface ContractSummary {
+  id: string;
+  plate: string;
+  billedDays: number;
+  totalAmount: number;
+  status: string;
+  startDate: string;
+  endDate?: string;
+}
+
 // ─── Blank form states ──────────────────────────────────────────────────────
 
 const blankVehicle = (): Partial<FleetVehicle> => ({
@@ -1636,10 +1646,10 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', cursor: 'pointer', marginBottom: 4 }}>
                       <input
                         type="checkbox"
-                        checked={(extraForm.applicableGroupIds ?? []).includes('__all__') || (extraForm.applicableGroupIds ?? []).length === 0}
+                        checked={(extraForm.applicableGroupIds ?? []).length === 0 || (extraForm.applicableGroupIds ?? []).includes('__all__')}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setExtraForm({ ...extraForm, applicableGroupIds: [] });
+                            setExtraForm({ ...extraForm, applicableGroupIds: ['__all__'] });
                           } else {
                             setExtraForm({ ...extraForm, applicableGroupIds: [] });
                           }
@@ -1784,9 +1794,11 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', cursor: 'pointer', marginBottom: 4 }}>
                       <input
                         type="checkbox"
-                        checked={(insuranceForm.applicableGroupIds ?? []).length === 0}
+                        checked={(insuranceForm.applicableGroupIds ?? []).length === 0 || (insuranceForm.applicableGroupIds ?? []).includes('__all__')}
                         onChange={(e) => {
                           if (e.target.checked) {
+                            setInsuranceForm({ ...insuranceForm, applicableGroupIds: ['__all__'] });
+                          } else {
                             setInsuranceForm({ ...insuranceForm, applicableGroupIds: [] });
                           }
                         }}
@@ -1829,6 +1841,442 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
         </div>
       )}
     </>
+  );
+}
+
+// ─── Altas/Bajas Tab ─────────────────────────────────────────────────────────
+
+function AltasBajasTab() {
+  const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [categories, setCategories] = useState<VehicleCategory[]>([]);
+  const [models, setModels] = useState<VehicleModel[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [filterBranch, setFilterBranch] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [filterPlate, setFilterPlate] = useState('');
+  const [modal, setModal] = useState<'create' | 'edit' | 'baja' | null>(null);
+  const [form, setForm] = useState<Partial<FleetVehicle>>(blankVehicle());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [bajaVehicleId, setBajaVehicleId] = useState('');
+  const [bajaDate, setBajaDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [vRes, bRes, cRes, mRes] = await Promise.all([
+        fetch('/api/vehiculos/flota?includeInactive=true'),
+        fetch('/api/sucursales'),
+        fetch('/api/vehiculos/categorias'),
+        fetch('/api/vehiculos/modelos'),
+      ]);
+      if (vRes.ok) setVehicles((await vRes.json()).vehicles ?? []);
+      if (bRes.ok) setBranches((await bRes.json()).branches ?? []);
+      if (cRes.ok) setCategories((await cRes.json()).categories ?? []);
+      if (mRes.ok) setModels((await mRes.json()).models ?? []);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const filtered = vehicles.filter((v) => {
+    if (filterBranch && v.branchId !== filterBranch) return false;
+    if (filterCategory && v.categoryId !== filterCategory) return false;
+    if (filterStatus === 'active' && !v.active) return false;
+    if (filterStatus === 'inactive' && v.active) return false;
+    if (filterPlate && !v.plate.toLowerCase().includes(filterPlate.toLowerCase())) return false;
+    return true;
+  });
+
+  const getCatName = (id: string) => categories.find(c => c.id === id)?.name ?? id;
+  const getModelLabel = (id: string) => { const m = models.find(m => m.id === id); return m ? `${m.brand} ${m.model}` : id; };
+  const getBranchName = (id: string) => branches.find(b => b.id === id)?.name ?? id;
+
+  async function save() {
+    setError(null); setSaving(true);
+    try {
+      const isEdit = modal === 'edit';
+      const url = isEdit ? `/api/vehiculos/flota/${editingId}` : '/api/vehiculos/flota';
+      const res = await fetch(url, {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, plate: (form.plate ?? '').toUpperCase(), year: Number(form.year), currentOdometer: Number(form.currentOdometer) }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? 'Error'); return; }
+      setModal(null);
+      void load();
+    } finally { setSaving(false); }
+  }
+
+  async function toggle(v: FleetVehicle) {
+    if (!v.active) {
+      if (!confirm(`¿Reactivar el vehículo ${v.plate}?`)) return;
+      await fetch(`/api/vehiculos/flota/${v.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: true, activeTo: null }),
+      });
+      void load();
+    }
+  }
+
+  async function saveBaja() {
+    if (!bajaVehicleId) { setError('Selecciona un vehículo'); return; }
+    setError(null); setSaving(true);
+    try {
+      const res = await fetch(`/api/vehiculos/flota/${bajaVehicleId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: false, activeTo: bajaDate }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? 'Error'); return; }
+      setModal(null);
+      void load();
+    } finally { setSaving(false); }
+  }
+
+  const activeVehicles = vehicles.filter(v => v.active);
+
+  return (
+    <div>
+      <div className="page-header" style={{ marginBottom: 16 }}>
+        <div />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-primary" onClick={() => { setForm(blankVehicle()); setEditingId(null); setError(null); setModal('create'); }}>
+            + Alta de vehículo
+          </button>
+          <button className="btn btn-ghost" style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}
+            onClick={() => { setBajaVehicleId(''); setBajaDate(new Date().toISOString().slice(0, 10)); setError(null); setModal('baja'); }}>
+            Dar de baja
+          </button>
+        </div>
+      </div>
+
+      <div className="filters-bar" style={{ marginBottom: 16 }}>
+        <select className="form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'inactive')}>
+          <option value="all">Todos</option>
+          <option value="active">Solo activos</option>
+          <option value="inactive">Solo inactivos</option>
+        </select>
+        <select className="form-select" value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)}>
+          <option value="">Todas las sucursales</option>
+          {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+        </select>
+        <select className="form-select" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+          <option value="">Todas las categorías</option>
+          {categories.map(c => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
+        </select>
+        <input className="form-input" placeholder="Buscar matrícula…" value={filterPlate} onChange={(e) => setFilterPlate(e.target.value)} />
+      </div>
+
+      {loading ? (
+        <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)' }}>Cargando…</div>
+      ) : (
+        <div className="table-wrapper">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Matrícula</th>
+                <th>Modelo</th>
+                <th>Categoría</th>
+                <th>Sucursal</th>
+                <th>Alta</th>
+                <th>Baja</th>
+                <th>Propietario</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr><td colSpan={9} style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>No hay vehículos que coincidan con los filtros.</td></tr>
+              ) : filtered.map(v => (
+                <tr key={v.id}>
+                  <td><strong style={{ fontFamily: 'monospace', fontSize: '0.9rem', letterSpacing: '0.05em' }}>{v.plate}</strong></td>
+                  <td>{getModelLabel(v.modelId)}</td>
+                  <td>{getCatName(v.categoryId)}</td>
+                  <td>{getBranchName(v.branchId)}</td>
+                  <td style={{ fontSize: '0.85rem' }}>{v.activeFrom ?? '—'}</td>
+                  <td style={{ fontSize: '0.85rem', color: v.activeTo ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>{v.activeTo ?? '—'}</td>
+                  <td style={{ fontSize: '0.82rem' }}>{v.owner}</td>
+                  <td>
+                    <span className={`badge ${v.active ? 'badge-confirmada' : 'badge-cancelada'}`}>
+                      {v.active ? 'Activo' : 'Baja'}
+                    </span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => { setForm({ ...v }); setEditingId(v.id); setError(null); setModal('edit'); }}>Editar</button>
+                      {!v.active && (
+                        <button className="btn btn-accent btn-sm" onClick={() => void toggle(v)}>Reactivar</button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {modal === 'baja' && (
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
+            <div className="modal__header">
+              <span className="modal__title">Dar de baja vehículo</span>
+              <button className="modal__close" onClick={() => setModal(null)}>✕</button>
+            </div>
+            <div className="modal__body">
+              {error && <div className="alert alert-danger" style={{ marginBottom: 12 }}>{error}</div>}
+              <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
+                <div className="form-group">
+                  <label className="form-label">Vehículo *</label>
+                  <select className="form-select" value={bajaVehicleId} onChange={e => setBajaVehicleId(e.target.value)}>
+                    <option value="">— Seleccionar vehículo activo —</option>
+                    {activeVehicles.map(v => (
+                      <option key={v.id} value={v.id}>{v.plate} — {getModelLabel(v.modelId) || getCatName(v.categoryId)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Fecha de baja</label>
+                  <input type="date" className="form-input" value={bajaDate} onChange={e => setBajaDate(e.target.value)} />
+                </div>
+              </div>
+            </div>
+            <div className="modal__footer">
+              <button className="btn btn-ghost" onClick={() => setModal(null)} disabled={saving}>Cancelar</button>
+              <button className="btn btn-primary" style={{ background: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} onClick={() => void saveBaja()} disabled={saving}>
+                {saving ? 'Guardando…' : 'Confirmar baja'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(modal === 'create' || modal === 'edit') && (
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
+            <div className="modal__header">
+              <span className="modal__title">{modal === 'create' ? 'Alta de vehículo' : 'Editar Vehículo'}</span>
+              <button className="modal__close" onClick={() => setModal(null)}>✕</button>
+            </div>
+            <div className="modal__body">
+              {error && <div className="alert alert-danger" style={{ marginBottom: 12 }}>{error}</div>}
+              <div className="form-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                <div className="form-group">
+                  <label className="form-label">Matrícula *</label>
+                  <input type="text" className="form-input" value={form.plate ?? ''} onChange={e => setForm({ ...form, plate: e.target.value.toUpperCase() })} disabled={modal === 'edit'} style={modal === 'edit' ? { opacity: 0.6 } : {}} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Sucursal *</label>
+                  <select className="form-select" value={form.branchId ?? ''} onChange={e => setForm({ ...form, branchId: e.target.value, modelId: '', categoryId: '' })}>
+                    <option value="">— Seleccionar —</option>
+                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Categoría *</label>
+                  <select className="form-select" value={form.categoryId ?? ''} onChange={e => setForm({ ...form, categoryId: e.target.value, modelId: '' })}>
+                    <option value="">— Seleccionar —</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
+                  </select>
+                </div>
+                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="form-label">Modelo</label>
+                  <select className="form-select" value={form.modelId ?? ''} onChange={e => setForm({ ...form, modelId: e.target.value })}>
+                    <option value="">— Sin modelo —</option>
+                    {models.filter(m => !form.categoryId || m.categoryId === form.categoryId).map(m => <option key={m.id} value={m.id}>{m.brand} {m.model}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Año</label>
+                  <input type="number" className="form-input" value={form.year ?? ''} min={1990} max={2100} onChange={e => setForm({ ...form, year: Number(e.target.value) })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Propietario</label>
+                  <select className="form-select" value={form.owner ?? 'PROPIO'} onChange={e => setForm({ ...form, owner: e.target.value })}>
+                    <option value="PROPIO">Propio</option>
+                    <option value="RENTING">Renting</option>
+                    <option value="LEASING">Leasing</option>
+                    <option value="TERCERO">Tercero</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Color</label>
+                  <input type="text" className="form-input" value={form.color ?? ''} onChange={e => setForm({ ...form, color: e.target.value })} placeholder="Blanco, Negro…" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Odómetro (km)</label>
+                  <input type="number" className="form-input" value={form.currentOdometer ?? 0} min={0} onChange={e => setForm({ ...form, currentOdometer: Number(e.target.value) })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Fecha de alta</label>
+                  <input type="date" className="form-input" value={form.activeFrom ?? ''} onChange={e => setForm({ ...form, activeFrom: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Estado</label>
+                  <select className="form-select" value={form.active ? 'true' : 'false'} onChange={e => setForm({ ...form, active: e.target.value === 'true' })}>
+                    <option value="true">Activo</option>
+                    <option value="false">Inactivo / Baja</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{ gridColumn: 'span 3' }}>
+                  <label className="form-label">Notas</label>
+                  <textarea className="form-input" value={form.notes ?? ''} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} style={{ resize: 'vertical' }} />
+                </div>
+              </div>
+            </div>
+            <div className="modal__footer">
+              <button className="btn btn-ghost" onClick={() => setModal(null)} disabled={saving}>Cancelar</button>
+              <button className="btn btn-primary" onClick={() => void save()} disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Producción Tab ──────────────────────────────────────────────────────────
+
+function ProduccionTab() {
+  const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
+  const [categories, setCategories] = useState<VehicleCategory[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [contracts, setContracts] = useState<ContractSummary[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [filterBranch, setFilterBranch] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [dateFrom, setDateFrom] = useState(() => {
+    const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10);
+  });
+  const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [vRes, cRes, bRes, ctRes] = await Promise.all([
+        fetch('/api/vehiculos/flota?includeInactive=true'),
+        fetch('/api/vehiculos/categorias'),
+        fetch('/api/sucursales'),
+        fetch(`/api/contratos?dateFrom=${dateFrom}&dateTo=${dateTo}&status=CERRADO`),
+      ]);
+      if (vRes.ok) setVehicles((await vRes.json()).vehicles ?? []);
+      if (cRes.ok) setCategories((await cRes.json()).categories ?? []);
+      if (bRes.ok) setBranches((await bRes.json()).branches ?? []);
+      if (ctRes.ok) setContracts((await ctRes.json()).contracts ?? []);
+    } finally { setLoading(false); }
+  }, [dateFrom, dateTo]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const getCatName = (id: string) => categories.find(c => c.id === id)?.name ?? '—';
+  const getBranchName = (id: string) => branches.find(b => b.id === id)?.name ?? '—';
+
+  // Calculate stats per vehicle
+  const stats = vehicles
+    .filter(v => {
+      if (filterBranch && v.branchId !== filterBranch) return false;
+      if (filterCategory && v.categoryId !== filterCategory) return false;
+      return true;
+    })
+    .map(v => {
+      const vehicleContracts = contracts.filter(c => c.plate === v.plate);
+      const totalDays = vehicleContracts.reduce((sum, c) => sum + (c.billedDays || 0), 0);
+      const totalRevenue = vehicleContracts.reduce((sum, c) => sum + (c.totalAmount || 0), 0);
+      // Utilization: days with contracts / days in period
+      const periodDays = Math.max(1, Math.ceil((new Date(dateTo).getTime() - new Date(dateFrom).getTime()) / (1000 * 60 * 60 * 24)) + 1);
+      const utilization = Math.min(100, Math.round((totalDays / periodDays) * 100));
+      return { vehicle: v, contractCount: vehicleContracts.length, totalDays, totalRevenue, utilization, periodDays };
+    })
+    .sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+  const totalRevenue = stats.reduce((s, r) => s + r.totalRevenue, 0);
+  const totalDays = stats.reduce((s, r) => s + r.totalDays, 0);
+  const avgUtilization = stats.length > 0 ? Math.round(stats.reduce((s, r) => s + r.utilization, 0) / stats.length) : 0;
+
+  return (
+    <div>
+      <div className="filters-bar" style={{ marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+        <label className="form-label" style={{ marginBottom: 0, alignSelf: 'center', whiteSpace: 'nowrap' }}>Periodo:</label>
+        <input type="date" className="form-input" style={{ width: 160 }} value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+        <span style={{ alignSelf: 'center', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>—</span>
+        <input type="date" className="form-input" style={{ width: 160 }} value={dateTo} onChange={e => setDateTo(e.target.value)} />
+        <select className="form-select" value={filterBranch} onChange={e => setFilterBranch(e.target.value)}>
+          <option value="">Todas las sucursales</option>
+          {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+        </select>
+        <select className="form-select" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
+          <option value="">Todas las categorías</option>
+          {categories.map(c => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
+        </select>
+      </div>
+
+      {/* Summary cards */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        {[
+          { label: 'Vehículos', value: stats.length.toString() },
+          { label: 'Días facturados', value: totalDays.toString() },
+          { label: 'Importe total', value: `${totalRevenue.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €` },
+          { label: 'Utilización media', value: `${avgUtilization}%` },
+        ].map(card => (
+          <div key={card.label} style={{ flex: '1 1 150px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '12px 16px' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{card.label}</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>{card.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {loading ? (
+        <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)' }}>Cargando…</div>
+      ) : (
+        <div className="table-wrapper">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Matrícula</th>
+                <th>Categoría</th>
+                <th>Sucursal</th>
+                <th style={{ textAlign: 'right' }}>Contratos</th>
+                <th style={{ textAlign: 'right' }}>Días facturados</th>
+                <th style={{ textAlign: 'right' }}>Importe</th>
+                <th style={{ textAlign: 'right' }}>Utilización</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.length === 0 ? (
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: 'var(--color-text-muted)' }}>No hay datos para el periodo seleccionado.</td></tr>
+              ) : stats.map(({ vehicle: v, contractCount, totalDays: td, totalRevenue: tr, utilization }) => (
+                <tr key={v.id}>
+                  <td><strong style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{v.plate}</strong></td>
+                  <td>{getCatName(v.categoryId)}</td>
+                  <td>{getBranchName(v.branchId)}</td>
+                  <td style={{ textAlign: 'right' }}>{contractCount}</td>
+                  <td style={{ textAlign: 'right' }}>{td}</td>
+                  <td style={{ textAlign: 'right' }}>{tr.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €</td>
+                  <td style={{ textAlign: 'right' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ display: 'inline-block', width: 48, height: 6, borderRadius: 3, background: 'var(--color-border)', overflow: 'hidden' }}>
+                        <span style={{ display: 'block', height: '100%', width: `${utilization}%`, background: utilization > 70 ? 'var(--color-status-contratado)' : utilization > 40 ? 'var(--color-primary)' : 'var(--color-status-peticion)', borderRadius: 3 }} />
+                      </span>
+                      {utilization}%
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1892,6 +2340,10 @@ function VehiculosInner() {
       <VehiculosTabNav active={tab} />
       {innerTab ? (
         <VehiculosContent initialTab={innerTab} />
+      ) : tab === 'altasbajas' ? (
+        <AltasBajasTab />
+      ) : tab === 'produccion' ? (
+        <ProduccionTab />
       ) : (
         <div className="empty-state" style={{ marginTop: 32 }}>
           <div className="empty-state__icon">🚧</div>

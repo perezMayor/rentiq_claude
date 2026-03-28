@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
 
   const url = new URL(req.url);
   const activeParam = url.searchParams.get('active');
+  const includeInactive = url.searchParams.get('includeInactive') === 'true';
   const branchId = url.searchParams.get('branchId');
   const categoryId = url.searchParams.get('categoryId');
   const search = url.searchParams.get('search')?.toLowerCase();
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
   const data = withStore((store) => {
     let list = [...store.vehicles];
 
-    if (activeParam !== null) {
+    if (!includeInactive && activeParam !== null) {
       const onlyActive = activeParam === 'true';
       list = list.filter((v) => v.active === onlyActive);
     }
