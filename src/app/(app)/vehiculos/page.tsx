@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import DatePicker from '@/src/components/DatePicker';
 import styles from './vehiculos.module.css';
-import PrintButton from '@/src/components/PrintButton';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -664,8 +663,7 @@ function VehiculosContent({ initialTab }: { initialTab?: Tab }) {
 
   return (
     <>
-      <div className="page-header">
-        <div />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
         {activeTab === 'categorias' && (
           <button className="btn btn-primary" onClick={openCreateCategory}>
             + Añadir grupo
@@ -2011,19 +2009,6 @@ function AltasBajasTab() {
 
   return (
     <div>
-      <div className="page-header" style={{ marginBottom: 16 }}>
-        <div />
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-primary" onClick={() => { setForm(blankVehicle()); setEditingId(null); setError(null); setModal('create'); }}>
-            + Alta de vehículo
-          </button>
-          <button className="btn btn-ghost" style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}
-            onClick={() => { setBajaVehicleId(''); setBajaDate(new Date().toISOString().slice(0, 10)); setError(null); setModal('baja'); }}>
-            Dar de baja
-          </button>
-        </div>
-      </div>
-
       <div className="filters-bar" style={{ marginBottom: 16 }}>
         <select className="form-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'inactive')}>
           <option value="all">Todos</option>
@@ -2039,6 +2024,15 @@ function AltasBajasTab() {
           {categories.map(c => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
         </select>
         <input className="form-input" placeholder="Buscar matrícula…" value={filterPlate} onChange={(e) => setFilterPlate(e.target.value)} />
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexShrink: 0 }}>
+          <button className="btn btn-primary btn-sm" onClick={() => { setForm(blankVehicle()); setEditingId(null); setError(null); setModal('create'); }}>
+            + Alta
+          </button>
+          <button className="btn btn-ghost btn-sm" style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}
+            onClick={() => { setBajaVehicleId(''); setBajaDate(new Date().toISOString().slice(0, 10)); setError(null); setModal('baja'); }}>
+            Dar de baja
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -2400,11 +2394,10 @@ function VehiculosInner() {
           <h1 className="page-title">Vehículos</h1>
           <p className="page-subtitle">{VEHICULOS_TABS.find((t) => t.key === tab)?.label ?? 'Flota'}</p>
         </div>
-        <PrintButton />
       </div>
       <VehiculosTabNav active={tab} />
       {innerTab ? (
-        <VehiculosContent initialTab={innerTab} />
+        <VehiculosContent key={tab} initialTab={innerTab} />
       ) : tab === 'altasbajas' ? (
         <AltasBajasTab />
       ) : tab === 'produccion' ? (
